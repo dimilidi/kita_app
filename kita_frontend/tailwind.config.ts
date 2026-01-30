@@ -13,6 +13,14 @@ const config: Config = {
         "gradient-conic":
           "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
       },
+      colors: {
+        kitaSky: "#C3EBFA",
+        kitaSkyLight: "#EDF9FD",
+        kitaPurple: "#CFCEFF",
+        kitaPurpleLight: "#F1F0FF",
+        kitaYellow: "#FAE27C",
+        kitaYellowLight: "#FEFCE8",
+      },
     },
   },
   plugins: [],
