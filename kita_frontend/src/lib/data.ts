@@ -918,7 +918,6 @@ export const announcementsData = [
 
 // YOU SHOULD CHANGE THE DATES OF THE EVENTS TO THE CURRENT DATE TO SEE THE EVENTS ON THE CALENDAR
 export const calendarEvents = [
-  // MONDAY – 26.01.2026
   {
     title: "English",
     allDay: false,
@@ -949,8 +948,6 @@ export const calendarEvents = [
     start: new Date(2026, 0, 26, 14, 0),
     end: new Date(2026, 0, 26, 14, 45),
   },
-
-  // TUESDAY – 27.01.2026
   {
     title: "English",
     allDay: false,
@@ -975,8 +972,6 @@ export const calendarEvents = [
     start: new Date(2026, 0, 27, 14, 0),
     end: new Date(2026, 0, 27, 14, 45),
   },
-
-  // WEDNESDAY – 28.01.2026
   {
     title: "Math",
     allDay: false,
@@ -1001,8 +996,6 @@ export const calendarEvents = [
     start: new Date(2026, 0, 28, 14, 0),
     end: new Date(2026, 0, 28, 14, 45),
   },
-
-  // THURSDAY – 29.01.2026
   {
     title: "English",
     allDay: false,
@@ -1027,19 +1020,17 @@ export const calendarEvents = [
     start: new Date(2026, 0, 29, 14, 0),
     end: new Date(2026, 0, 29, 14, 45),
   },
-
-  // FRIDAY – 30.01.2026
   {
     title: "Math",
     allDay: false,
-    start: new Date(2026, 0, 30, 8, 0),
-    end: new Date(2026, 0, 30, 8, 45),
+    start: new Date(2026, 1, 3, 8, 0),
+    end: new Date(2026,1, 3, 8, 45),
   },
   {
     title: "English",
     allDay: false,
-    start: new Date(2026, 0, 30, 9, 0),
-    end: new Date(2026, 0, 30, 9, 45),
+    start: new Date(2026, 1, 3, 9, 0),
+    end: new Date(2026, 1, 3, 9, 45),
   },
   {
     title: "Physics",
