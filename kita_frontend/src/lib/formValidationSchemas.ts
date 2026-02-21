@@ -6,7 +6,10 @@ export const subjectSchema = z.object({
   teachers: z.array(z.string()), //teacher ids
 });
 
-export type SubjectSchema = z.infer<typeof subjectSchema>;
+//export type SubjectSchema = z.infer<typeof subjectSchema>;
+export type SubjectInput = z.input<typeof subjectSchema>;
+export type SubjectSchema = z.output<typeof subjectSchema>;
+
 
 export const classSchema = z.object({
   id: z.coerce.number().optional(),
@@ -16,7 +19,9 @@ export const classSchema = z.object({
   supervisorId: z.coerce.string().optional(),
 });
 
-export type ClassSchema = z.infer<typeof classSchema>;
+// export type ClassSchema = z.infer<typeof classSchema>;
+export type ClassInput = z.input<typeof classSchema>;
+export type ClassSchema = z.output<typeof classSchema>;
 
 export const teacherSchema = z.object({
   id: z.string().optional(),
@@ -86,4 +91,6 @@ export const examSchema = z.object({
   lessonId: z.coerce.number({ message: "Lesson is required!" }),
 });
 
-export type ExamSchema = z.infer<typeof examSchema>;
+// export type ExamSchema = z.infer<typeof examSchema>;
+export type ExamInput = z.input<typeof examSchema>;
+export type ExamSchema = z.output<typeof examSchema>;
