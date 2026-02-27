@@ -1,22 +1,20 @@
 import Announcements from "@/components/Announcements";
 import BigCalendarContainer from "@/components/BigCalenderContainer";
-import BigCalendar from "@/components/BigCalendar";
 import FormContainer from "@/components/FormContainer";
 import Performance from "@/components/Performance";
 import prisma from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
 import { Teacher } from "@prisma/client";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getAuthData } from "@/lib/utils";
 
 const SingleTeacherPage = async ({
   params: { id },
 }: {
   params: { id: string };
 }) => {
-  const { sessionClaims } = auth();
-  const role = (sessionClaims?.metadata as { role?: string })?.role;
+  const { role } = getAuthData();
 
   const teacher:
     | (Teacher & {

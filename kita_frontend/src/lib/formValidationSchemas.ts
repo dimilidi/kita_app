@@ -13,8 +13,8 @@ export type SubjectSchema = z.output<typeof subjectSchema>;
 
 export const classSchema = z.object({
   id: z.coerce.number().optional(),
-  name: z.string().min(1, { message: "Subject name is required!" }),
-  capacity: z.coerce.number().min(1, { message: "Capacity name is required!" }),
+  name: z.string().min(1, { message: "Class name is required!" }),
+  capacity: z.coerce.number().min(1, { message: "Capacity is required!" }),
   gradeId: z.coerce.number().min(1, { message: "Grade name is required!" }),
   supervisorId: z.coerce.string().optional(),
 });
@@ -50,7 +50,9 @@ export const teacherSchema = z.object({
   subjects: z.array(z.string()).optional(), // subject ids
 });
 
-export type TeacherSchema = z.infer<typeof teacherSchema>;
+// export type TeacherSchema = z.infer<typeof teacherSchema>;
+export type TeacherInput = z.input<typeof teacherSchema>;
+export type TeacherSchema = z.output<typeof teacherSchema>;
 
 export const studentSchema = z.object({
   id: z.string().optional(),

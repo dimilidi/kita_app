@@ -7,9 +7,11 @@ import { Class, Prisma, Subject, Teacher } from "@prisma/client";
 import Image from "next/image";
 import Link from "next/link";
 import { ITEM_PER_PAGE } from "@/lib/settings";
-import { role } from "@/lib/utils";
+import { getAuthData } from "@/lib/utils";
+
 
 type TeacherList = Teacher & { subjects: Subject[] } & { classes: Class[] };
+const { role } = getAuthData();
 
 const TeacherListPage = async ({
   searchParams,

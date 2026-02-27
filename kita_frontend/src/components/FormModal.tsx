@@ -82,8 +82,8 @@ const forms: {
     <TeacherForm
       type={type}
       data={data}
-      // setOpen={setOpen}
-      // relatedData={relatedData}
+      setOpen={setOpen}
+      relatedData={relatedData}
     />
   ),
   student: (setOpen, type, data, relatedData) => (
@@ -132,7 +132,7 @@ const FormModal = ({
 
     useEffect(() => {
       if (state.success) {
-        toast(`${table} has been deleted!`);
+        toast(`${table[0].toUpperCase().concat(table.slice(1))} has been deleted!`);
         setOpen(false);
         router.refresh();
       }
