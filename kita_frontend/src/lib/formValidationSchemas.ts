@@ -83,7 +83,9 @@ export const studentSchema = z.object({
   parentId: z.string().min(1, { message: "Parent Id is required!" }),
 });
 
-export type StudentSchema = z.infer<typeof studentSchema>;
+// export type StudentSchema = z.infer<typeof studentSchema>;
+export type StudentInput = z.input<typeof studentSchema>;
+export type StudentSchema = z.output<typeof studentSchema>;
 
 export const examSchema = z.object({
   id: z.coerce.number().optional(),

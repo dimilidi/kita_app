@@ -4,9 +4,10 @@ import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
 import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
-import { currentUserId, role } from "@/lib/utils";
+import { getAuthData } from "@/lib/utils";
 import { Class, Exam, Prisma, Subject, Teacher } from "@prisma/client";
 import Image from "next/image";
+
 
 type ExamList = Exam & {
   lesson: {
@@ -21,6 +22,8 @@ const ExamListPage = async ({
 }: {
   searchParams: { [key: string]: string | undefined };
 }) => {
+
+ const { userId, role } = getAuthData();
 
 
 const columns = [
@@ -63,7 +66,7 @@ const renderRow = (item: ExamList) => (
       {item.lesson.teacher.name + " " + item.lesson.teacher.surname}
     </td>
     <td className="hidden md:table-cell">
-      {new Intl.DateTimeFormat("en-BG").format(item.startTime)}
+      {new Intl.DateTimeFormat("sv-SV").format(item.startTime)}
     </td>
     <td>
       <div className="flex items-center gap-2">
@@ -115,13 +118,13 @@ const renderRow = (item: ExamList) => (
     case "admin":
       break;
     case "teacher":
-      query.lesson.teacherId = currentUserId!;
+      query.lesson.teacherId = userId!;
       break;
     case "student":
       query.lesson.class = {
         students: {
           some: {
-            id: currentUserId!,
+            id: userId!,
           },
         },
       };
@@ -130,7 +133,7 @@ const renderRow = (item: ExamList) => (
       query.lesson.class = {
         students: {
           some: {
-            parentId: currentUserId!,
+            parentId: userId!,
           },
         },
       };

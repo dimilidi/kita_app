@@ -3,9 +3,10 @@ import BigCalendarContainer from "@/components/BigCalenderContainer";
 import FormContainer from "@/components/FormContainer";
 
 import Performance from "@/components/Performance";
+import StudentAttendanceCard from "@/components/StudentAttendanceCard";
 // import StudentAttendanceCard from "@/components/StudentAttendanceCard";
 import prisma from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
+import { getAuthData } from "@/lib/utils";
 import { Class, Student } from "@prisma/client";
 import Image from "next/image";
 import Link from "next/link";
@@ -17,8 +18,7 @@ const SingleStudentPage = async ({
 }: {
   params: { id: string };
 }) => {
-  const { sessionClaims } = auth();
-  const role = (sessionClaims?.metadata as { role?: string })?.role;
+ const { role } = getAuthData();
 
   const student:
     | (Student & {
@@ -97,9 +97,9 @@ const SingleStudentPage = async ({
                 height={24}
                 className="w-6 h-6"
               />
-              {/* <Suspense fallback="loading...">
+              <Suspense fallback="loading...">
                 <StudentAttendanceCard id={student.id} />
-              </Suspense> */}
+              </Suspense>
             </div>
             {/* CARD */}
             <div className="bg-white p-4 rounded-md flex gap-4 w-full md:w-[48%] xl:w-[45%] 2xl:w-[48%]">

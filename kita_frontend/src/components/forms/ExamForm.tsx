@@ -18,7 +18,7 @@ import {
 } from "@/lib/actions";
 import { useFormState } from "react-dom";
 import { Dispatch, SetStateAction, useEffect } from "react";
-// import { toast } from "react-toastify";
+import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 
 const ExamForm = ({
@@ -52,15 +52,14 @@ const ExamForm = ({
 
   const onSubmit = handleSubmit((data) => {
     console.log(data);
-     const parsedData = examSchema.parse(data);
-    formAction(parsedData);
+    formAction(data);
   });
 
   const router = useRouter();
 
   useEffect(() => {
     if (state.success) {
-      // toast(`Exam has been ${type === "create" ? "created" : "updated"}!`);
+      toast(`Exam has been ${type === "create" ? "created" : "updated"}!`);
       setOpen(false);
       router.refresh();
     }
