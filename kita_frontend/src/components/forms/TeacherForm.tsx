@@ -27,7 +27,7 @@ const TeacherForm = ({
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<TeacherInput>({
+  } = useForm<TeacherInput, any, TeacherSchema>({
     resolver: zodResolver(teacherSchema),
   });
 

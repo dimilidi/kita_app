@@ -11,13 +11,15 @@ import { getAuthData } from "@/lib/utils";
 
 
 type TeacherList = Teacher & { subjects: Subject[] } & { classes: Class[] };
-const { role } = getAuthData();
+
 
 const TeacherListPage = async ({
   searchParams,
 }: {
   searchParams: { [key: string]: string | undefined };
 }) => {
+
+  const { role } = getAuthData();
  
   const columns = [
     {

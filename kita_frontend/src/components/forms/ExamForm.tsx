@@ -36,7 +36,7 @@ const ExamForm = ({
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<ExamInput>({
+  } = useForm<ExamInput, any, ExamSchema>({
     resolver: zodResolver(examSchema),
   });
 

@@ -4,7 +4,7 @@ import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
 import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
-import { currentUserId, role } from "@/lib/utils";
+import { getAuthData } from "@/lib/utils";
 import { Prisma } from "@prisma/client";
 import Image from "next/image";
 
@@ -28,6 +28,7 @@ const ResultListPage = async ({
   searchParams: { [key: string]: string | undefined };
 }) => {
 
+  const { userId, role } = getAuthData();
 
 const columns = [
   {
@@ -131,18 +132,18 @@ const renderRow = (item: ResultList) => (
       break;
     case "teacher":
       query.OR = [
-        { exam: { lesson: { teacherId: currentUserId! } } },
-        { assignment: { lesson: { teacherId: currentUserId! } } },
+        { exam: { lesson: { teacherId: userId! } } },
+        { assignment: { lesson: { teacherId: userId! } } },
       ];
       break;
 
     case "student":
-      query.studentId = currentUserId!;
+      query.studentId = userId!;
       break;
 
     case "parent":
       query.student = {
-        parentId: currentUserId!,
+        parentId: userId!,
       };
       break;
     default:

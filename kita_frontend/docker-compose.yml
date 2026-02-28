@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:14.21
+    container_name: postgres_db
+    env_file:
+      - .env
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    container_name: nextjs_app
+    env_file:
+      - .env
+    ports:
+      - '3005:3000'
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:

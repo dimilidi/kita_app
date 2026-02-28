@@ -4,9 +4,9 @@ import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
 import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
+import { getAuthData } from "@/lib/utils";
 import { Assignment, Class, Prisma, Subject, Teacher } from "@prisma/client";
 import Image from "next/image";
-import { currentUserId, role } from "@/lib/utils";
 
 type AssignmentList = Assignment & {
   lesson: {
@@ -22,7 +22,7 @@ const AssignmentListPage = async ({
   searchParams: { [key: string]: string | undefined };
 }) => {
 
-
+  const { userId, role } = getAuthData();
   
   const columns = [
     {
@@ -130,13 +130,13 @@ const AssignmentListPage = async ({
     case "admin":
       break;
     case "teacher":
-      query.lesson.teacherId = currentUserId!;
+      query.lesson.teacherId = userId!;
       break;
     case "student":
       query.lesson.class = {
         students: {
           some: {
-            id: currentUserId!,
+            id: userId!,
           },
         },
       };
@@ -145,7 +145,7 @@ const AssignmentListPage = async ({
       query.lesson.class = {
         students: {
           some: {
-            parentId: currentUserId!,
+            parentId: userId!,
           },
         },
       };

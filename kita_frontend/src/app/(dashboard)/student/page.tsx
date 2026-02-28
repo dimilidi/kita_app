@@ -2,13 +2,15 @@ import Announcements from "@/components/Announcements";
 import BigCalendarContainer from "@/components/BigCalenderContainer";
 import EventCalendar from "@/components/EventCalendar";
 import prisma from "@/lib/prisma";
-import { currentUserId } from "@/lib/utils";
+import { getAuthData } from "@/lib/utils";
 
 const StudentPage = async () => {
 
+  const { userId } = getAuthData();
+
   const classItem = await prisma.class.findMany({
     where: {
-      students: { some: { id: currentUserId! } },
+      students: { some: { id: userId! } },
     },
   });
 
