@@ -5,6 +5,9 @@ import clsx from "clsx";
 
 type ChildProps = {
   id: string;
+  name?: string;
+  img?: string;
+  group?: string;
   voted?: boolean;
   inGroup?: boolean;
   onSelect?: (id: string) => void;
@@ -12,6 +15,9 @@ type ChildProps = {
 
 export default function Child({
   id,
+  name,
+  img,
+  group,
   voted = false,
   inGroup = false,
   onSelect,
@@ -31,23 +37,33 @@ export default function Child({
       {...attributes}
       onClick={() => inGroup && onSelect?.(id)}
       className={clsx(
-        "flex flex-col items-center gap-1 select-none cursor-pointer",
-        isDragging && "opacity-60"
+        "flex flex-col items-center justify-center w-[80px] p-2 rounded-lg bg-white shadow-sm border text-center cursor-pointer select-none transition",
+        "hover:shadow-md",
+        isDragging && "opacity-50 scale-105",
+        inGroup &&
+          (voted
+            ? "ring-2 ring-green-500"
+            : "ring-2 ring-red-500")
       )}
     >
-      <div
-        className={clsx(
-          "h-12 w-12 rounded-full flex items-center justify-center text-lg shadow bg-amber-300",
-          inGroup &&
-            (voted
-              ? "ring-4 ring-green-500"
-              : "ring-4 ring-red-500")
-        )}
-      >
-        👧
-      </div>
+      {/* Avatar */}
+      <img
+        src={img || "/noAvatar.png"}
+        alt={name}
+        className="w-12 h-12 rounded-full object-cover"
+      />
 
-      <span className="text-xs font-medium text-center">{id}</span>
+      {/* Name */}
+      <span className="text-xs font-semibold leading-tight mt-1">
+        {name}
+      </span>
+
+      {/* Group badge */}
+      {group && (
+        <span className="text-[10px] text-gray-500">
+          {group}
+        </span>
+      )}
     </div>
   );
 }

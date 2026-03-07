@@ -1,4 +1,5 @@
 import { Day, PrismaClient, UserSex } from "@prisma/client";
+
 const prisma = new PrismaClient();
 
 async function main() {
@@ -201,7 +202,19 @@ async function main() {
     });
   }
 
-  console.log("Seeding completed successfully.");
+  // ZONES
+  await prisma.zone.createMany({
+    data: [
+      { name: "WC", capacity: 3 },
+      { name: "Flur", capacity: 10 },
+      { name: "Spielplatz" },
+      { name: "Restaurant", capacity: 15 },
+      { name: "Bauwelt", capacity: 24 },
+      { name: "Abenteuerland", capacity: 24 },
+      { name: "Kreativwerkstatt", capacity: 24 },
+    ],
+    skipDuplicates: true,
+  });
 }
 
 main()

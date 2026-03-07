@@ -466,3 +466,36 @@ export const deleteExam = async (
     return { success: false, error: true };
   }
 };
+
+
+export async function saveZones(zones: Record<string, string[]>) {
+  try {
+    if (!zones || typeof zones !== "object") {
+      throw new Error("zones undefined or invalid");
+    }
+
+    const records = Object.entries(zones)
+      .flatMap(([zoneId, students]) =>
+        students.map((studentId) => ({
+          studentId,
+          zoneId,
+        }))
+      )
+      .filter((z) => z.zoneId !== "pool");
+
+    if (records.length === 0) {
+      await prisma.studentZone.deleteMany();
+      return;
+    }
+
+    await prisma.$transaction([
+      prisma.studentZone.deleteMany(),
+      prisma.studentZone.createMany({
+        data: records,
+      }),
+    ]);
+  } catch (error) {
+    console.error("Failed to save zones:", error);
+    throw error;
+  }
+}

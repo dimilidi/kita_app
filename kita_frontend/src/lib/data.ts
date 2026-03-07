@@ -1051,3 +1051,48 @@ export const calendarEvents = [
     end: new Date(2026, 0, 30, 14, 45),
   },
 ];
+
+export const zonesData = [
+  {
+    name: "toilet",
+    capacity: 3,
+    description: "Bathroom area",
+    color: "#e3f2fd",
+  },
+  {
+    name: "hall",
+    capacity: 10,
+    description: "Hallway",
+    color: "#e8f5e9",
+  },
+  {
+    name: "outside",
+    capacity: 20,
+    description: "Outdoor playground",
+    color: "#fff3e0",
+  },
+  {
+    name: "restaurant",
+    capacity: 15,
+    description: "Eating area",
+    color: "#fce4ec",
+  },
+  {
+    name: "bauwelt",
+    capacity: 24,
+    description: "Building blocks",
+    color: "#ede7f6",
+  },
+  {
+    name: "abenteuerland",
+    capacity: 24,
+    description: "Adventure play",
+    color: "#e0f7fa",
+  },
+  {
+    name: "kreativwerkstatt",
+    capacity: 24,
+    description: "Creative workshop",
+    color: "#f3e5f5",
+  },
+];

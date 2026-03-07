@@ -16,6 +16,15 @@ const MAX_PER_GROUP = 15;
 
 type GroupId = "green" | "yellow" | "red" | "pool";
 type VoteKey = "danke" | "piep" | "apfel";
+type ChildProps = {
+  id: string;
+  name?: string;
+  img?: string;
+  group?: string;
+  voted?: boolean;
+  inGroup?: boolean;
+  onSelect?: (id: string) => void;
+};
 
 export default function LunchBoard() {
   const [groups, setGroups] = useState<Record<GroupId, string[]>>({

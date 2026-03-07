@@ -33,6 +33,9 @@ model Student {
   attendances Attendance[]
   results     Result[]
   birthday    DateTime
+
+  studentZone StudentZone?
+  zoneHistory ZoneHistory[] 
 }
 
 model Teacher {
@@ -51,6 +54,8 @@ model Teacher {
   lessons   Lesson[]
   classes   Class[]
   birthday  DateTime
+
+  zones     TeacherZone[]
 }
 
 model Parent {
@@ -179,6 +184,57 @@ model Announcement {
   class   Class? @relation(fields: [classId], references: [id])
 }
 
+model Zone {
+  id          String @id @default(cuid())
+  name        String @unique
+  capacity    Int?
+  description String?
+  color       String?
+
+  activities  Activity[]
+  students    StudentZone[]
+  teachers    TeacherZone[]
+  history     ZoneHistory[]
+}
+
+model StudentZone {
+  studentId String @id
+  zoneId    String
+  movedAt   DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id])
+  zone    Zone    @relation(fields: [zoneId], references: [id])
+}
+
+model TeacherZone {
+  id        String @id 
+  teacherId String
+  zoneId    String
+
+   teacher Teacher @relation(fields: [teacherId], references: [id])
+   zone    Zone    @relation(fields: [zoneId], references: [id])
+
+   @@unique([teacherId, zoneId])
+}
+
+model ZoneHistory {
+  id        String @id
+  studentId String
+  zoneId    String
+  movedAt   DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id])
+  zone    Zone    @relation(fields: [zoneId], references: [id])
+}
+
+model Activity {
+  id     Int @id @default(autoincrement())
+  name   String
+  zoneId String
+
+  zone Zone @relation(fields: [zoneId], references: [id])
+}
+
 enum UserSex {
   MALE
   FEMALE
@@ -191,3 +247,15 @@ enum Day {
   THURSDAY
   FRIDAY
 }
+
+// enum Zone {
+//   WC
+//   FLUR
+//   TURNHALLE
+//   SPIELPLATZ
+//   RESTAURANT
+//   BAUWELT
+//   ABENTEURLAND
+//   KREATIVWERKSTATT
+//   POOL
+// }
