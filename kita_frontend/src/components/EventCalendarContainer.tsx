@@ -1,6 +1,5 @@
-import Image from "next/image";
-import EventCalendar from "./EventCalendar";
-import EventList from "./EventList";
+import prisma from "@/lib/prisma";
+import EventCalendarContainerClient from "./EventCalendarContainerClient";
 
 const EventCalendarContainer = async ({
   searchParams,
@@ -8,17 +7,27 @@ const EventCalendarContainer = async ({
   searchParams: { [keys: string]: string | undefined };
 }) => {
   const { date } = searchParams;
+  const d = date ? new Date(date) : new Date();
+
+  const events = await prisma.event.findMany({
+    where: {
+      startTime: {
+        gte: new Date(d.setHours(0, 0, 0, 0)),
+        lte: new Date(d.setHours(23, 59, 59, 999)),
+      },
+    },
+    orderBy: { startTime: "asc" },
+  });
+
   return (
-    <div className="bg-white p-4 rounded-md">
-      <EventCalendar />
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold my-4">Events</h1>
-        <Image src="/moreDark.png" alt="" width={20} height={20} />
-      </div>
-      <div className="flex flex-col gap-4">
-        <EventList dateParam={date} />
-      </div>
-    </div>
+    <EventCalendarContainerClient
+      events={events.map((event) => ({
+        id: event.id,
+        title: event.title,
+        description: event.description,
+        startTimeISO: event.startTime.toISOString(),
+      }))}
+    />
   );
 };
 

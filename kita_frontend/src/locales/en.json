@@ -1,0 +1,172 @@
+{
+  "common": {
+    "search": "Search...",
+    "close": "Close",
+    "save": "Save",
+    "actions": "Actions",
+    "title": "Title",
+    "text": "Text"
+  },
+  "menu": {
+    "menu": "MENU",
+    "other": "OTHER",
+    "home": "Home",
+    "teachers": "Teachers",
+    "students": "Students",
+    "parents": "Parents",
+    "subjects": "Subjects",
+    "classes": "Classes",
+    "lessons": "Lessons",
+    "exams": "Exams",
+    "assignments": "Assignments",
+    "results": "Results",
+    "attendance": "Attendance",
+    "events": "Events",
+    "messages": "Messages",
+    "announcements": "Announcements",
+    "areas": "Areas",
+    "lunch": "Lunch",
+    "lunchGroups": "Lunch Groups",
+    "tischsprueche": "Tischsprüche",
+    "profile": "Profile",
+    "settings": "Settings",
+    "logout": "Logout"
+  },
+  "signIn": {
+    "appName": "KitaApp",
+    "title": "Sign in to your account",
+    "username": "Username",
+    "password": "Password",
+    "button": "Sign In"
+  },
+  "lunch": {
+    "groups": "Lunch Groups",
+    "tischsprueche": "Tischsprüche",
+    "boardTitle": "Lunch Board"
+  },
+  "events": {
+    "title": "Events"
+  },
+  "announcements": {
+    "title": "Announcements",
+    "viewAll": "View All"
+  },
+  "classes": {
+    "titleAll": "All Classes",
+    "columns": {
+      "className": "Class Name",
+      "capacity": "Capacity",
+      "grade": "Grade",
+      "supervisor": "Supervisor"
+    }
+  },
+  "teachers": {
+    "titleAll": "All Teachers",
+    "columns": {
+      "info": "Info",
+      "teacherId": "Teacher ID",
+      "subjects": "Subjects",
+      "classes": "Classes",
+      "phone": "Phone",
+      "address": "Address"
+    }
+  },
+  "students": {
+    "titleAll": "All Students",
+    "columns": {
+      "info": "Info",
+      "studentId": "Student ID",
+      "grade": "Grade",
+      "phone": "Phone",
+      "address": "Address"
+    }
+  },
+  "parents": {
+    "titleAll": "All Parents",
+    "columns": {
+      "info": "Info",
+      "studentNames": "Student Names",
+      "phone": "Phone",
+      "address": "Address"
+    }
+  },
+  "subjects": {
+    "titleAll": "All Subjects",
+    "columns": {
+      "subjectName": "Subject Name",
+      "teachers": "Teachers"
+    }
+  },
+  "lessons": {
+    "titleAll": "All Lessons",
+    "columns": {
+      "subjectName": "Subject Name",
+      "class": "Class",
+      "teacher": "Teacher"
+    }
+  },
+  "exams": {
+    "titleAll": "All Exams",
+    "columns": {
+      "subjectName": "Subject Name",
+      "class": "Class",
+      "teacher": "Teacher",
+      "date": "Date"
+    }
+  },
+  "assignments": {
+    "titleAll": "All Assignments",
+    "columns": {
+      "subjectName": "Subject Name",
+      "class": "Class",
+      "teacher": "Teacher",
+      "dueDate": "Due Date"
+    }
+  },
+  "results": {
+    "titleAll": "All Results",
+    "columns": {
+      "student": "Student",
+      "score": "Score",
+      "teacher": "Teacher",
+      "class": "Class",
+      "date": "Date"
+    }
+  },
+  "eventsList": {
+    "titleAll": "All Events",
+    "columns": {
+      "class": "Class",
+      "date": "Date",
+      "startTime": "Start Time",
+      "endTime": "End Time"
+    }
+  },
+  "announcementsList": {
+    "titleAll": "All Announcements",
+    "columns": {
+      "class": "Class",
+      "date": "Date"
+    }
+  },
+  "lunchGroups": {
+    "titleAll": "All Lunch Groups",
+    "add": "Add Lunch Group",
+    "edit": "Edit Lunch Group",
+    "name": "Name",
+    "color": "Color",
+    "capacity": "Capacity",
+    "children": "Children",
+    "defaultColor": "Default (Gray)",
+    "customExisting": "Custom (existing)"
+  },
+  "tischsprueche": {
+    "titleAll": "All Tischsprueche",
+    "add": "Add Tischspruch",
+    "edit": "Edit Tischspruch",
+    "view": "View Tischspruch",
+    "title": "Title",
+    "text": "Text"
+  }
+}
+

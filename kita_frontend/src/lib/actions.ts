@@ -499,3 +499,183 @@ export async function saveZones(zones: Record<string, string[]>) {
     throw error;
   }
 }
+
+export async function saveLunchGroups(groups: Record<string, string[]>) {
+  try {
+    if (!groups || typeof groups !== "object") {
+      throw new Error("groups undefined or invalid");
+    }
+
+    const validGroupIds = new Set(
+      (
+        await (prisma as any).lunchGroupEntity.findMany({
+          select: { id: true },
+        })
+      ).map((g: { id: string }) => g.id)
+    );
+    const records = Object.entries(groups)
+      .flatMap(([group, students]) =>
+        students.map((studentId) => ({
+          studentId,
+          groupId: group,
+        }))
+      )
+      .filter((item) => validGroupIds.has(item.groupId));
+
+    if (records.length === 0) {
+      await prisma.studentLunchGroup.deleteMany();
+      return;
+    }
+
+    await prisma.$transaction([
+      prisma.studentLunchGroup.deleteMany(),
+      prisma.studentLunchGroup.createMany({
+        data: records as any,
+      }),
+    ]);
+  } catch (error) {
+    console.error("Failed to save lunch groups:", error);
+    throw error;
+  }
+}
+
+export async function saveLunchVote(params: {
+  studentId: string;
+  groupId: string;
+  tischspruchId: number;
+}) {
+  const { studentId, groupId, tischspruchId } = params;
+
+  try {
+    await prisma.studentLunchVote.upsert({
+      where: { studentId },
+      update: { groupId, tischspruchId } as any,
+      create: { studentId, groupId, tischspruchId } as any,
+    });
+  } catch (error) {
+    console.error("Failed to save lunch vote:", error);
+    throw error;
+  }
+}
+
+export async function createLunchGroup(data: {
+  name: string;
+  color?: string;
+  capacity?: number;
+}) {
+  try {
+    const name = data.name.trim();
+    if (!name) throw new Error("Lunch group name is required");
+
+    await (prisma as any).lunchGroupEntity.create({
+      data: {
+        name,
+        color: data.color?.trim() || null,
+        capacity: data.capacity ?? 15,
+      },
+    });
+    revalidatePath("/list/lunch");
+    revalidatePath("/list/lunch-groups");
+    return { success: true, error: false };
+  } catch (error) {
+    console.error("Failed to create lunch group:", error);
+    return { success: false, error: true };
+  }
+}
+
+export async function updateLunchGroup(
+  id: string,
+  data: { name: string; color?: string; capacity?: number }
+) {
+  try {
+    const name = data.name.trim();
+    if (!name) throw new Error("Lunch group name is required");
+
+    await (prisma as any).lunchGroupEntity.update({
+      where: { id },
+      data: {
+        name,
+        color: data.color?.trim() || null,
+        capacity: data.capacity ?? 15,
+      },
+    });
+    revalidatePath("/list/lunch");
+    revalidatePath("/list/lunch-groups");
+    return { success: true, error: false };
+  } catch (error) {
+    console.error("Failed to update lunch group:", error);
+    return { success: false, error: true };
+  }
+}
+
+export async function deleteLunchGroup(id: string) {
+  try {
+    await prisma.$transaction([
+      prisma.studentLunchVote.deleteMany({ where: { groupId: id } as any }),
+      prisma.studentLunchGroup.deleteMany({ where: { groupId: id } as any }),
+      (prisma as any).lunchGroupEntity.delete({ where: { id } }),
+    ]);
+    revalidatePath("/list/lunch");
+    revalidatePath("/list/lunch-groups");
+    return { success: true, error: false };
+  } catch (error) {
+    console.error("Failed to delete lunch group:", error);
+    return { success: false, error: true };
+  }
+}
+
+export async function createTischspruch(data: { title: string; text: string }) {
+  try {
+    const normalizedTitle = data.title.trim();
+    const normalizedText = data.text.trim();
+    if (!normalizedTitle) throw new Error("Tischspruch title is required");
+    if (!normalizedText) throw new Error("Tischspruch text is required");
+
+    await prisma.tischspruch.create({
+      data: { title: normalizedTitle, text: normalizedText },
+    });
+
+    revalidatePath("/list/lunch");
+    return { success: true, error: false };
+  } catch (error) {
+    console.error("Failed to create Tischspruch:", error);
+    return { success: false, error: true };
+  }
+}
+
+export async function updateTischspruch(
+  id: number,
+  data: { title: string; text: string }
+) {
+  try {
+    const normalizedTitle = data.title.trim();
+    const normalizedText = data.text.trim();
+    if (!normalizedTitle) throw new Error("Tischspruch title is required");
+    if (!normalizedText) throw new Error("Tischspruch text is required");
+
+    await prisma.tischspruch.update({
+      where: { id },
+      data: { title: normalizedTitle, text: normalizedText },
+    });
+
+    revalidatePath("/list/lunch");
+    return { success: true, error: false };
+  } catch (error) {
+    console.error("Failed to update Tischspruch:", error);
+    return { success: false, error: true };
+  }
+}
+
+export async function deleteTischspruch(id: number) {
+  try {
+    await prisma.tischspruch.delete({
+      where: { id },
+    });
+
+    revalidatePath("/list/lunch");
+    return { success: true, error: false };
+  } catch (error) {
+    console.error("Failed to delete Tischspruch:", error);
+    return { success: false, error: true };
+  }
+}

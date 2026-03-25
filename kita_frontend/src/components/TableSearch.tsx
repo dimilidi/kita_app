@@ -2,9 +2,11 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "@/i18n/TranslationsProvider";
 
 const TableSearch = () => {
   const router = useRouter();
+  const dict = useTranslations();
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -24,7 +26,7 @@ const TableSearch = () => {
       <Image src="/search.png" alt="" width={14} height={14} />
       <input
         type="text"
-        placeholder="Search..."
+        placeholder={dict.common.search}
         className="w-[200px] p-2 bg-transparent outline-none"
       />
     </form>

@@ -35,6 +35,8 @@ model Student {
   birthday    DateTime
 
   studentZone StudentZone?
+  lunchGroup  StudentLunchGroup?
+  lunchVote   StudentLunchVote?
   zoneHistory ZoneHistory[] 
 }
 
@@ -204,6 +206,54 @@ model StudentZone {
 
   student Student @relation(fields: [studentId], references: [id])
   zone    Zone    @relation(fields: [zoneId], references: [id])
+}
+
+model StudentLunchGroup {
+  studentId String     @id
+  group     LunchGroup?
+  groupId   String?
+  movedAt   DateTime   @default(now())
+
+  student      Student          @relation(fields: [studentId], references: [id])
+  lunchGroup   LunchGroupEntity? @relation(fields: [groupId], references: [id], onDelete: Cascade)
+}
+
+model Tischspruch {
+  id        Int      @id @default(autoincrement())
+  title     String   @unique
+  text      String   @default("")
+  createdAt DateTime @default(now())
+
+  votes StudentLunchVote[]
+}
+
+model StudentLunchVote {
+  studentId     String     @id
+  tischspruchId Int
+  group         LunchGroup?
+  groupId       String?
+  updatedAt     DateTime   @updatedAt
+
+  student     Student          @relation(fields: [studentId], references: [id])
+  tischspruch Tischspruch      @relation(fields: [tischspruchId], references: [id], onDelete: Cascade)
+  lunchGroup  LunchGroupEntity? @relation(fields: [groupId], references: [id], onDelete: Cascade)
+}
+
+model LunchGroupEntity {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  color     String?
+  capacity  Int?      @default(15)
+  createdAt DateTime  @default(now())
+
+  assignments StudentLunchGroup[]
+  votes       StudentLunchVote[]
+}
+
+enum LunchGroup {
+  green
+  yellow
+  red
 }
 
 model TeacherZone {

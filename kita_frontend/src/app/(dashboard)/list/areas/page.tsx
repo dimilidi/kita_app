@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import PlayBoard from "./PlayBoard";
+import PlayBoard from "../../play/PlayBoard";
 import { Prisma } from "@prisma/client";
 
 type StudentWithClass = Prisma.StudentGetPayload<{

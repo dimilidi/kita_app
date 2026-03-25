@@ -1,23 +1,29 @@
 import clsx from "clsx";
 
 const TischspruchVote = ({
+  options,
   votes,
   onVote,
   disabled,
 }: {
-  votes: Record<VoteKey, number>;
-  onVote: (key: VoteKey) => void;
+  options: { id: number; title: string; text: string }[];
+  votes: Record<number, number>;
+  onVote: (id: number) => void;
   disabled: boolean;
 }) => {
-  const winner = Object.entries(votes).reduce((a, b) =>
-    a[1] >= b[1] ? a : b
-  )[0] as VoteKey;
+  if (options.length === 0) {
+    return (
+      <div className="mt-3 rounded-xl bg-white/80 p-2 text-xs text-center text-gray-500">
+        No Tischsprueche available.
+      </div>
+    );
+  }
 
-  const labels: Record<VoteKey, string> = {
-    danke: "🙏 Danke fürs Essen",
-    piep: "🐥 Piep, piep, piep",
-    apfel: "🍎 Alle Kinder essen gern",
-  };
+  const winner = options.reduce((best, option) => {
+    const currentVotes = votes[option.id] ?? 0;
+    const bestVotes = votes[best.id] ?? 0;
+    return currentVotes > bestVotes ? option : best;
+  }, options[0]);
 
   return (
     <div className="mt-3 rounded-xl bg-white/80 p-2 text-xs">
@@ -25,27 +31,34 @@ const TischspruchVote = ({
         🍽️ Tischspruch
       </div>
 
-      <div className="flex justify-between gap-1">
-        {(Object.keys(votes) as VoteKey[]).map((key) => (
-          <button
-            key={key}
-            onClick={() => onVote(key)}
-            disabled={disabled}
+      <div className="grid grid-cols-1 gap-2">
+        {options.map((option) => (
+          <div
+            key={option.id}
             className={clsx(
-              "flex-1 rounded-lg px-2 py-1",
-              disabled
-                ? "bg-gray-200 cursor-not-allowed"
-                : "bg-gray-100 hover:bg-gray-200",
-              winner === key && "bg-green-200 font-semibold"
+              "rounded-lg border p-2 bg-gray-50",
+              winner.id === option.id && "border-green-400 bg-green-100"
             )}
           >
-            {labels[key]} ({votes[key]})
-          </button>
+            <div className="flex items-start justify-between gap-2">
+              <button
+                onClick={() => onVote(option.id)}
+                disabled={disabled}
+                className={clsx(
+                  "text-left flex-1",
+                  disabled ? "cursor-not-allowed opacity-70" : "cursor-pointer"
+                )}
+              >
+                <div className="font-semibold">{option.title}</div>
+                <div className="mt-1 text-[11px]">Votes: {votes[option.id] ?? 0}</div>
+              </button>
+            </div>
+          </div>
         ))}
       </div>
 
       <div className="mt-2 text-center text-sm font-semibold">
-        🏆 Winner: {labels[winner]}
+        Winner: {winner.title}
       </div>
     </div>
   );

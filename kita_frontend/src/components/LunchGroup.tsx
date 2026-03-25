@@ -5,17 +5,35 @@ import clsx from "clsx";
 import Child from "./Child";
 import TischspruchVote from "./TischspruchVote";
 
+type LunchGroupProps = {
+  id: string;
+  title: string;
+  color: string;
+  childrenIds: string[];
+  voteOptions: { id: number; title: string; text: string }[];
+  votes: Record<number, number>;
+  votedChildren: string[];
+  onVote: (id: number) => void;
+  maxPerGroup: number;
+  onSelectChild: (id: string) => void;
+  getChild: (id: string) =>
+    | { id: string; name: string; img?: string; group?: string }
+    | undefined;
+};
+
 export default function LunchGroup({
   id,
   title,
   color,
   childrenIds,
+  voteOptions,
   votes,
   votedChildren,
   onVote,
   maxPerGroup,
-  onSelectChild
-}: any) {
+  onSelectChild,
+  getChild,
+}: LunchGroupProps) {
   const { setNodeRef, isOver } = useDroppable({ id });
   const isFull = childrenIds.length >= maxPerGroup;
 
@@ -40,21 +58,32 @@ export default function LunchGroup({
 
       <div className="grid grid-cols-5 gap-2">
         {childrenIds.map((child: string) => (
-          <Child
-            key={child}
-            id={child}
-            voted={votedChildren.includes(child)}
-            inGroup
-            onSelect={onSelectChild}
-          />
+          (() => {
+            const childData = getChild(child);
+            if (!childData) return null;
+
+            return (
+              <Child
+                key={child}
+                id={childData.id}
+                name={childData.name}
+                img={childData.img}
+                group={childData.group}
+                voted={votedChildren.includes(child)}
+                inGroup
+                onSelect={onSelectChild}
+              />
+            );
+          })()
         ))}
       </div>
 
       {childrenIds.length > 0 && (
         <TischspruchVote
+          options={voteOptions}
           votes={votes}
           onVote={onVote}
-          disabled={votedChildren.length === childrenIds.length}
+          disabled={voteOptions.length === 0 || votedChildren.length === childrenIds.length}
         />
       )}
     </div>

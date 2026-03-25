@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { cookies } from "next/headers";
+import { DEFAULT_LOCALE, Locale } from "@/i18n/lang";
 import { ClerkProvider } from "@clerk/nextjs";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -15,13 +17,14 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieLang = cookies().get("NEXT_LANG")?.value as Locale | undefined;
+  const lang = cookieLang ?? DEFAULT_LOCALE;
+
   return (
-    <ClerkProvider>
-      <html lang="en">
-        <body className={inter.className}>
-          {children} 
-        </body>
-      </html>
-    </ClerkProvider>
+    <html lang={lang}>
+      <body className={inter.className}>
+        <ClerkProvider>{children}</ClerkProvider>
+      </body>
+    </html>
   );
 }

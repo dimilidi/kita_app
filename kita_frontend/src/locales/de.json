@@ -1,0 +1,172 @@
+{
+  "common": {
+    "search": "Suche...",
+    "close": "Schließen",
+    "save": "Speichern",
+    "actions": "Aktionen",
+    "title": "Titel",
+    "text": "Text"
+  },
+  "menu": {
+    "menu": "MENÜ",
+    "other": "ANDERE",
+    "home": "Start",
+    "teachers": "Lehrer",
+    "students": "Schüler",
+    "parents": "Eltern",
+    "subjects": "Fächer",
+    "classes": "Klassen",
+    "lessons": "Stunden",
+    "exams": "Prüfungen",
+    "assignments": "Aufgaben",
+    "results": "Ergebnisse",
+    "attendance": "Anwesenheit",
+    "events": "Ereignisse",
+    "messages": "Nachrichten",
+    "announcements": "Ankündigungen",
+    "areas": "Bereiche",
+    "lunch": "Mittagessen",
+    "lunchGroups": "Mittagsgruppen",
+    "tischsprueche": "Tischsprüche",
+    "profile": "Profil",
+    "settings": "Einstellungen",
+    "logout": "Abmelden"
+  },
+  "signIn": {
+    "appName": "KitaApp",
+    "title": "Melde dich bei deinem Konto an",
+    "username": "Benutzername",
+    "password": "Passwort",
+    "button": "Anmelden"
+  },
+  "lunch": {
+    "groups": "Mittagsgruppen",
+    "tischsprueche": "Tischsprüche",
+    "boardTitle": "Mittagstafel"
+  },
+  "events": {
+    "title": "Ereignisse"
+  },
+  "announcements": {
+    "title": "Ankündigungen",
+    "viewAll": "Alle anzeigen"
+  },
+  "classes": {
+    "titleAll": "Alle Klassen",
+    "columns": {
+      "className": "Klassenname",
+      "capacity": "Kapazität",
+      "grade": "Klasse",
+      "supervisor": "Betreuer"
+    }
+  },
+  "teachers": {
+    "titleAll": "Alle Lehrer",
+    "columns": {
+      "info": "Info",
+      "teacherId": "Lehrer-ID",
+      "subjects": "Fächer",
+      "classes": "Klassen",
+      "phone": "Telefon",
+      "address": "Adresse"
+    }
+  },
+  "students": {
+    "titleAll": "Alle Schüler",
+    "columns": {
+      "info": "Info",
+      "studentId": "Schüler-ID",
+      "grade": "Klasse",
+      "phone": "Telefon",
+      "address": "Adresse"
+    }
+  },
+  "parents": {
+    "titleAll": "Alle Eltern",
+    "columns": {
+      "info": "Info",
+      "studentNames": "Kindernamen",
+      "phone": "Telefon",
+      "address": "Adresse"
+    }
+  },
+  "subjects": {
+    "titleAll": "Alle Fächer",
+    "columns": {
+      "subjectName": "Fachname",
+      "teachers": "Lehrer"
+    }
+  },
+  "lessons": {
+    "titleAll": "Alle Stunden",
+    "columns": {
+      "subjectName": "Fachname",
+      "class": "Klasse",
+      "teacher": "Lehrer"
+    }
+  },
+  "exams": {
+    "titleAll": "Alle Prüfungen",
+    "columns": {
+      "subjectName": "Fachname",
+      "class": "Klasse",
+      "teacher": "Lehrer",
+      "date": "Datum"
+    }
+  },
+  "assignments": {
+    "titleAll": "Alle Aufgaben",
+    "columns": {
+      "subjectName": "Fachname",
+      "class": "Klasse",
+      "teacher": "Lehrer",
+      "dueDate": "Fälligkeitsdatum"
+    }
+  },
+  "results": {
+    "titleAll": "Alle Ergebnisse",
+    "columns": {
+      "student": "Schüler",
+      "score": "Note",
+      "teacher": "Lehrer",
+      "class": "Klasse",
+      "date": "Datum"
+    }
+  },
+  "eventsList": {
+    "titleAll": "Alle Ereignisse",
+    "columns": {
+      "class": "Klasse",
+      "date": "Datum",
+      "startTime": "Startzeit",
+      "endTime": "Endzeit"
+    }
+  },
+  "announcementsList": {
+    "titleAll": "Alle Ankündigungen",
+    "columns": {
+      "class": "Klasse",
+      "date": "Datum"
+    }
+  },
+  "lunchGroups": {
+    "titleAll": "Alle Mittagsgruppen",
+    "add": "Mittagsgruppe hinzufügen",
+    "edit": "Mittagsgruppe bearbeiten",
+    "name": "Name",
+    "color": "Farbe",
+    "capacity": "Kapazität",
+    "children": "Kinder",
+    "defaultColor": "Standard (Grau)",
+    "customExisting": "Benutzerdefiniert (vorhanden)"
+  },
+  "tischsprueche": {
+    "titleAll": "Alle Tischsprüche",
+    "add": "Tischspruch hinzufügen",
+    "edit": "Tischspruch bearbeiten",
+    "view": "Tischspruch ansehen",
+    "title": "Titel",
+    "text": "Text"
+  }
+}
+

@@ -1,125 +1,166 @@
-import { currentUser } from "@clerk/nextjs/server";
+"use client";
+
+import { useUser } from "@clerk/nextjs";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { DEFAULT_LOCALE } from "@/i18n/lang";
+import { useTranslations } from "@/i18n/TranslationsProvider";
 
-const menuItems = [
-  {
-    title: "MENU",
-    items: [
-      {
-        icon: "/home.png",
-        label: "Home",
-        href: "/",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
-      {
-        icon: "/teacher.png",
-        label: "Teachers",
-        href: "/list/teachers",
-        visible: ["admin", "teacher"],
-      },
-      {
-        icon: "/student.png",
-        label: "Students",
-        href: "/list/students",
-        visible: ["admin", "teacher"],
-      },
-      {
-        icon: "/parent.png",
-        label: "Parents",
-        href: "/list/parents",
-        visible: ["admin", "teacher"],
-      },
-      {
-        icon: "/subject.png",
-        label: "Subjects",
-        href: "/list/subjects",
-        visible: ["admin"],
-      },
-      {
-        icon: "/class.png",
-        label: "Classes",
-        href: "/list/classes",
-        visible: ["admin", "teacher"],
-      },
-      {
-        icon: "/lesson.png",
-        label: "Lessons",
-        href: "/list/lessons",
-        visible: ["admin", "teacher"],
-      },
-      {
-        icon: "/exam.png",
-        label: "Exams",
-        href: "/list/exams",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
-      {
-        icon: "/assignment.png",
-        label: "Assignments",
-        href: "/list/assignments",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
-      {
-        icon: "/result.png",
-        label: "Results",
-        href: "/list/results",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
-      {
-        icon: "/attendance.png",
-        label: "Attendance",
-        href: "/list/attendance",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
-      {
-        icon: "/calendar.png",
-        label: "Events",
-        href: "/list/events",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
-      {
-        icon: "/message.png",
-        label: "Messages",
-        href: "/list/messages",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
-      {
-        icon: "/announcement.png",
-        label: "Announcements",
-        href: "/list/announcements",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
-    ],
-  },
-  {
-    title: "OTHER",
-    items: [
-      {
-        icon: "/profile.png",
-        label: "Profile",
-        href: "/profile",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
-      {
-        icon: "/setting.png",
-        label: "Settings",
-        href: "/settings",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
-      {
-        icon: "/logout.png",
-        label: "Logout",
-        href: "/logout",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
-    ],
-  },
-];
+const getLangFromPathname = (pathname: string) => {
+  const segments = pathname.split("/").filter(Boolean);
+  const maybe = segments[0];
+  if (maybe === "en" || maybe === "de") return maybe;
+  return DEFAULT_LOCALE;
+};
 
-const Menu = async () => {
-  const user = await currentUser();
+const Menu = () => {
+  const pathname = usePathname();
+  const lang = getLangFromPathname(pathname);
+  const { user, isLoaded } = useUser();
   const role = user?.publicMetadata.role as string;
+  const dict = useTranslations();
+
+  if (!isLoaded) return null;
+
+  const menuItems = [
+    {
+      title: dict.menu.menu,
+      items: [
+        {
+          icon: "/home.png",
+          label: dict.menu.home,
+          href: `/${lang}/`,
+          visible: ["admin", "teacher", "student", "parent"],
+        },
+        {
+          icon: "/teacher.png",
+          label: dict.menu.teachers,
+          href: `/${lang}/list/teachers`,
+          visible: ["admin", "teacher"],
+        },
+        {
+          icon: "/student.png",
+          label: dict.menu.students,
+          href: `/${lang}/list/students`,
+          visible: ["admin", "teacher"],
+        },
+        {
+          icon: "/parent.png",
+          label: dict.menu.parents,
+          href: `/${lang}/list/parents`,
+          visible: ["admin", "teacher"],
+        },
+        {
+          icon: "/subject.png",
+          label: dict.menu.subjects,
+          href: `/${lang}/list/subjects`,
+          visible: ["admin"],
+        },
+        {
+          icon: "/class.png",
+          label: dict.menu.classes,
+          href: `/${lang}/list/classes`,
+          visible: ["admin", "teacher"],
+        },
+        {
+          icon: "/lesson.png",
+          label: dict.menu.lessons,
+          href: `/${lang}/list/lessons`,
+          visible: ["admin", "teacher"],
+        },
+        {
+          icon: "/exam.png",
+          label: dict.menu.exams,
+          href: `/${lang}/list/exams`,
+          visible: ["admin", "teacher", "student", "parent"],
+        },
+        {
+          icon: "/assignment.png",
+          label: dict.menu.assignments,
+          href: `/${lang}/list/assignments`,
+          visible: ["admin", "teacher", "student", "parent"],
+        },
+        {
+          icon: "/result.png",
+          label: dict.menu.results,
+          href: `/${lang}/list/results`,
+          visible: ["admin", "teacher", "student", "parent"],
+        },
+        {
+          icon: "/attendance.png",
+          label: dict.menu.attendance,
+          href: `/${lang}/list/attendance`,
+          visible: ["admin", "teacher", "student", "parent"],
+        },
+        {
+          icon: "/calendar.png",
+          label: dict.menu.events,
+          href: `/${lang}/list/events`,
+          visible: ["admin", "teacher", "student", "parent"],
+        },
+        {
+          icon: "/message.png",
+          label: dict.menu.messages,
+          href: `/${lang}/list/messages`,
+          visible: ["admin", "teacher", "student", "parent"],
+        },
+        {
+          icon: "/announcement.png",
+          label: dict.menu.announcements,
+          href: `/${lang}/list/announcements`,
+          visible: ["admin", "teacher", "student", "parent"],
+        },
+        {
+          icon: "/area.png",
+          label: dict.menu.areas,
+          href: `/${lang}/list/areas`,
+          visible: ["admin", "teacher"],
+        },
+        {
+          icon: "/lunch.png",
+          label: dict.menu.lunch,
+          href: `/${lang}/list/lunch`,
+          visible: ["admin", "teacher"],
+        },
+        {
+          icon: "/class.png",
+          label: dict.menu.lunchGroups,
+          href: `/${lang}/list/lunch-groups`,
+          visible: ["admin", "teacher"],
+        },
+        {
+          icon: "/message.png",
+          label: dict.menu.tischsprueche,
+          href: `/${lang}/list/tischsprueche`,
+          visible: ["admin", "teacher"],
+        },
+      ],
+    },
+    {
+      title: dict.menu.other,
+      items: [
+        {
+          icon: "/profile.png",
+          label: dict.menu.profile,
+          href: `/${lang}/profile`,
+          visible: ["admin", "teacher", "student", "parent"],
+        },
+        {
+          icon: "/setting.png",
+          label: dict.menu.settings,
+          href: `/${lang}/settings`,
+          visible: ["admin", "teacher", "student", "parent"],
+        },
+        {
+          icon: "/logout.png",
+          label: dict.menu.logout,
+          href: `/${lang}/logout`,
+          visible: ["admin", "teacher", "student", "parent"],
+        },
+      ],
+    },
+  ];
   return (
     <div className="mt-4 text-sm">
       {menuItems.map((i) => (
