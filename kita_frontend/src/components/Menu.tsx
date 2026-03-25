@@ -52,12 +52,6 @@ const Menu = () => {
           visible: ["admin", "teacher"],
         },
         {
-          icon: "/subject.png",
-          label: dict.menu.subjects,
-          href: `/${lang}/list/subjects`,
-          visible: ["admin"],
-        },
-        {
           icon: "/class.png",
           label: dict.menu.classes,
           href: `/${lang}/list/classes`,
@@ -68,24 +62,6 @@ const Menu = () => {
           label: dict.menu.lessons,
           href: `/${lang}/list/lessons`,
           visible: ["admin", "teacher"],
-        },
-        {
-          icon: "/exam.png",
-          label: dict.menu.exams,
-          href: `/${lang}/list/exams`,
-          visible: ["admin", "teacher", "student", "parent"],
-        },
-        {
-          icon: "/assignment.png",
-          label: dict.menu.assignments,
-          href: `/${lang}/list/assignments`,
-          visible: ["admin", "teacher", "student", "parent"],
-        },
-        {
-          icon: "/result.png",
-          label: dict.menu.results,
-          href: `/${lang}/list/results`,
-          visible: ["admin", "teacher", "student", "parent"],
         },
         {
           icon: "/attendance.png",

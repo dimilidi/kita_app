@@ -62,6 +62,10 @@ const StudentListPage = async ({
           classes: await prisma.class.findMany({
             include: { _count: { select: { students: true } } },
           }),
+          parents: await prisma.parent.findMany({
+            select: { id: true, name: true, surname: true },
+            orderBy: [{ surname: "asc" }, { name: "asc" }],
+          }),
         }
       : undefined;
 

@@ -62,12 +62,15 @@ const AnnouncementListPage = async ({
     prisma.announcement.count({ where: query }),
   ]);
 
+  const classes = await prisma.class.findMany({ select: { id: true, name: true } });
+
   return (
     <AnnouncementListClient
       data={data}
       count={count}
       page={p}
       role={role as string}
+      relatedData={{ classes }}
     />
   );
 };

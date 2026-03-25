@@ -64,7 +64,17 @@ const EventListPage = async ({
     prisma.event.count({ where: query }),
   ]);
 
-  return <EventListClient data={data} count={count} page={p} role={role as string} />;
+  const classes = await prisma.class.findMany({ select: { id: true, name: true } });
+
+  return (
+    <EventListClient
+      data={data}
+      count={count}
+      page={p}
+      role={role as string}
+      relatedData={{ classes }}
+    />
+  );
 };
 
 export default EventListPage;

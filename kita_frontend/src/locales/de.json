@@ -5,18 +5,108 @@
     "save": "Speichern",
     "actions": "Aktionen",
     "title": "Titel",
-    "text": "Text"
+    "text": "Text",
+    "loading": "Wird geladen...",
+    "formNotFound": "Formular nicht gefunden!",
+    "delete": "Löschen",
+    "deleted": "{label} wurde gelöscht!",
+    "deleteConfirm": "Alle Daten gehen verloren. Sind Sie sicher, dass Sie diesen ",
+    "create": "Anlegen",
+    "update": "Bearbeiten",
+    "created": "{label} wurde erstellt!",
+    "updated": "{label} wurde aktualisiert!",
+    "createEntity": "Neue {label} anlegen",
+    "updateEntity": "{label} bearbeiten",
+    "schoolYear": "2024/25",
+    "shortcuts": "Schnellzugriffe",
+    "about": "Keine Beschreibung verfügbar."
+  },
+  "entities": {
+    "teacher": "Erzieher",
+    "student": "Kind",
+    "class": "Gruppe",
+    "subject": "Spielbereich",
+    "lesson": "Aktivität",
+    "exam": "Beobachtung",
+    "assignment": "Aufgabe",
+    "result": "Dokumentation",
+    "attendance": "Anwesenheit",
+    "event": "Ereignis",
+    "announcement": "Ankündigung",
+    "parent": "Elternteil"
+  },
+  "entitiesPlural": {
+    "admin": "Admins",
+    "teacher": "Erzieher",
+    "student": "Kinder",
+    "class": "Gruppen",
+    "parent": "Eltern"
+  },
+  "forms": {
+    "required": "Dieses Feld ist erforderlich.",
+    "invalidEmail": "Ungültige E-Mail-Adresse.",
+    "usernameMin": "Der Benutzername muss mindestens 3 Zeichen lang sein.",
+    "usernameMax": "Der Benutzername darf höchstens 20 Zeichen lang sein.",
+    "passwordMin": "Das Passwort muss mindestens 8 Zeichen lang sein.",
+
+    "authInfo": "Anmeldeinformationen",
+    "personalInfo": "Persönliche Informationen",
+    "somethingWentWrong": "Etwas ist schiefgelaufen!",
+    "uploadPhoto": "Foto hochladen",
+
+    "username": "Benutzername",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "firstName": "Vorname",
+    "lastName": "Nachname",
+    "phone": "Telefon",
+    "address": "Adresse",
+    "bloodType": "Blutgruppe",
+    "bloodGroup": "Blutgruppe",
+    "birthday": "Geburtstag",
+    "sex": "Geschlecht",
+    "male": "Männlich",
+    "female": "Weiblich",
+
+    "parentId": "Eltern-ID",
+    "parent": "Elternteil",
+    "selectParent": "Elternteil auswählen",
+    "group": "Gruppe",
+    "groupName": "Gruppenname",
+    "capacity": "Kapazität",
+    "groupLead": "Gruppenleitung",
+    "ageGroup": "Altersgruppe",
+
+    "subjects": "Fächer",
+    "activity": "Aktivität",
+    "lesson": "Aktivität",
+    "subject": "Spielbereich",
+    "educator": "Erzieher",
+    "startTime": "Startzeit",
+    "endTime": "Endzeit",
+    "date": "Datum",
+    "startDate": "Startdatum",
+    "dueDate": "Fälligkeitsdatum",
+    "none": "Keine",
+    "day": "Tag",
+    "days": {
+      "MONDAY": "Montag",
+      "TUESDAY": "Dienstag",
+      "WEDNESDAY": "Mittwoch",
+      "THURSDAY": "Donnerstag",
+      "FRIDAY": "Freitag"
+    }
   },
   "menu": {
     "menu": "MENÜ",
     "other": "ANDERE",
     "home": "Start",
-    "teachers": "Lehrer",
-    "students": "Schüler",
+    "teachers": "Erzieher",
+    "students": "Kinder",
     "parents": "Eltern",
     "subjects": "Fächer",
-    "classes": "Klassen",
-    "lessons": "Stunden",
+    "classes": "Gruppen",
+    "lessons": "Aktivitäten",
     "exams": "Prüfungen",
     "assignments": "Aufgaben",
     "results": "Ergebnisse",
@@ -24,9 +114,9 @@
     "events": "Ereignisse",
     "messages": "Nachrichten",
     "announcements": "Ankündigungen",
-    "areas": "Bereiche",
+    "areas": "Spielbereiche",
     "lunch": "Mittagessen",
-    "lunchGroups": "Mittagsgruppen",
+    "lunchGroups": "Essensgruppen",
     "tischsprueche": "Tischsprüche",
     "profile": "Profil",
     "settings": "Einstellungen",
@@ -52,31 +142,37 @@
     "viewAll": "Alle anzeigen"
   },
   "classes": {
-    "titleAll": "Alle Klassen",
+    "titleAll": "Alle Gruppen",
     "columns": {
-      "className": "Klassenname",
+      "className": "Gruppenname",
       "capacity": "Kapazität",
-      "grade": "Klasse",
-      "supervisor": "Betreuer"
+      "grade": "Altersgruppe",
+      "supervisor": "Gruppenleitung"
     }
   },
   "teachers": {
-    "titleAll": "Alle Lehrer",
+    "titleAll": "Alle Erzieher",
     "columns": {
       "info": "Info",
-      "teacherId": "Lehrer-ID",
+      "teacherId": "Erzieher-ID",
       "subjects": "Fächer",
-      "classes": "Klassen",
+      "classes": "Gruppen",
       "phone": "Telefon",
       "address": "Adresse"
     }
   },
   "students": {
-    "titleAll": "Alle Schüler",
+    "titleAll": "Alle Kinder",
+    "age": "Alter",
+    "ageGroup": "Altersgruppe",
+    "groups": {
+      "nursery": "Krippe",
+      "kindergarten": "Kindergarten"
+    },
     "columns": {
       "info": "Info",
-      "studentId": "Schüler-ID",
-      "grade": "Klasse",
+      "studentId": "Kind-ID",
+      "grade": "Gruppe",
       "phone": "Telefon",
       "address": "Adresse"
     }
@@ -98,11 +194,11 @@
     }
   },
   "lessons": {
-    "titleAll": "Alle Stunden",
+    "titleAll": "Alle Aktivitäten",
     "columns": {
-      "subjectName": "Fachname",
-      "class": "Klasse",
-      "teacher": "Lehrer"
+      "subjectName": "Aktivität",
+      "class": "Gruppe",
+      "teacher": "Erzieher"
     }
   },
   "exams": {
@@ -118,25 +214,25 @@
     "titleAll": "Alle Aufgaben",
     "columns": {
       "subjectName": "Fachname",
-      "class": "Klasse",
-      "teacher": "Lehrer",
+      "class": "Gruppe",
+      "teacher": "Erzieher",
       "dueDate": "Fälligkeitsdatum"
     }
   },
   "results": {
     "titleAll": "Alle Ergebnisse",
     "columns": {
-      "student": "Schüler",
+      "student": "Kind",
       "score": "Note",
-      "teacher": "Lehrer",
-      "class": "Klasse",
+      "teacher": "Erzieher",
+      "class": "Gruppe",
       "date": "Datum"
     }
   },
   "eventsList": {
     "titleAll": "Alle Ereignisse",
     "columns": {
-      "class": "Klasse",
+      "class": "Gruppe",
       "date": "Datum",
       "startTime": "Startzeit",
       "endTime": "Endzeit"
@@ -145,8 +241,29 @@
   "announcementsList": {
     "titleAll": "Alle Ankündigungen",
     "columns": {
-      "class": "Klasse",
+      "class": "Gruppe",
       "date": "Datum"
+    }
+  },
+  "dashboard": {
+    "schedule": "Aktivitätsplan",
+    "attendance": "Anwesenheit",
+    "present": "Anwesend",
+    "absent": "Abwesend",
+    "children": "Kinder",
+    "educators": "Erzieher",
+    "groups": "Gruppen",
+    "boys": "Jungen",
+    "girls": "Mädchen"
+  },
+  "zones": {
+    "educators": "Erzieher",
+    "activities": "Aktivitäten",
+    "children": "Kinder",
+    "sampleActivities": {
+      "blocks": "Bausteine",
+      "puzzles": "Puzzle-Ecke",
+      "creative": "Kreatives Spiel"
     }
   },
   "lunchGroups": {

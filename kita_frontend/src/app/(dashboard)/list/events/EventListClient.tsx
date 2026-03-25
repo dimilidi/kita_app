@@ -12,11 +12,13 @@ export default function EventListClient({
   count,
   page,
   role,
+  relatedData,
 }: {
   data: any[];
   count: number;
   page: number;
   role: string;
+  relatedData?: any;
 }) {
   const dict = useTranslations();
 
@@ -71,7 +73,7 @@ export default function EventListClient({
         <div className="flex items-center gap-2">
           {role === "admin" && (
             <>
-              <FormModal table="event" type="update" data={item} />
+              <FormModal table="event" type="update" data={item} relatedData={relatedData} />
               <FormModal table="event" type="delete" id={item.id} />
             </>
           )}
@@ -95,7 +97,7 @@ export default function EventListClient({
             <button className="w-8 h-8 flex items-center justify-center rounded-full bg-kitaYellow">
               <Image src="/sort.png" alt="" width={14} height={14} />
             </button>
-            {role === "admin" && <FormModal table="event" type="create" />}
+            {role === "admin" && <FormModal table="event" type="create" relatedData={relatedData} />}
           </div>
         </div>
       </div>

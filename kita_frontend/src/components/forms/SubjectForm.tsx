@@ -23,6 +23,7 @@ import {
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { CldUploadWidget } from "next-cloudinary";
+import { useTranslations } from "@/i18n/TranslationsProvider";
 
 const StudentForm = ({
   type,
@@ -35,6 +36,9 @@ const StudentForm = ({
   setOpen: Dispatch<SetStateAction<boolean>>;
   relatedData?: any;
 }) => {
+  const dict = useTranslations();
+  const label = dict.entities?.student || "student";
+
   const {
     register,
     handleSubmit,
@@ -63,39 +67,43 @@ const StudentForm = ({
 
   useEffect(() => {
     if (state.success) {
-      toast(`Student has been ${type === "create" ? "created" : "updated"}!`);
+      const template =
+        type === "create" ? dict.common.created : dict.common.updated;
+      toast(template.replace("{label}", label));
       setOpen(false);
       router.refresh();
     }
-  }, [state, router, type, setOpen]);
+  }, [state, router, type, setOpen, dict, label]);
 
   const { grades, classes } = relatedData;
 
   return (
     <form className="flex flex-col gap-8" onSubmit={onSubmit}>
       <h1 className="text-xl font-semibold">
-        {type === "create" ? "Create a new student" : "Update the student"}
+        {type === "create"
+          ? dict.common.createEntity.replace("{label}", label)
+          : dict.common.updateEntity.replace("{label}", label)}
       </h1>
       <span className="text-xs text-gray-400 font-medium">
-        Authentication Information
+        {dict.forms.authInfo}
       </span>
       <div className="flex justify-between flex-wrap gap-4">
         <InputField
-          label="Username"
+          label={dict.forms.username}
           name="username"
           defaultValue={data?.username}
           register={register}
           error={errors?.username}
         />
         <InputField
-          label="Email"
+          label={dict.forms.email}
           name="email"
           defaultValue={data?.email}
           register={register}
           error={errors?.email}
         />
         <InputField
-          label="Password"
+          label={dict.forms.password}
           name="password"
           type="password"
           defaultValue={data?.password}
@@ -104,7 +112,7 @@ const StudentForm = ({
         />
       </div>
       <span className="text-xs text-gray-400 font-medium">
-        Personal Information
+        {dict.forms.personalInfo}
       </span>
       <CldUploadWidget
         uploadPreset="school"
@@ -120,7 +128,7 @@ const StudentForm = ({
               onClick={() => open()}
             >
               <Image src="/upload.png" alt="" width={28} height={28} />
-              <span>Upload a photo</span>
+              <span>{dict.forms.uploadPhoto}</span>
             </div>
           );
         }}
@@ -251,10 +259,10 @@ const StudentForm = ({
         </div>
       </div>
       {state.error && (
-        <span className="text-red-500">Something went wrong!</span>
+        <span className="text-red-500">{dict.forms.somethingWentWrong}</span>
       )}
       <button type="submit" className="bg-blue-400 text-white p-2 rounded-md">
-        {type === "create" ? "Create" : "Update"}
+        {type === "create" ? dict.common.create : dict.common.update}
       </button>
     </form>
   );

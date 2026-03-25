@@ -2,6 +2,7 @@
 
 import Child from "@/components/Child";
 import { StudentWithClass } from "@/types/student";
+import { useTranslations } from "@/i18n/TranslationsProvider";
 
 type Props = {
   zoneId: string;
@@ -18,6 +19,8 @@ export default function ZonePanel({
   getStudent,
   onClose,
 }: Props) {
+  const dict = useTranslations();
+
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
 
@@ -30,13 +33,13 @@ export default function ZonePanel({
             onClick={onClose}
             className="text-sm px-3 py-1 bg-gray-100 rounded"
           >
-            Close
+            {dict.common.close}
           </button>
         </div>
 
         {/* TEACHERS */}
         <div>
-          <h3 className="font-semibold mb-2">Teachers</h3>
+          <h3 className="font-semibold mb-2">{dict.zones.educators}</h3>
           <div className="flex gap-3">
             <div className="px-3 py-1 bg-gray-100 rounded">Anna</div>
             <div className="px-3 py-1 bg-gray-100 rounded">Maria</div>
@@ -45,18 +48,18 @@ export default function ZonePanel({
 
         {/* ACTIVITIES */}
         <div>
-          <h3 className="font-semibold mb-2">Activities</h3>
+          <h3 className="font-semibold mb-2">{dict.zones.activities}</h3>
           <ul className="list-disc ml-6 text-sm">
-            <li>Building blocks</li>
-            <li>Puzzle corner</li>
-            <li>Creative play</li>
+            <li>{dict.zones.sampleActivities.blocks}</li>
+            <li>{dict.zones.sampleActivities.puzzles}</li>
+            <li>{dict.zones.sampleActivities.creative}</li>
           </ul>
         </div>
 
         {/* CHILDREN */}
         <div>
           <h3 className="font-semibold mb-3">
-            Children ({childrenIds.length})
+            {dict.zones.children} ({childrenIds.length})
           </h3>
 
           <div className="grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] gap-3">

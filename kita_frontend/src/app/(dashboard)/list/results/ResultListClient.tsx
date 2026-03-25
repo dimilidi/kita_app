@@ -12,11 +12,13 @@ export default function ResultListClient({
   count,
   page,
   role,
+  relatedData,
 }: {
   data: any[];
   count: number;
   page: number;
   role: string;
+  relatedData?: any;
 }) {
   const dict = useTranslations();
 
@@ -54,7 +56,7 @@ export default function ResultListClient({
       className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-kitaPurpleLight"
     >
       <td className="flex items-center gap-4 p-4">{item.title}</td>
-      <td>{item.studentName + " " + item.studentName}</td>
+      <td>{item.studentName + " " + item.studentSurname}</td>
       <td className="hidden md:table-cell">{item.score}</td>
       <td className="hidden md:table-cell">
         {item.teacherName + " " + item.teacherSurname}
@@ -67,7 +69,7 @@ export default function ResultListClient({
         <div className="flex items-center gap-2">
           {(role === "admin" || role === "teacher") && (
             <>
-              <FormModal table="result" type="update" data={item} />
+              <FormModal table="result" type="update" data={item} relatedData={relatedData} />
               <FormModal table="result" type="delete" id={item.id} />
             </>
           )}
@@ -92,7 +94,7 @@ export default function ResultListClient({
               <Image src="/sort.png" alt="" width={14} height={14} />
             </button>
             {(role === "admin" || role === "teacher") && (
-              <FormModal table="result" type="create" />
+              <FormModal table="result" type="create" relatedData={relatedData} />
             )}
           </div>
         </div>

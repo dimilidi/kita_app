@@ -20,6 +20,7 @@ import { useFormState } from "react-dom";
 import { Dispatch, SetStateAction, useEffect } from "react";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "@/i18n/TranslationsProvider";
 
 const ClassForm = ({
   type,
@@ -32,6 +33,9 @@ const ClassForm = ({
   setOpen: Dispatch<SetStateAction<boolean>>;
   relatedData?: any;
 }) => {
+  const dict = useTranslations();
+  const label = dict.entities?.class || "class";
+
   const {
     register,
     handleSubmit,
@@ -60,30 +64,34 @@ const ClassForm = ({
 
   useEffect(() => {
     if (state.success) {
-      toast(`Class has been ${type === "create" ? "created" : "updated"}!`);
+      const template =
+        type === "create" ? dict.common.created : dict.common.updated;
+      toast(template.replace("{label}", label));
       setOpen(false);
       router.refresh();
     }
-  }, [state, router, type, setOpen]);
+  }, [state, router, type, setOpen, dict, label]);
 
   const { teachers, grades } = relatedData;
 
   return (
     <form className="flex flex-col gap-8" onSubmit={onSubmit}>
       <h1 className="text-xl font-semibold">
-        {type === "create" ? "Create a new class" : "Update the class"}
+        {type === "create"
+          ? dict.common.createEntity.replace("{label}", label)
+          : dict.common.updateEntity.replace("{label}", label)}
       </h1>
 
       <div className="flex justify-between flex-wrap gap-4">
         <InputField
-          label="Class name"
+          label={dict.forms.groupName}
           name="name"
           defaultValue={data?.name}
           register={register}
           error={errors?.name}
         />
         <InputField
-          label="Capacity"
+          label={dict.forms.capacity}
           name="capacity"
           defaultValue={data?.capacity}
           register={register}
@@ -100,7 +108,7 @@ const ClassForm = ({
           />
         )}
         <div className="flex flex-col gap-2 w-full md:w-1/4">
-          <label className="text-xs text-gray-500">Supervisor</label>
+          <label className="text-xs text-gray-500">{dict.forms.groupLead}</label>
           <select
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
             {...register("supervisorId")}
@@ -125,7 +133,7 @@ const ClassForm = ({
           )}
         </div>
         <div className="flex flex-col gap-2 w-full md:w-1/4">
-          <label className="text-xs text-gray-500">Grade</label>
+          <label className="text-xs text-gray-500">{dict.forms.ageGroup}</label>
           <select
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
             {...register("gradeId")}
@@ -149,10 +157,10 @@ const ClassForm = ({
         </div>
       </div>
       {state.error && (
-        <span className="text-red-500">Something went wrong!</span>
+        <span className="text-red-500">{dict.forms.somethingWentWrong}</span>
       )}
       <button className="bg-blue-400 text-white p-2 rounded-md">
-        {type === "create" ? "Create" : "Update"}
+        {type === "create" ? dict.common.create : dict.common.update}
       </button>
     </form>
   );

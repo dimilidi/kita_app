@@ -8,6 +8,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAuthData } from "@/lib/utils";
+import { cookies } from "next/headers";
+import { DEFAULT_LOCALE, Locale } from "@/i18n/lang";
+import { getDictionary } from "@/i18n/getDictionary";
 
 const SingleTeacherPage = async ({
   params: { id },
@@ -15,6 +18,9 @@ const SingleTeacherPage = async ({
   params: { id: string };
 }) => {
   const { role } = getAuthData();
+  const cookieLang = cookies().get("NEXT_LANG")?.value as Locale | undefined;
+  const lang = cookieLang ?? DEFAULT_LOCALE;
+  const dict = getDictionary(lang) as any;
 
   const teacher:
     | (Teacher & {
@@ -62,9 +68,7 @@ const SingleTeacherPage = async ({
                   <FormContainer table="teacher" type="update" data={teacher} />
                 )}
               </div>
-              <p className="text-sm text-gray-500">
-                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
-              </p>
+              <p className="text-sm text-gray-500">{dict.common.about}</p>
               <div className="flex items-center justify-between gap-2 flex-wrap text-xs font-medium">
                 <div className="w-full md:w-1/3 lg:w-full 2xl:w-1/3 flex items-center gap-2">
                   <Image src="/blood.png" alt="" width={14} height={14} />
@@ -100,7 +104,9 @@ const SingleTeacherPage = async ({
               />
               <div className="">
                 <h1 className="text-xl font-semibold">90%</h1>
-                <span className="text-sm text-gray-400">Attendance</span>
+                <span className="text-sm text-gray-400">
+                  {dict.dashboard.attendance}
+                </span>
               </div>
             </div>
             {/* CARD */}
@@ -116,7 +122,7 @@ const SingleTeacherPage = async ({
                 <h1 className="text-xl font-semibold">
                   {teacher._count.subjects}
                 </h1>
-                <span className="text-sm text-gray-400">Branches</span>
+                <span className="text-sm text-gray-400">{dict.menu.areas}</span>
               </div>
             </div>
             {/* CARD */}
@@ -132,7 +138,7 @@ const SingleTeacherPage = async ({
                 <h1 className="text-xl font-semibold">
                   {teacher._count.lessons}
                 </h1>
-                <span className="text-sm text-gray-400">Lessons</span>
+                <span className="text-sm text-gray-400">{dict.menu.lessons}</span>
               </div>
             </div>
             {/* CARD */}
@@ -148,51 +154,39 @@ const SingleTeacherPage = async ({
                 <h1 className="text-xl font-semibold">
                   {teacher._count.classes}
                 </h1>
-                <span className="text-sm text-gray-400">Classes</span>
+                <span className="text-sm text-gray-400">{dict.menu.classes}</span>
               </div>
             </div>
           </div>
         </div>
         {/* BOTTOM */}
         <div className="mt-4 bg-white rounded-md p-4 h-[800px]">
-          <h1>Teacher&apos;s Schedule</h1>
+          <h1>{dict.dashboard.schedule}</h1>
           <BigCalendarContainer type="teacherId" id={teacher.id} />
         </div>
       </div>
       {/* RIGHT */}
       <div className="w-full xl:w-1/3 flex flex-col gap-4">
         <div className="bg-white p-4 rounded-md">
-          <h1 className="text-xl font-semibold">Shortcuts</h1>
+          <h1 className="text-xl font-semibold">{dict.common.shortcuts}</h1>
           <div className="mt-4 flex gap-4 flex-wrap text-xs text-gray-500">
-           <Link
+            <Link
               className="p-3 rounded-md bg-kitaSkyLight"
               href={`/list/classes?supervisorId=${teacher.id}`}
             >
-              Teacher&apos;s Classes
+              {dict.menu.classes}
             </Link>
             <Link
               className="p-3 rounded-md bg-kitaPurpleLight"
               href={`/list/students?teacherId=${teacher.id}`}
             >
-              Teacher&apos;s Students
+              {dict.dashboard.children}
             </Link>
             <Link
               className="p-3 rounded-md bg-kitaYellowLight"
               href={`/list/lessons?teacherId=${teacher.id}`}
             >
-              Teacher&apos;s Lessons
-            </Link>
-            <Link
-              className="p-3 rounded-md bg-pink-50"
-              href={`/list/exams?teacherId=${teacher.id}`}
-            >
-              Teacher&apos;s Exams
-            </Link>
-            <Link
-              className="p-3 rounded-md bg-kitaSkyLight"
-              href={`/list/assignments?teacherId=${teacher.id}`}
-            >
-              Teacher&apos;s Assignments
+              {dict.menu.lessons}
             </Link>
           </div>
         </div>

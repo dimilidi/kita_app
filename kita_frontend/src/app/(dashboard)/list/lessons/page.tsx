@@ -58,12 +58,19 @@ const LessonListPage = async ({
     prisma.lesson.count({ where: query }),
   ]);
 
+  const [subjects, classes, teachers] = await prisma.$transaction([
+    prisma.subject.findMany({ select: { id: true, name: true } }),
+    prisma.class.findMany({ select: { id: true, name: true } }),
+    prisma.teacher.findMany({ select: { id: true, name: true, surname: true } }),
+  ]);
+
   return (
     <LessonListClient
       data={data}
       count={count}
       page={p}
       role={role as string}
+      relatedData={{ subjects, classes, teachers }}
     />
   );
 };

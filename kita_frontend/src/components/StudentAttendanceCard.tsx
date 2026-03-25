@@ -1,6 +1,13 @@
 import prisma from "@/lib/prisma";
+import { cookies } from "next/headers";
+import { DEFAULT_LOCALE, Locale } from "@/i18n/lang";
+import { getDictionary } from "@/i18n/getDictionary";
 
 const StudentAttendanceCard = async ({ id }: { id: string }) => {
+  const cookieLang = cookies().get("NEXT_LANG")?.value as Locale | undefined;
+  const lang = cookieLang ?? DEFAULT_LOCALE;
+  const dict = getDictionary(lang) as any;
+
   const attendance = await prisma.attendance.findMany({
     where: {
       studentId: id,
@@ -16,7 +23,7 @@ const StudentAttendanceCard = async ({ id }: { id: string }) => {
   return (
     <div className="">
       <h1 className="text-xl font-semibold">{percentage || "-"}%</h1>
-      <span className="text-sm text-gray-400">Attendance</span>
+      <span className="text-sm text-gray-400">{dict.dashboard.attendance}</span>
     </div>
   );
 };

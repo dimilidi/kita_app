@@ -5,18 +5,108 @@
     "save": "Save",
     "actions": "Actions",
     "title": "Title",
-    "text": "Text"
+    "text": "Text",
+    "loading": "Loading...",
+    "formNotFound": "Form not found!",
+    "delete": "Delete",
+    "deleted": "{label} has been deleted!",
+    "deleteConfirm": "All data will be lost. Are you sure you want to delete this ",
+    "create": "Create",
+    "update": "Update",
+    "created": "{label} has been created!",
+    "updated": "{label} has been updated!",
+    "createEntity": "Create a new {label}",
+    "updateEntity": "Update the {label}",
+    "schoolYear": "2024/25",
+    "shortcuts": "Shortcuts",
+    "about": "No description available."
+  },
+  "entities": {
+    "teacher": "Educator",
+    "student": "Child",
+    "class": "Group",
+    "subject": "Play Area",
+    "lesson": "Activity",
+    "exam": "Observation",
+    "assignment": "Task",
+    "result": "Outcome",
+    "attendance": "Attendance",
+    "event": "Event",
+    "announcement": "Announcement",
+    "parent": "Parent"
+  },
+  "entitiesPlural": {
+    "admin": "Admins",
+    "teacher": "Educators",
+    "student": "Children",
+    "class": "Groups",
+    "parent": "Parents"
+  },
+  "forms": {
+    "required": "This field is required.",
+    "invalidEmail": "Invalid email address.",
+    "usernameMin": "Username must be at least 3 characters long.",
+    "usernameMax": "Username must be at most 20 characters long.",
+    "passwordMin": "Password must be at least 8 characters long.",
+
+    "authInfo": "Authentication Information",
+    "personalInfo": "Personal Information",
+    "somethingWentWrong": "Something went wrong!",
+    "uploadPhoto": "Upload a photo",
+
+    "username": "Username",
+    "email": "Email",
+    "password": "Password",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "phone": "Phone",
+    "address": "Address",
+    "bloodType": "Blood Type",
+    "bloodGroup": "Blood Group",
+    "birthday": "Birthday",
+    "sex": "Sex",
+    "male": "Male",
+    "female": "Female",
+
+    "parentId": "Parent ID",
+    "parent": "Parent",
+    "selectParent": "Select parent",
+    "group": "Group",
+    "groupName": "Group Name",
+    "capacity": "Capacity",
+    "groupLead": "Group Lead",
+    "ageGroup": "Age Group",
+
+    "subjects": "Subjects",
+    "activity": "Activity",
+    "lesson": "Activity",
+    "subject": "Play Area",
+    "educator": "Educator",
+    "startTime": "Start Time",
+    "endTime": "End Time",
+    "date": "Date",
+    "startDate": "Start Date",
+    "dueDate": "Due Date",
+    "none": "None",
+    "day": "Day",
+    "days": {
+      "MONDAY": "Monday",
+      "TUESDAY": "Tuesday",
+      "WEDNESDAY": "Wednesday",
+      "THURSDAY": "Thursday",
+      "FRIDAY": "Friday"
+    }
   },
   "menu": {
     "menu": "MENU",
     "other": "OTHER",
     "home": "Home",
-    "teachers": "Teachers",
-    "students": "Students",
+    "teachers": "Educators",
+    "students": "Children",
     "parents": "Parents",
     "subjects": "Subjects",
-    "classes": "Classes",
-    "lessons": "Lessons",
+    "classes": "Groups",
+    "lessons": "Activities",
     "exams": "Exams",
     "assignments": "Assignments",
     "results": "Results",
@@ -24,9 +114,9 @@
     "events": "Events",
     "messages": "Messages",
     "announcements": "Announcements",
-    "areas": "Areas",
+    "areas": "Play Areas",
     "lunch": "Lunch",
-    "lunchGroups": "Lunch Groups",
+    "lunchGroups": "Meal Groups",
     "tischsprueche": "Tischsprüche",
     "profile": "Profile",
     "settings": "Settings",
@@ -52,19 +142,19 @@
     "viewAll": "View All"
   },
   "classes": {
-    "titleAll": "All Classes",
+    "titleAll": "All Groups",
     "columns": {
-      "className": "Class Name",
+      "className": "Group Name",
       "capacity": "Capacity",
-      "grade": "Grade",
-      "supervisor": "Supervisor"
+      "grade": "Age Group",
+      "supervisor": "Group Lead"
     }
   },
   "teachers": {
-    "titleAll": "All Teachers",
+    "titleAll": "All Educators",
     "columns": {
       "info": "Info",
-      "teacherId": "Teacher ID",
+      "teacherId": "Educator ID",
       "subjects": "Subjects",
       "classes": "Classes",
       "phone": "Phone",
@@ -72,11 +162,17 @@
     }
   },
   "students": {
-    "titleAll": "All Students",
+    "titleAll": "All Children",
+    "age": "Age",
+    "ageGroup": "Age group",
+    "groups": {
+      "nursery": "Nursery",
+      "kindergarten": "Kindergarten"
+    },
     "columns": {
       "info": "Info",
-      "studentId": "Student ID",
-      "grade": "Grade",
+      "studentId": "Child ID",
+      "grade": "Group",
       "phone": "Phone",
       "address": "Address"
     }
@@ -98,11 +194,11 @@
     }
   },
   "lessons": {
-    "titleAll": "All Lessons",
+    "titleAll": "All Activities",
     "columns": {
-      "subjectName": "Subject Name",
-      "class": "Class",
-      "teacher": "Teacher"
+      "subjectName": "Activity",
+      "class": "Group",
+      "teacher": "Educator"
     }
   },
   "exams": {
@@ -126,17 +222,17 @@
   "results": {
     "titleAll": "All Results",
     "columns": {
-      "student": "Student",
+      "student": "Child",
       "score": "Score",
       "teacher": "Teacher",
-      "class": "Class",
+      "class": "Group",
       "date": "Date"
     }
   },
   "eventsList": {
     "titleAll": "All Events",
     "columns": {
-      "class": "Class",
+      "class": "Group",
       "date": "Date",
       "startTime": "Start Time",
       "endTime": "End Time"
@@ -145,8 +241,29 @@
   "announcementsList": {
     "titleAll": "All Announcements",
     "columns": {
-      "class": "Class",
+      "class": "Group",
       "date": "Date"
+    }
+  },
+  "dashboard": {
+    "schedule": "Activity Schedule",
+    "attendance": "Attendance",
+    "present": "Present",
+    "absent": "Absent",
+    "children": "Children",
+    "educators": "Educators",
+    "groups": "Groups",
+    "boys": "Boys",
+    "girls": "Girls"
+  },
+  "zones": {
+    "educators": "Educators",
+    "activities": "Activities",
+    "children": "Children",
+    "sampleActivities": {
+      "blocks": "Building blocks",
+      "puzzles": "Puzzle corner",
+      "creative": "Creative play"
     }
   },
   "lunchGroups": {

@@ -112,12 +112,17 @@ const AssignmentListPage = async ({
     }),
     prisma.assignment.count({ where: query }),
   ]);
+
+  const lessons = await prisma.lesson.findMany({
+    select: { id: true, name: true },
+  });
   return (
     <AssignmentListClient
       data={data}
       count={count}
       page={p}
       role={role as string}
+      relatedData={{ lessons }}
     />
   );
 };

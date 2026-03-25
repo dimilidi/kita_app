@@ -12,11 +12,13 @@ export default function LessonListClient({
   count,
   page,
   role,
+  relatedData,
 }: {
   data: any[];
   count: number;
   page: number;
   role: string;
+  relatedData?: any;
 }) {
   const dict = useTranslations();
 
@@ -47,7 +49,7 @@ export default function LessonListClient({
         <div className="flex items-center gap-2">
           {role === "admin" && (
             <>
-              <FormModal table="lesson" type="update" data={item} />
+              <FormModal table="lesson" type="update" data={item} relatedData={relatedData} />
               <FormModal table="lesson" type="delete" id={item.id} />
             </>
           )}
@@ -71,7 +73,7 @@ export default function LessonListClient({
             <button className="w-8 h-8 flex items-center justify-center rounded-full bg-kitaYellow">
               <Image src="/sort.png" alt="" width={14} height={14} />
             </button>
-            {role === "admin" && <FormModal table="lesson" type="create" />}
+            {role === "admin" && <FormModal table="lesson" type="create" relatedData={relatedData} />}
           </div>
         </div>
       </div>

@@ -15,6 +15,9 @@ type ResultList = {
   score: number;
   className: string;
   startTime: Date;
+  studentId: string;
+  examId?: number | null;
+  assignmentId?: number | null;
 };
 
 
@@ -128,15 +131,25 @@ const ResultListPage = async ({
       score: item.score,
       className: assessment.lesson.class.name,
       startTime: isExam ? assessment.startTime : assessment.startDate,
+      studentId: item.studentId,
+      examId: item.examId,
+      assignmentId: item.assignmentId,
     };
   });
 
+  const [students, exams, assignments] = await prisma.$transaction([
+    prisma.student.findMany({ select: { id: true, name: true, surname: true } }),
+    prisma.exam.findMany({ select: { id: true, title: true } }),
+    prisma.assignment.findMany({ select: { id: true, title: true } }),
+  ]);
+
   return (
     <ResultListClient
-      data={data}
+      data={data.filter(Boolean) as ResultList[]}
       count={count}
       page={p}
       role={role as string}
+      relatedData={{ students, exams, assignments }}
     />
   );
 };

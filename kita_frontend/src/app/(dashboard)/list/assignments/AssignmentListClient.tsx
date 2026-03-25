@@ -12,11 +12,13 @@ export default function AssignmentListClient({
   count,
   page,
   role,
+  relatedData,
 }: {
   data: any[];
   count: number;
   page: number;
   role: string;
+  relatedData?: any;
 }) {
   const dict = useTranslations();
 
@@ -57,7 +59,7 @@ export default function AssignmentListClient({
         <div className="flex items-center gap-2">
           {(role === "admin" || role === "teacher") && (
             <>
-              <FormModal table="assignment" type="update" data={item} />
+              <FormModal table="assignment" type="update" data={item} relatedData={relatedData} />
               <FormModal table="assignment" type="delete" id={item.id} />
             </>
           )}
@@ -82,7 +84,7 @@ export default function AssignmentListClient({
               <Image src="/sort.png" alt="" width={14} height={14} />
             </button>
             {(role === "admin" || role === "teacher") && (
-              <FormModal table="assignment" type="create" />
+              <FormModal table="assignment" type="create" relatedData={relatedData} />
             )}
           </div>
         </div>

@@ -1,9 +1,8 @@
 "use client";
 
 import React, { createContext, useContext } from "react";
-import type de from "@/locales/de.json";
 
-export type Dictionary = typeof de;
+export type Dictionary = Record<string, any>;
 
 const TranslationsContext = createContext<Dictionary | null>(null);
 
