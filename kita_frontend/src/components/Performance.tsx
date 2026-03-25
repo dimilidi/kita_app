@@ -1,38 +1,102 @@
 "use client";
+
 import Image from "next/image";
-import { PieChart, Pie, Sector, Cell, ResponsiveContainer } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+} from "recharts";
+import { useTranslations } from "@/i18n/TranslationsProvider";
 
-const data = [
-  { name: "Group A", value: 92, fill: "#C3EBFA" },
-  { name: "Group B", value: 8, fill: "#FAE27C" },
-];
+const COLORS = ["#C3EBFA", "#FAE27C", "#C7D2FE", "#FBCFE8", "#BBF7D0", "#FDE68A", "#A5F3FC"];
 
-const Performance = () => {
+export type FavouriteActivitySlice = {
+  name: string;
+  /** Count of scheduled activities in this category (used for slice size) */
+  value: number;
+};
+
+type PerformanceProps = {
+  activities: FavouriteActivitySlice[];
+};
+
+/**
+ * Pie chart of how the child’s group splits scheduled activities by category (subject / play area).
+ * Replaces the old “Performance” / grades block — no scores.
+ */
+const Performance = ({ activities }: PerformanceProps) => {
+  const dict = useTranslations();
+  const d = dict.dashboard as Record<string, string> | undefined;
+
+  const data = activities.map((a, i) => ({
+    ...a,
+    fill: COLORS[i % COLORS.length],
+  }));
+
+  const total = data.reduce((s, x) => s + x.value, 0);
+  const hasData = total > 0;
+
   return (
     <div className="bg-white p-4 rounded-md h-80 relative">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Performance</h1>
+        <h1 className="text-xl font-semibold">
+          {d?.favouriteActivities ?? "Favourite activities"}
+        </h1>
         <Image src="/moreDark.png" alt="" width={16} height={16} />
       </div>
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            dataKey="value"
-            startAngle={180}
-            endAngle={0}
-            data={data}
-            cx="50%"
-            cy="50%"
-            innerRadius={70}
-            fill="#8884d8"
-          />
-        </PieChart>
-      </ResponsiveContainer>
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
-        <h1 className="text-3xl font-bold">9.2</h1>
-        <p className="text-xs text-gray-300">of 10 max KTS</p>
-      </div>
-      <h2 className="font-medium absolute bottom-16 left-0 right-0 m-auto text-center">1st Semester - 2nd Semester</h2>
+
+      {!hasData ? (
+        <div className="flex h-[calc(100%-2.5rem)] items-center justify-center text-sm text-gray-500 px-4 text-center">
+          {d?.noFavouriteActivitiesData ?? "No activity data yet"}
+        </div>
+      ) : (
+        <div className="h-[calc(100%-2.5rem)] min-h-0 w-full pt-2">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart margin={{ top: 4, right: 4, left: 4, bottom: 4 }}>
+              <Tooltip
+                formatter={(value: number, name: string) => {
+                  const pct =
+                    total > 0 ? Math.round((Number(value) / total) * 100) : 0;
+                  return [`${pct}%`, name];
+                }}
+              />
+              <Pie
+                dataKey="value"
+                nameKey="name"
+                data={data}
+                cx="50%"
+                cy="46%"
+                innerRadius={48}
+                outerRadius={76}
+                paddingAngle={2}
+              >
+                {data.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.fill} />
+                ))}
+              </Pie>
+              <Legend
+                verticalAlign="bottom"
+                layout="horizontal"
+                align="center"
+                iconType="circle"
+                iconSize={8}
+                wrapperStyle={{
+                  fontSize: "11px",
+                  lineHeight: "1.35",
+                  paddingTop: "4px",
+                  width: "100%",
+                }}
+                formatter={(value: string) => (
+                  <span className="text-gray-700">{value}</span>
+                )}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   );
 };

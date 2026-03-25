@@ -48,12 +48,10 @@
     "usernameMin": "Username must be at least 3 characters long.",
     "usernameMax": "Username must be at most 20 characters long.",
     "passwordMin": "Password must be at least 8 characters long.",
-
     "authInfo": "Authentication Information",
     "personalInfo": "Personal Information",
     "somethingWentWrong": "Something went wrong!",
     "uploadPhoto": "Upload a photo",
-
     "username": "Username",
     "email": "Email",
     "password": "Password",
@@ -67,7 +65,6 @@
     "sex": "Sex",
     "male": "Male",
     "female": "Female",
-
     "parentId": "Parent ID",
     "parent": "Parent",
     "selectParent": "Select parent",
@@ -76,7 +73,6 @@
     "capacity": "Capacity",
     "groupLead": "Group Lead",
     "ageGroup": "Age Group",
-
     "subjects": "Subjects",
     "activity": "Activity",
     "lesson": "Activity",
@@ -163,6 +159,7 @@
   },
   "students": {
     "titleAll": "All Children",
+    "parent": "Parent",
     "age": "Age",
     "ageGroup": "Age group",
     "groups": {
@@ -247,6 +244,12 @@
   },
   "dashboard": {
     "schedule": "Activity Schedule",
+    "weeklyActivities": "Weekly Activities",
+    "shortcutParent": "Parent profile",
+    "shortcutSibling": "Sibling",
+    "selectSibling": "Select sibling",
+    "favouriteActivities": "Favourite activities",
+    "noFavouriteActivitiesData": "No activity data yet",
     "attendance": "Attendance",
     "present": "Present",
     "absent": "Absent",
@@ -284,6 +287,20 @@
     "view": "View Tischspruch",
     "title": "Title",
     "text": "Text"
+  },
+  "attendancePage": {
+    "subtitle": "Mark each child as present or absent for the selected day.",
+    "date": "Date",
+    "today": "Today",
+    "filterGroup": "Group",
+    "allGroups": "All groups",
+    "childName": "Child",
+    "group": "Group",
+    "status": "Status",
+    "totalChildren": "Total children",
+    "noStudents": "No children match this filter.",
+    "noLesson": "There is no activity linked to this group, so attendance cannot be saved.",
+    "noLessonShort": "Add an activity for this group first.",
+    "saveFailed": "Could not save attendance. Please try again."
   }
 }
-

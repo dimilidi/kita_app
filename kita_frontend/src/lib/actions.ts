@@ -15,8 +15,10 @@ import {
   SubjectSchema,
   TeacherSchema,
 } from "./formValidationSchemas";
+import { parseDateStrToUtcRange } from "./attendanceDate";
 import prisma from "./prisma";
 import { clerkClient } from "@clerk/nextjs/server";
+import { getAuthData } from "./utils";
 
 type CurrentState = { success: boolean; error: boolean };
 
@@ -779,6 +781,85 @@ export const deleteAttendance = async (
     return { success: false, error: true };
   }
 };
+
+export async function saveDailyAttendance({
+  studentId,
+  dateStr,
+  present,
+}: {
+  studentId: string;
+  dateStr: string;
+  present: boolean;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { userId, role } = getAuthData();
+    if (role !== "admin" && role !== "teacher") {
+      return { success: false, error: "forbidden" };
+    }
+
+    const range = parseDateStrToUtcRange(dateStr);
+    if (!range) {
+      return { success: false, error: "invalidDate" };
+    }
+    const { start, end } = range;
+
+    const student = await prisma.student.findUnique({
+      where: { id: studentId },
+    });
+    if (!student) {
+      return { success: false, error: "notFound" };
+    }
+
+    if (role === "teacher") {
+      const teachesHere = await prisma.lesson.findFirst({
+        where: {
+          classId: student.classId,
+          teacherId: userId!,
+        },
+      });
+      if (!teachesHere) {
+        return { success: false, error: "forbidden" };
+      }
+    }
+
+    const lesson = await prisma.lesson.findFirst({
+      where: { classId: student.classId },
+      orderBy: { startTime: "asc" },
+    });
+    if (!lesson) {
+      return { success: false, error: "noLesson" };
+    }
+
+    const existing = await prisma.attendance.findFirst({
+      where: {
+        studentId,
+        lessonId: lesson.id,
+        date: { gte: start, lt: end },
+      },
+    });
+
+    if (existing) {
+      await prisma.attendance.update({
+        where: { id: existing.id },
+        data: { present },
+      });
+    } else {
+      await prisma.attendance.create({
+        data: {
+          studentId,
+          lessonId: lesson.id,
+          date: start,
+          present,
+        },
+      });
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.log(err);
+    return { success: false, error: "server" };
+  }
+}
 
 export const createEvent = async (
   currentState: CurrentState,

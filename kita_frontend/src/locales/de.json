@@ -48,12 +48,10 @@
     "usernameMin": "Der Benutzername muss mindestens 3 Zeichen lang sein.",
     "usernameMax": "Der Benutzername darf höchstens 20 Zeichen lang sein.",
     "passwordMin": "Das Passwort muss mindestens 8 Zeichen lang sein.",
-
     "authInfo": "Anmeldeinformationen",
     "personalInfo": "Persönliche Informationen",
     "somethingWentWrong": "Etwas ist schiefgelaufen!",
     "uploadPhoto": "Foto hochladen",
-
     "username": "Benutzername",
     "email": "E-Mail",
     "password": "Passwort",
@@ -67,7 +65,6 @@
     "sex": "Geschlecht",
     "male": "Männlich",
     "female": "Weiblich",
-
     "parentId": "Eltern-ID",
     "parent": "Elternteil",
     "selectParent": "Elternteil auswählen",
@@ -76,7 +73,6 @@
     "capacity": "Kapazität",
     "groupLead": "Gruppenleitung",
     "ageGroup": "Altersgruppe",
-
     "subjects": "Fächer",
     "activity": "Aktivität",
     "lesson": "Aktivität",
@@ -163,6 +159,7 @@
   },
   "students": {
     "titleAll": "Alle Kinder",
+    "parent": "Elternteil",
     "age": "Alter",
     "ageGroup": "Altersgruppe",
     "groups": {
@@ -247,6 +244,12 @@
   },
   "dashboard": {
     "schedule": "Aktivitätsplan",
+    "weeklyActivities": "Wöchentliche Aktivitäten",
+    "shortcutParent": "Elternprofil",
+    "shortcutSibling": "Geschwister",
+    "selectSibling": "Geschwister wählen",
+    "favouriteActivities": "Lieblingsaktivitäten",
+    "noFavouriteActivitiesData": "Noch keine Aktivitätsdaten",
     "attendance": "Anwesenheit",
     "present": "Anwesend",
     "absent": "Abwesend",
@@ -284,6 +287,20 @@
     "view": "Tischspruch ansehen",
     "title": "Titel",
     "text": "Text"
+  },
+  "attendancePage": {
+    "subtitle": "Markieren Sie jedes Kind für den gewählten Tag als anwesend oder abwesend.",
+    "date": "Datum",
+    "today": "Heute",
+    "filterGroup": "Gruppe",
+    "allGroups": "Alle Gruppen",
+    "childName": "Kind",
+    "group": "Gruppe",
+    "status": "Status",
+    "totalChildren": "Kinder gesamt",
+    "noStudents": "Keine Kinder für diese Auswahl.",
+    "noLesson": "Für diese Gruppe ist keine Aktivität hinterlegt; Anwesenheit kann nicht gespeichert werden.",
+    "noLessonShort": "Zuerst eine Aktivität für diese Gruppe anlegen.",
+    "saveFailed": "Anwesenheit konnte nicht gespeichert werden. Bitte erneut versuchen."
   }
 }
-
