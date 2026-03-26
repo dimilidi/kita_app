@@ -1,12 +1,12 @@
 import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { getAuthData } from "@/lib/utils";
-import { Assignment, Class, Prisma, Subject, Teacher } from "@prisma/client";
+import { Assignment, Class, Prisma, Teacher } from "@prisma/client";
 import AssignmentListClient from "./AssignmentListClient";
 
 type AssignmentList = Assignment & {
   lesson: {
-    subject: Subject;
+    zone: { name: string };
     class: Class;
     teacher: Teacher;
   };
@@ -44,7 +44,7 @@ const AssignmentListPage = async ({
             query.OR = [
               {
                 lesson: {
-                  subject: {
+                  zone: {
                     name: { contains: value, mode: "insensitive" },
                   },
                 },
@@ -101,7 +101,7 @@ const AssignmentListPage = async ({
       include: {
         lesson: {
           select: {
-            subject: { select: { name: true } },
+            zone: { select: { name: true } },
             teacher: { select: { name: true, surname: true } },
             class: { select: { name: true } },
           },

@@ -23,7 +23,7 @@ export default function AssignmentListClient({
   const dict = useTranslations();
 
   const columns = [
-    { header: dict.assignments.columns.subjectName, accessor: "name" },
+    { header: dict.forms.playArea, accessor: "name" },
     { header: dict.assignments.columns.class, accessor: "class" },
     {
       header: dict.assignments.columns.teacher,
@@ -45,7 +45,7 @@ export default function AssignmentListClient({
       key={item.id}
       className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-kitaPurpleLight"
     >
-      <td className="flex items-center gap-4 p-4">{item.lesson?.subject?.name}</td>
+      <td className="flex items-center gap-4 p-4">{item.lesson?.zone?.name}</td>
       <td>{item.lesson?.class?.name}</td>
       <td className="hidden md:table-cell">
         {(item.lesson?.teacher?.name || "") +

@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Dispatch, SetStateAction, useEffect } from "react";
+import { Dispatch, SetStateAction, useEffect, useMemo } from "react";
 import { useFormState } from "react-dom";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
@@ -31,8 +31,16 @@ export default function LessonForm({
     register,
     handleSubmit,
     formState: { errors },
+    setValue,
   } = useForm<LessonInput, any, LessonSchema>({
     resolver: zodResolver(lessonSchema),
+    defaultValues: {
+      name: data?.name ?? "",
+      day: data?.day,
+      zoneId: data?.zoneId ?? "",
+      classId: data?.classId,
+      teacherId: data?.teacherId ?? "",
+    },
   });
 
   const [state, formAction] = useFormState(
@@ -54,12 +62,29 @@ export default function LessonForm({
     }
   }, [state, router, type, setOpen, dict, label]);
 
+  const zones = useMemo(
+    () => (relatedData?.zones ?? []) as { id: string; name: string }[],
+    [relatedData?.zones]
+  );
+  const classes = useMemo(
+    () => (relatedData?.classes ?? []) as { id: number; name: string }[],
+    [relatedData?.classes]
+  );
+  const teachers = useMemo(
+    () =>
+      (relatedData?.teachers ?? []) as {
+        id: string;
+        name: string;
+        surname: string;
+      }[],
+    [relatedData?.teachers]
+  );
+
+  useEffect(() => {
+    if (data?.zoneId) setValue("zoneId", data.zoneId);
+  }, [data?.zoneId, setValue]);
+
   if (!relatedData) return <p>{dict.common.loading}</p>;
-  const { subjects, classes, teachers } = relatedData as {
-    subjects: { id: number; name: string }[];
-    classes: { id: number; name: string }[];
-    teachers: { id: string; name: string; surname: string }[];
-  };
 
   const toLocalInput = (value?: Date | string) => {
     if (!value) return undefined;
@@ -135,20 +160,20 @@ export default function LessonForm({
         )}
 
         <div className="flex flex-col gap-2 w-full md:w-1/4">
-          <label className="text-xs text-gray-500">{dict.forms.subject}</label>
+          <label className="text-xs text-gray-500">{dict.forms.playArea}</label>
           <select
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
-            {...register("subjectId")}
-            defaultValue={data?.subjectId}
+            {...register("zoneId")}
           >
-            {subjects.map((s) => (
-              <option value={s.id} key={s.id}>
-                {s.name}
+            <option value="">{dict.forms.none}</option>
+            {zones.map((z) => (
+              <option value={z.id} key={z.id}>
+                {z.name}
               </option>
             ))}
           </select>
-          {errors.subjectId?.message && (
-            <p className="text-xs text-red-400">{errors.subjectId.message.toString()}</p>
+          {errors.zoneId?.message && (
+            <p className="text-xs text-red-400">{errors.zoneId.message.toString()}</p>
           )}
         </div>
 
@@ -197,4 +222,3 @@ export default function LessonForm({
     </form>
   );
 }
-

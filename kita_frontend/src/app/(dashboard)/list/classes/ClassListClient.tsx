@@ -11,6 +11,7 @@ type ClassList = {
   id: number | string;
   name: string;
   capacity: number;
+  grade?: { id: number; level: number } | null;
   supervisor: { name: string; surname: string } | null;
 };
 
@@ -58,7 +59,13 @@ export default function ClassListClient({
     >
       <td className="flex items-center gap-4 p-4">{item.name}</td>
       <td className="hidden md:table-cell">{item.capacity}</td>
-      <td className="hidden md:table-cell">{item.name[0]}</td>
+      <td className="hidden md:table-cell">
+        {item.grade?.level === 1
+          ? `${dict.students.groups?.nursery ?? "Krippe"} (0-3)`
+          : item.grade?.level === 2
+          ? `${dict.students.groups?.kindergarten ?? "Kindergarten"} (3-6)`
+          : "-"}
+      </td>
       <td className="hidden md:table-cell">
         {item.supervisor
           ? item.supervisor.name + " " + item.supervisor.surname

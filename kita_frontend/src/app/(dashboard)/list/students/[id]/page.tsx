@@ -6,7 +6,6 @@ import SiblingShortcuts from "@/components/SiblingShortcuts";
 import StudentAttendanceCard from "@/components/StudentAttendanceCard";
 import prisma from "@/lib/prisma";
 import { getAuthData } from "@/lib/utils";
-import { Class, Student } from "@prisma/client";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -34,7 +33,7 @@ const SingleStudentPage = async ({
     return age;
   };
 
-  /** 0–3: Nursery (EN) / Krippe (DE); 3–6: Kindergarten */
+  // 0–3: Nursery (EN) / Krippe (DE); 3–6: Kindergarten
   const getAgeGroupLabel = (age: number) => {
     if (!Number.isFinite(age)) return "—";
     if (age >= 0 && age < 3) return dict.students?.groups?.nursery ?? "—";
@@ -42,14 +41,13 @@ const SingleStudentPage = async ({
     return "—";
   };
 
-  const student:
-    | (Student & {
-        class: Class & { _count: { lessons: number } };
-      })
-    | null = await prisma.student.findUnique({
+  const student = await prisma.student.findUnique({
     where: { id },
     include: {
       class: { include: { _count: { select: { lessons: true } } } },
+      parent: {
+        select: { name: true, surname: true, email: true, phone: true },
+      },
     },
   });
 
@@ -66,19 +64,66 @@ const SingleStudentPage = async ({
     orderBy: [{ surname: "asc" }, { name: "asc" }],
   });
 
-  const lessonsForClass = await prisma.lesson.findMany({
-    where: { classId: student.class.id },
-    select: { subject: { select: { name: true } } },
+  // Pie chart slices: time spent per play area (zone) from ZoneHistory.
+  const zoneHistory = await prisma.zoneHistory.findMany({
+    where: { studentId: student.id },
+    select: { movedAt: true, zoneId: true },
+    orderBy: { movedAt: "asc" },
   });
 
-  const counts = new Map<string, number>();
-  for (const row of lessonsForClass) {
-    const name = row.subject.name;
-    counts.set(name, (counts.get(name) ?? 0) + 1);
+  let favouriteActivities: FavouriteActivitySlice[] = [];
+
+  if (zoneHistory.length > 0) {
+    const zoneIds = Array.from(new Set(zoneHistory.map((z) => z.zoneId)));
+    const zones = await prisma.zone.findMany({
+      where: { id: { in: zoneIds } },
+      select: { id: true, name: true },
+    });
+    const zoneNameById = new Map(zones.map((z) => [z.id, z.name]));
+
+    const byZoneId = new Map<string, { name: string; value: number }>();
+    const now = new Date();
+
+    for (let i = 0; i < zoneHistory.length; i++) {
+      const current = zoneHistory[i];
+      const next = zoneHistory[i + 1];
+      const end = next?.movedAt ?? now;
+
+      const durationMs =
+        end.getTime() - current.movedAt.getTime();
+      if (durationMs <= 0) continue;
+
+      const zoneName = zoneNameById.get(current.zoneId) ?? current.zoneId;
+      const prev = byZoneId.get(current.zoneId);
+      if (prev) {
+        prev.value += durationMs;
+      } else {
+        byZoneId.set(current.zoneId, { name: zoneName, value: durationMs });
+      }
+    }
+
+    const total = Array.from(byZoneId.values()).reduce(
+      (s, x) => s + x.value,
+      0
+    );
+
+    // Fallback: if timestamps are identical (or durations are all <= 0),
+    // show simple visit counts instead of returning an empty chart.
+    if (total === 0) {
+      const counts = new Map<string, number>();
+      for (const h of zoneHistory) {
+        counts.set(h.zoneId, (counts.get(h.zoneId) ?? 0) + 1);
+      }
+      favouriteActivities = Array.from(counts.entries()).map(
+        ([zoneId, count]) => ({
+          name: zoneNameById.get(zoneId) ?? zoneId,
+          value: count,
+        })
+      );
+    } else {
+      favouriteActivities = Array.from(byZoneId.values());
+    }
   }
-  const favouriteActivities: FavouriteActivitySlice[] = Array.from(
-    counts.entries()
-  ).map(([name, value]) => ({ name, value }));
 
   const age = calcAge(student.birthday);
   const ageGroupLabel = getAgeGroupLabel(age);
@@ -90,7 +135,7 @@ const SingleStudentPage = async ({
         {/* TOP */}
         <div className="flex flex-col lg:flex-row gap-4">
           {/* USER INFO CARD */}
-          <div className="bg-kitaSky py-6 px-4 rounded-md flex-1 flex gap-4">
+          <div className="bg-kitaSky py-6 px-4 rounded-md flex-[2] flex gap-4">
             <div className="w-1/3">
               <Image
                 src={student.img || "/noAvatar.png"}
@@ -100,20 +145,19 @@ const SingleStudentPage = async ({
                 className="w-36 h-36 rounded-full object-cover"
               />
             </div>
-            <div className="w-2/3 flex flex-col justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <h1 className="text-xl font-semibold">
+            <div className="w-2/3 flex flex-col justify-between gap-4 min-w-0">
+              <div className="flex items-center gap-4 min-w-0 flex-wrap">
+                <h1 className="text-xl font-semibold break-words">
                   {student.name + " " + student.surname}
                 </h1>
                 {role === "admin" && (
                   <FormContainer table="student" type="update" data={student} />
                 )}
               </div>
-              <p className="text-sm text-gray-500">{dict.common.about}</p>
-              <div className="flex items-center justify-between gap-2 flex-wrap text-xs font-medium">
+              <div className="flex items-center  gap-2 flex-wrap text-xs font-medium">
                 <div className="w-full md:w-1/3 lg:w-full 2xl:w-1/3 flex items-center gap-2">
                   <Image src="/blood.png" alt="" width={14} height={14} />
-                  <span>{student.bloodType}</span>
+                  <span className="break-words">{student.bloodType}</span>
                 </div>
                 <div className="w-full md:w-1/3 lg:w-full 2xl:w-1/3 flex items-center gap-2">
                   <Image src="/date.png" alt="" width={14} height={14} />
@@ -122,20 +166,35 @@ const SingleStudentPage = async ({
                   </span>
                 </div>
                 <div className="w-full md:w-1/3 lg:w-full 2xl:w-1/3 flex items-center gap-2">
+                  <Image src="/parent.png" alt="" width={14} height={14} />
+                  {role === "admin" || role === "teacher" ? (
+                    <Link
+                      href={`/list/parents/${student.parentId}`}
+                      className="hover:underline text-left break-words"
+                    >
+                      {student.parent.name} {student.parent.surname}
+                    </Link>
+                  ) : (
+                    <span className="flex" >
+                      {student.parent.name} {student.parent.surname}
+                    </span>
+                  )}
+                </div>
+                <div className="w-full md:w-1/3 lg:w-full 2xl:w-1/3 flex items-center gap-2">
                   <Image src="/mail.png" alt="" width={14} height={14} />
-                  <span>{student.email || "—"}</span>
+                  <span className="break-words">{student.parent.email || "—"}</span>
                 </div>
                 <div className="w-full md:w-1/3 lg:w-full 2xl:w-1/3 flex items-center gap-2">
                   <Image src="/phone.png" alt="" width={14} height={14} />
-                  <span>{student.phone || "—"}</span>
+                  <span className="break-words">{student.parent.phone || "—"}</span>
                 </div>
               </div>
             </div>
           </div>
           {/* SMALL CARDS */}
-          <div className="flex-1 flex gap-4 justify-between flex-wrap">
+          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 content-start">
             {/* CARD */}
-            <div className="bg-white p-4 rounded-md flex gap-4 w-full md:w-[48%] xl:w-[45%] 2xl:w-[48%]">
+            <div className="bg-white p-3 rounded-md flex gap-3 items-start justify-start">
               <Image
                 src="/singleAttendance.png"
                 alt=""
@@ -143,12 +202,14 @@ const SingleStudentPage = async ({
                 height={24}
                 className="w-6 h-6"
               />
-              <Suspense fallback={dict.common.loading}>
-                <StudentAttendanceCard id={student.id} />
-              </Suspense>
+              <div className="flex flex-col items-start justify-start gap-1 min-w-0">
+                <Suspense fallback={dict.common.loading}>
+                  <StudentAttendanceCard id={student.id} />
+                </Suspense>
+              </div>
             </div>
             {/* CARD */}
-            <div className="bg-white p-4 rounded-md flex gap-4 w-full md:w-[48%] xl:w-[45%] 2xl:w-[48%]">
+            <div className="bg-white p-3 rounded-md flex gap-3 items-start justify-start">
               <Image
                 src="/singleBranch.png"
                 alt=""
@@ -156,15 +217,15 @@ const SingleStudentPage = async ({
                 height={24}
                 className="w-6 h-6"
               />
-              <div className="">
-                <h1 className="text-xl font-semibold">{ageGroupLabel}</h1>
-                <span className="text-sm text-gray-400">
+              <div className="flex flex-col items-start justify-start gap-1 min-w-0">
+                <span className="text-sm text-gray-400 break-words">
                   {dict.students.ageGroup}
                 </span>
+                <span className="text-base font-medium break-words">{ageGroupLabel}</span>
               </div>
             </div>
             {/* CARD */}
-            <div className="bg-white p-4 rounded-md flex gap-4 w-full md:w-[48%] xl:w-[45%] 2xl:w-[48%]">
+            <div className="bg-white p-3 rounded-md flex gap-3 items-start justify-start">
               <Image
                 src="/singleLesson.png"
                 alt=""
@@ -172,15 +233,15 @@ const SingleStudentPage = async ({
                 height={24}
                 className="w-6 h-6"
               />
-              <div className="">
-                <h1 className="text-xl font-semibold">
+              <div className="flex flex-col items-start justify-start gap-1 min-w-0">
+                <span className="text-sm text-gray-400 break-words">{dict.menu.lessons}</span>
+                <span className="text-base font-medium break-words">
                   {student.class._count.lessons}
-                </h1>
-                <span className="text-sm text-gray-400">{dict.menu.lessons}</span>
+                </span>
               </div>
             </div>
             {/* CARD */}
-            <div className="bg-white p-4 rounded-md flex gap-4 w-full md:w-[48%] xl:w-[45%] 2xl:w-[48%]">
+            <div className="bg-white p-3 rounded-md flex gap-3 items-start justify-start">
               <Image
                 src="/singleClass.png"
                 alt=""
@@ -188,9 +249,9 @@ const SingleStudentPage = async ({
                 height={24}
                 className="w-6 h-6"
               />
-              <div className="">
-                <h1 className="text-xl font-semibold">{student.class.name}</h1>
-                <span className="text-sm text-gray-400">{dict.menu.classes}</span>
+              <div className="flex flex-col items-start justify-start gap-1 min-w-0">
+                <span className="text-sm text-gray-400 break-words">{dict.menu.classes}</span>
+                <span className="text-base font-medium break-words">{student.class.name}</span>
               </div>
             </div>
           </div>

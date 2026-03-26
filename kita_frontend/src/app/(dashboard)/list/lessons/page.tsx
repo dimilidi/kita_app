@@ -4,20 +4,16 @@ import { getAuthData } from "@/lib/utils";
 import { Prisma } from "@prisma/client";
 import LessonListClient from "./LessonListClient";
 
-
 const LessonListPage = async ({
   searchParams,
 }: {
   searchParams: { [key: string]: string | undefined };
 }) => {
-
   const { role } = getAuthData();
 
   const { page, ...queryParams } = searchParams;
 
   const p = page ? parseInt(page) : 1;
-
-  // URL PARAMS CONDITION
 
   const query: Prisma.LessonWhereInput = {};
 
@@ -33,8 +29,13 @@ const LessonListPage = async ({
             break;
           case "search":
             query.OR = [
-              { subject: { name: { contains: value, mode: "insensitive" } } },
+              { name: { contains: value, mode: "insensitive" } },
               { teacher: { name: { contains: value, mode: "insensitive" } } },
+              {
+                zone: {
+                  name: { contains: value, mode: "insensitive" },
+                },
+              },
             ];
             break;
           default:
@@ -48,7 +49,7 @@ const LessonListPage = async ({
     prisma.lesson.findMany({
       where: query,
       include: {
-        subject: { select: { name: true } },
+        zone: { select: { name: true } },
         class: { select: { name: true } },
         teacher: { select: { name: true, surname: true } },
       },
@@ -58,19 +59,29 @@ const LessonListPage = async ({
     prisma.lesson.count({ where: query }),
   ]);
 
-  const [subjects, classes, teachers] = await prisma.$transaction([
-    prisma.subject.findMany({ select: { id: true, name: true } }),
+  const [zones, classes, teachers] = await prisma.$transaction([
+    prisma.zone.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
     prisma.class.findMany({ select: { id: true, name: true } }),
-    prisma.teacher.findMany({ select: { id: true, name: true, surname: true } }),
+    prisma.teacher.findMany({
+      select: { id: true, name: true, surname: true },
+    }),
   ]);
+
+  const dataWithPlayArea = data.map((lesson) => ({
+    ...lesson,
+    playAreaName: lesson.zone?.name ?? "—",
+  }));
 
   return (
     <LessonListClient
-      data={data}
+      data={dataWithPlayArea}
       count={count}
       page={p}
       role={role as string}
-      relatedData={{ subjects, classes, teachers }}
+      relatedData={{ zones, classes, teachers }}
     />
   );
 };

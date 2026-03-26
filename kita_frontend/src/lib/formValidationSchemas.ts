@@ -47,12 +47,22 @@ export const teacherSchema = z.object({
   bloodType: z.string().min(1, { message: "forms.required" }),
   birthday: z.coerce.date({ message: "forms.required" }),
   sex: z.enum(["MALE", "FEMALE"], { message: "forms.required" }),
-  subjects: z.array(z.string()).optional(), // subject ids
+  // Legacy (not used in UI anymore): subject ids
+  subjects: z.array(z.string()).optional(),
+  // Kindergarten domain: play areas (zones)
+  zoneIds: z.array(z.string()).optional(),
 });
 
 // export type TeacherSchema = z.infer<typeof teacherSchema>;
 export type TeacherInput = z.input<typeof teacherSchema>;
 export type TeacherSchema = z.output<typeof teacherSchema>;
+
+/** Empty select / invalid numeric → undefined so z.number() does not become NaN */
+const requiredPositiveInt = (v: unknown) => {
+  if (v === "" || v === undefined || v === null) return undefined;
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : undefined;
+};
 
 export const studentSchema = z.object({
   id: z.string().optional(),
@@ -72,15 +82,30 @@ export const studentSchema = z.object({
     .email({ message: "forms.invalidEmail" })
     .optional()
     .or(z.literal("")),
-  phone: z.string().optional(),
   address: z.string(),
   img: z.string().optional(),
   bloodType: z.string().min(1, { message: "forms.required" }),
   birthday: z.coerce.date({ message: "forms.required" }),
   sex: z.enum(["MALE", "FEMALE"], { message: "forms.required" }),
-  gradeId: z.coerce.number().min(1, { message: "forms.required" }),
-  classId: z.coerce.number().min(1, { message: "forms.required" }),
-  parentId: z.string().min(1, { message: "forms.required" }),
+  gradeId: z.preprocess(
+    requiredPositiveInt,
+    z
+      .number({
+        required_error: "forms.required",
+        invalid_type_error: "forms.required",
+      })
+      .min(1, { message: "forms.required" })
+  ),
+  classId: z.preprocess(
+    requiredPositiveInt,
+    z
+      .number({
+        required_error: "forms.required",
+        invalid_type_error: "forms.required",
+      })
+      .min(1, { message: "forms.required" })
+  ),
+  parentId: z.string().trim().min(1, { message: "forms.required" }),
 });
 
 // export type StudentSchema = z.infer<typeof studentSchema>;
@@ -124,17 +149,24 @@ export const parentSchema = z.object({
 export type ParentInput = z.input<typeof parentSchema>;
 export type ParentSchema = z.output<typeof parentSchema>;
 
+const finiteNumber = (v: unknown): number | undefined => {
+  if (v === "" || v === undefined || v === null) return undefined;
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : undefined;
+};
+
 export const lessonSchema = z.object({
-  id: z.coerce.number().optional(),
+  id: z.preprocess(finiteNumber, z.number().optional()),
   name: z.string().min(1, { message: "forms.required" }),
   day: z.enum(["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"], {
     message: "forms.required",
   }),
   startTime: z.coerce.date({ message: "forms.required" }),
   endTime: z.coerce.date({ message: "forms.required" }),
-  subjectId: z.coerce.number().min(1, { message: "forms.required" }),
-  classId: z.coerce.number().min(1, { message: "forms.required" }),
-  teacherId: z.coerce.string().min(1, { message: "forms.required" }),
+  /** Play area: Zone.id (cuid string), not a number */
+  zoneId: z.string().min(1, { message: "forms.required" }),
+  classId: z.preprocess(finiteNumber, z.number().min(1, { message: "forms.required" })),
+  teacherId: z.string().min(1, { message: "forms.required" }),
 });
 
 export type LessonInput = z.input<typeof lessonSchema>;

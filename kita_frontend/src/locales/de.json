@@ -68,6 +68,8 @@
     "parentId": "Eltern-ID",
     "parent": "Elternteil",
     "selectParent": "Elternteil auswählen",
+    "selectClass": "Gruppe auswählen",
+    "selectGrade": "Altersgruppe auswählen",
     "group": "Gruppe",
     "groupName": "Gruppenname",
     "capacity": "Kapazität",
@@ -77,6 +79,7 @@
     "activity": "Aktivität",
     "lesson": "Aktivität",
     "subject": "Spielbereich",
+    "playArea": "Spielbereich",
     "educator": "Erzieher",
     "startTime": "Startzeit",
     "endTime": "Endzeit",
@@ -153,6 +156,8 @@
       "teacherId": "Erzieher-ID",
       "subjects": "Fächer",
       "classes": "Gruppen",
+      "activities": "Aktivitäten",
+      "areas": "Bereiche",
       "phone": "Telefon",
       "address": "Adresse"
     }
@@ -167,10 +172,13 @@
       "kindergarten": "Kindergarten"
     },
     "columns": {
+      "photo": "Foto",
+      "name": "Name",
       "info": "Info",
       "studentId": "Kind-ID",
       "grade": "Gruppe",
       "phone": "Telefon",
+      "parentContact": "Elternkontakt",
       "address": "Adresse"
     }
   },
@@ -248,6 +256,8 @@
     "shortcutParent": "Elternprofil",
     "shortcutSibling": "Geschwister",
     "selectSibling": "Geschwister wählen",
+    "timeByPlayArea": "Zeit nach Spielbereich",
+    "noAreaData": "Keine Bereichsdaten",
     "favouriteActivities": "Lieblingsaktivitäten",
     "noFavouriteActivitiesData": "Noch keine Aktivitätsdaten",
     "attendance": "Anwesenheit",
@@ -292,6 +302,7 @@
     "subtitle": "Markieren Sie jedes Kind für den gewählten Tag als anwesend oder abwesend.",
     "date": "Datum",
     "today": "Heute",
+    "printPdf": "Drucken / PDF speichern",
     "filterGroup": "Gruppe",
     "allGroups": "Alle Gruppen",
     "childName": "Kind",

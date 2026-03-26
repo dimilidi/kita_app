@@ -31,13 +31,13 @@ export default function TeacherListClient({
       className: "hidden md:table-cell",
     },
     {
-      header: dict.teachers.columns.subjects,
-      accessor: "subjects",
+      header: dict.teachers.columns.activities,
+      accessor: "activities",
       className: "hidden md:table-cell",
     },
     {
-      header: dict.teachers.columns.classes,
-      accessor: "classes",
+      header: dict.teachers.columns.areas,
+      accessor: "areas",
       className: "hidden md:table-cell",
     },
     {
@@ -75,10 +75,22 @@ export default function TeacherListClient({
       </td>
       <td className="hidden md:table-cell">{item.username}</td>
       <td className="hidden md:table-cell">
-        {(item.subjects || []).map((subject: any) => subject.name).join(",")}
+        <div className="flex flex-wrap gap-1">
+          {(item.lessons || []).map((lesson: any) => (
+            <span
+              key={lesson.id}
+              className="px-2 py-1 text-xs rounded-md bg-blue-100 text-blue-700"
+            >
+              {lesson.name}
+            </span>
+          ))}
+        </div>
       </td>
       <td className="hidden md:table-cell">
-        {(item.classes || []).map((classItem: any) => classItem.name).join(",")}
+        {(item.zones || [])
+          .map((teacherZone: any) => teacherZone.zone?.name)
+          .filter(Boolean)
+          .join(", ")}
       </td>
       <td className="hidden md:table-cell">{item.phone}</td>
       <td className="hidden md:table-cell">{item.address}</td>

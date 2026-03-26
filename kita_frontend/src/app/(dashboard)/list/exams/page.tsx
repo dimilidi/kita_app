@@ -32,7 +32,7 @@ const ExamListPage = async ({
             query.lesson.teacherId = value;
             break;
           case "search":
-            query.lesson.subject = {
+            query.lesson.zone = {
               name: { contains: value, mode: "insensitive" },
             };
             break;
@@ -80,7 +80,7 @@ const ExamListPage = async ({
       include: {
         lesson: {
           select: {
-            subject: { select: { name: true } },
+            zone: { select: { name: true } },
             teacher: { select: { name: true, surname: true } },
             class: { select: { name: true } },
           },

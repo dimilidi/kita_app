@@ -41,6 +41,7 @@ const ClassListPage = async ({
     prisma.class.findMany({
       where: query,
       include: {
+        grade: true,
         supervisor: true,
       },
       take: ITEM_PER_PAGE,
@@ -53,13 +54,18 @@ const ClassListPage = async ({
     id: c.id,
     name: c.name,
     capacity: c.capacity,
+    grade: c.grade ? { id: c.grade.id, level: c.grade.level } : null,
     supervisor: c.supervisor ? { name: c.supervisor.name, surname: c.supervisor.surname } : null,
   }));
 
   const relatedData =
     role === "admin"
       ? {
-          grades: await prisma.grade.findMany({ select: { id: true, level: true } }),
+          grades: await prisma.grade.findMany({
+            where: { level: { in: [1, 2] } },
+            select: { id: true, level: true },
+            orderBy: { level: "asc" },
+          }),
           teachers: await prisma.teacher.findMany({
             select: { id: true, name: true, surname: true },
           }),

@@ -73,6 +73,9 @@ const ClassForm = ({
   }, [state, router, type, setOpen, dict, label]);
 
   const { teachers, grades } = relatedData;
+  const kindergartenGrades = (grades ?? []).filter(
+    (grade: { id: number; level: number }) => grade.level === 1 || grade.level === 2
+  );
 
   return (
     <form className="flex flex-col gap-8" onSubmit={onSubmit}>
@@ -139,13 +142,15 @@ const ClassForm = ({
             {...register("gradeId")}
             defaultValue={data?.gradeId}
           >
-            {grades.map((grade: { id: number; level: number }) => (
+            {kindergartenGrades.map((grade: { id: number; level: number }) => (
               <option
                 value={grade.id}
                 key={grade.id}
                 selected={data && grade.id === data.gradeId}
               >
-                {grade.level}
+                {grade.level === 1
+                  ? `${dict.students.groups?.nursery ?? "Krippe"} (0-3)`
+                  : `${dict.students.groups?.kindergarten ?? "Kindergarten"} (3-6)`}
               </option>
             ))}
           </select>

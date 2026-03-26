@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import InputField from "../InputField";
 import Image from "next/image";
-import { Dispatch, SetStateAction, useEffect, useState } from "react";
+import { Dispatch, SetStateAction, useEffect, useMemo, useState } from "react";
 import { TeacherInput, teacherSchema, TeacherSchema } from "@/lib/formValidationSchemas";
 import { useFormState } from "react-dom";
 import { createTeacher, updateTeacher } from "@/lib/actions";
@@ -26,10 +26,13 @@ const TeacherForm = ({
 }) => {
   const dict = useTranslations();
   const label = dict.entities?.teacher || "teacher";
+  const BLOOD_TYPES = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] as const;
 
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<TeacherInput, any, TeacherSchema>({
     resolver: zodResolver(teacherSchema),
@@ -62,7 +65,24 @@ const TeacherForm = ({
     }
   }, [state, router, type, setOpen, dict, label]);
 
-  const { subjects } = relatedData;
+  const { zones } = relatedData as {
+    zones: { id: string; name: string }[];
+  };
+
+  const selectedZoneIds = watch("zoneIds") ?? [];
+  const [zoneToAdd, setZoneToAdd] = useState<string>("");
+
+  // Initialize zoneIds in update mode from included TeacherZone rows.
+  useEffect(() => {
+    const existing = (data?.zones ?? []).map((z: any) => z.zoneId) as string[];
+    if (type === "update" && existing.length > 0) {
+      setValue("zoneIds", existing, { shouldValidate: false });
+    }
+  }, [data, setValue, type]);
+
+  const zoneNameById = useMemo(() => {
+    return new Map(zones.map((z) => [z.id, z.name]));
+  }, [zones]);
 
   return (
     <form className="flex flex-col gap-8" onSubmit={onSubmit}>
@@ -131,12 +151,33 @@ const TeacherForm = ({
           error={errors.address}
         />
         <InputField
-          label={dict.forms.bloodType}
+          label={dict.forms.bloodGroup}
           name="bloodType"
           defaultValue={data?.bloodType}
           register={register}
           error={errors.bloodType}
+          hidden
         />
+        <div className="flex flex-col gap-2 w-full md:w-1/4">
+          <label className="text-xs text-gray-500">{dict.forms.bloodGroup}</label>
+          <select
+            className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
+            {...register("bloodType")}
+            defaultValue={data?.bloodType ?? ""}
+          >
+            <option value="">{dict.forms.none}</option>
+            {BLOOD_TYPES.map((t) => (
+              <option value={t} key={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+          {errors.bloodType?.message && (
+            <p className="text-xs text-red-400">
+              {errors.bloodType.message.toString()}
+            </p>
+          )}
+        </div>
         <InputField
           label={dict.forms.birthday}
           name="birthday"
@@ -172,22 +213,67 @@ const TeacherForm = ({
           )}
         </div>
         <div className="flex flex-col gap-2 w-full md:w-1/4">
-          <label className="text-xs text-gray-500">{dict.forms.subjects}</label>
-          <select
-            multiple
-            className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
-            {...register("subjects")}
-            defaultValue={data?.subjects}
-          >
-            {subjects.map((subject: { id: number; name: string }) => (
-              <option value={subject.id} key={subject.id}>
-                {subject.name}
-              </option>
-            ))}
-          </select>
-          {errors.subjects?.message && (
+          <label className="text-xs text-gray-500">
+            {dict.forms.playArea ?? dict.forms.subject ?? "Play Areas"}
+          </label>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <select
+                className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
+                value={zoneToAdd}
+                onChange={(e) => setZoneToAdd(e.target.value)}
+              >
+                <option value="">{dict.forms.none}</option>
+                {zones
+                  .filter((z) => !selectedZoneIds.includes(z.id))
+                  .map((zone) => (
+                    <option value={zone.id} key={zone.id}>
+                      {zone.name}
+                    </option>
+                  ))}
+              </select>
+              <button
+                type="button"
+                className="bg-kitaYellow px-3 py-2 rounded-md text-sm whitespace-nowrap"
+                onClick={() => {
+                  if (!zoneToAdd) return;
+                  setValue("zoneIds", [...selectedZoneIds, zoneToAdd], {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                  });
+                  setZoneToAdd("");
+                }}
+              >
+                {dict.common.save}
+              </button>
+            </div>
+
+            {/* Selected zones */}
+            {selectedZoneIds.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {selectedZoneIds.map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    className="text-xs bg-kitaSkyLight px-2 py-1 rounded-md break-words"
+                    onClick={() => {
+                      setValue(
+                        "zoneIds",
+                        selectedZoneIds.filter((x: string) => x !== id),
+                        { shouldValidate: true, shouldDirty: true }
+                      );
+                    }}
+                    title={dict.common.delete}
+                  >
+                    {zoneNameById.get(id) ?? id} ×
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {errors.zoneIds?.message && (
             <p className="text-xs text-red-400">
-              {errors.subjects.message.toString()}
+              {errors.zoneIds.message.toString()}
             </p>
           )}
         </div>

@@ -23,13 +23,8 @@ export default function LessonListClient({
   const dict = useTranslations();
 
   const columns = [
-    { header: dict.lessons.columns.subjectName, accessor: "name" },
-    { header: dict.lessons.columns.class, accessor: "class" },
-    {
-      header: dict.lessons.columns.teacher,
-      accessor: "teacher",
-      className: "hidden md:table-cell",
-    },
+    { header: dict.forms.activity, accessor: "name" },
+    { header: dict.forms.playArea, accessor: "playAreaName" },
     ...(role === "admin"
       ? [{ header: dict.common.actions, accessor: "action" }]
       : []),
@@ -40,11 +35,8 @@ export default function LessonListClient({
       key={item.id}
       className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-kitaPurpleLight"
     >
-      <td className="flex items-center gap-4 p-4">{item.subject?.name}</td>
-      <td>{item.class?.name}</td>
-      <td className="hidden md:table-cell">
-        {(item.teacher?.name || "") + " " + (item.teacher?.surname || "")}
-      </td>
+      <td className="flex items-center gap-4 p-4">{item.name}</td>
+      <td>{item.playAreaName}</td>
       <td>
         <div className="flex items-center gap-2">
           {role === "admin" && (

@@ -44,7 +44,8 @@ const TeacherListPage = async ({
     prisma.teacher.findMany({
       where: query,
       include: {
-        subjects: true,
+        lessons: { select: { name: true } },
+        zones: { select: { zone: { select: { name: true } } } },
         classes: true,
       },
       take: ITEM_PER_PAGE,
@@ -56,7 +57,7 @@ const TeacherListPage = async ({
   const relatedData =
     role === "admin"
       ? {
-          subjects: await prisma.subject.findMany({ select: { id: true, name: true } }),
+          zones: await prisma.zone.findMany({ select: { id: true, name: true } }),
         }
       : undefined;
 

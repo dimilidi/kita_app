@@ -48,6 +48,7 @@ const StudentListPage = async ({
       where: query,
       include: {
         class: true,
+        parent: { select: { name: true, surname: true, phone: true, address: true } },
       },
       take: ITEM_PER_PAGE,
       skip: ITEM_PER_PAGE * (p - 1),

@@ -5,20 +5,9 @@ import { useForm } from "react-hook-form";
 import InputField from "../InputField";
 import Image from "next/image";
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
-import {
-  StudentInput,
-  studentSchema,
-  StudentSchema,
-  teacherSchema,
-  TeacherSchema,
-} from "@/lib/formValidationSchemas";
+import { StudentInput, studentSchema, StudentSchema } from "@/lib/formValidationSchemas";
 import { useFormState } from "react-dom";
-import {
-  createStudent,
-  createTeacher,
-  updateStudent,
-  updateTeacher,
-} from "@/lib/actions";
+import { createStudent, updateStudent } from "@/lib/actions";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { CldImage, CldUploadWidget } from "next-cloudinary";
@@ -40,6 +29,20 @@ const StudentForm = ({
 
   const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] as const;
 
+  const grades = (relatedData?.grades ?? []) as { id: number; level: number }[];
+  const classes = (relatedData?.classes ?? []) as {
+    id: number;
+    name: string;
+    capacity: number;
+    gradeId: number;
+    _count: { students: number };
+  }[];
+  const parents = (relatedData?.parents ?? []) as {
+    id: string;
+    name: string;
+    surname: string;
+  }[];
+
   const {
     register,
     handleSubmit,
@@ -60,8 +63,8 @@ const StudentForm = ({
     }
   );
 
-  const onSubmit = handleSubmit((data) => {
-    formAction({ ...data, img: img?.secure_url });
+  const onSubmit = handleSubmit((formData) => {
+    formAction({ ...formData, img: img?.secure_url });
   });
 
   const router = useRouter();
@@ -75,18 +78,6 @@ const StudentForm = ({
       router.refresh();
     }
   }, [state, router, type, setOpen, dict, label]);
-
-  if (!relatedData) return <p>{dict.common.loading}</p>;
-  const { grades, classes, parents } = relatedData as {
-    grades: { id: number; level: number }[];
-    classes: {
-      id: number;
-      name: string;
-      capacity: number;
-      _count: { students: number };
-    }[];
-    parents?: { id: string; name: string; surname: string }[];
-  };
 
   const calcAge = (birthday: Date) => {
     const now = new Date();
@@ -108,30 +99,54 @@ const StudentForm = ({
     birthdayValue instanceof Date
       ? birthdayValue
       : birthdayValue
-      ? new Date(birthdayValue as any)
-      : data?.birthday
-      ? new Date(data.birthday)
-      : null;
-  const age = birthdayDate && !Number.isNaN(birthdayDate.getTime()) ? calcAge(birthdayDate) : null;
+        ? new Date(birthdayValue as string)
+        : data?.birthday
+          ? new Date(data.birthday)
+          : null;
+  const age =
+    birthdayDate && !Number.isNaN(birthdayDate.getTime()) ? calcAge(birthdayDate) : null;
   const ageGroupKey = getAgeGroupKey(age);
+  const allowedGradeLevel =
+    ageGroupKey === "nursery" ? 1 : ageGroupKey === "kindergarten" ? 2 : null;
+  const filteredClasses =
+    allowedGradeLevel === null
+      ? []
+      : classes.filter((classItem) => {
+          const classGrade = grades.find((g) => g.id === classItem.gradeId);
+          return classGrade?.level === allowedGradeLevel;
+        });
 
-  // Keep DB-required gradeId populated without showing an input.
+  // Keep required gradeId in sync with selected class.
+  const selectedClassId = watch("classId");
   useEffect(() => {
-    if (!grades?.length) return;
-    if (type === "update" && data?.gradeId && !birthdayValue) {
-      setValue("gradeId", data.gradeId as any, { shouldValidate: false });
-      return;
+    const selectedClass = classes.find(
+      (c) => String(c.id) === String(selectedClassId ?? data?.classId ?? "")
+    );
+    if (selectedClass?.gradeId) {
+      setValue("gradeId", selectedClass.gradeId as any, { shouldValidate: true });
     }
+  }, [classes, selectedClassId, data?.classId, setValue]);
 
-    // Best-effort mapping: Nursery -> level 1, Kindergarten -> level 2.
-    const desiredLevel = ageGroupKey === "nursery" ? 1 : ageGroupKey === "kindergarten" ? 2 : null;
-    const target =
-      (desiredLevel !== null ? grades.find((g) => g.level === desiredLevel) : undefined) ??
-      (data?.gradeId ? grades.find((g) => g.id === data.gradeId) : undefined) ??
-      grades[0];
+  // If age group changes, clear class selection when it no longer matches.
+  useEffect(() => {
+    const selectedClass = classes.find(
+      (c) => String(c.id) === String(selectedClassId ?? "")
+    );
+    const selectedGrade = grades.find((g) => g.id === selectedClass?.gradeId);
+    const stillValid =
+      allowedGradeLevel !== null && selectedGrade?.level === allowedGradeLevel;
 
-    if (target?.id) setValue("gradeId", target.id as any, { shouldValidate: true });
-  }, [ageGroupKey, grades, setValue, type, data, birthdayValue]);
+    if (!stillValid) {
+      setValue("classId", "" as any, { shouldValidate: true });
+      setValue("gradeId", "" as any, { shouldValidate: true });
+    }
+  }, [allowedGradeLevel, classes, grades, selectedClassId, setValue]);
+
+  if (!relatedData) return <p>{dict.common.loading}</p>;
+
+  const birthdayDefault = data?.birthday
+    ? new Date(data.birthday).toISOString().split("T")[0]
+    : undefined;
 
   return (
     <form className="flex flex-col gap-8" onSubmit={onSubmit}>
@@ -143,29 +158,43 @@ const StudentForm = ({
       <span className="text-xs text-gray-400 font-medium">
         {dict.forms.authInfo}
       </span>
-      <div className="flex justify-between flex-wrap gap-4">
-        <InputField
-          label={dict.forms.username}
-          name="username"
-          defaultValue={data?.username}
-          register={register}
-          error={errors?.username}
-        />
-        <InputField
-          label={dict.forms.email}
-          name="email"
-          defaultValue={data?.email}
-          register={register}
-          error={errors?.email}
-        />
-        <InputField
-          label={dict.forms.password}
-          name="password"
-          type="password"
-          defaultValue={data?.password}
-          register={register}
-          error={errors?.password}
-        />
+      <div className="flex flex-wrap gap-4">
+        <div className="flex flex-col gap-2 w-full md:w-1/4">
+          <label className="text-xs text-gray-500">{dict.forms.username}</label>
+          <input
+            type="text"
+            {...register("username")}
+            className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
+            defaultValue={data?.username}
+          />
+          {errors?.username?.message && (
+            <p className="text-xs text-red-400">
+              {errors.username.message.toString().startsWith("forms.")
+                ? (dict.forms?.[
+                    errors.username.message.toString().replace("forms.", "")
+                  ] as string | undefined) ?? errors.username.message.toString()
+                : errors.username.message.toString()}
+            </p>
+          )}
+        </div>
+        <div className="flex flex-col gap-2 w-full md:w-1/4">
+          <label className="text-xs text-gray-500">{dict.forms.password}</label>
+          <input
+            type="password"
+            {...register("password")}
+            className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
+            defaultValue={data?.password}
+          />
+          {errors?.password?.message && (
+            <p className="text-xs text-red-400">
+              {errors.password.message.toString().startsWith("forms.")
+                ? (dict.forms?.[
+                    errors.password.message.toString().replace("forms.", "")
+                  ] as string | undefined) ?? errors.password.message.toString()
+                : errors.password.message.toString()}
+            </p>
+          )}
+        </div>
       </div>
       <span className="text-xs text-gray-400 font-medium">
         {dict.forms.personalInfo}
@@ -185,19 +214,14 @@ const StudentForm = ({
           register={register}
           error={errors.surname}
         />
-        <InputField
-          label={dict.forms.phone}
-          name="phone"
-          defaultValue={data?.phone}
-          register={register}
-          error={errors.phone}
-        />
+        {/* Address is required by the Student model, but kindergarten UI keeps it non-editable */}
         <InputField
           label={dict.forms.address}
           name="address"
-          defaultValue={data?.address}
+          defaultValue={data?.address ?? ""}
           register={register}
           error={errors.address}
+          hidden
         />
         <InputField
           label={dict.forms.bloodGroup}
@@ -230,12 +254,11 @@ const StudentForm = ({
         <InputField
           label={dict.forms.birthday}
           name="birthday"
-          defaultValue={data?.birthday.toISOString().split("T")[0]}
+          defaultValue={birthdayDefault}
           register={register}
           error={errors.birthday}
           type="date"
         />
-
         <InputField
           label="gradeId"
           name="gradeId"
@@ -245,21 +268,6 @@ const StudentForm = ({
           hidden
         />
 
-        {(age !== null || ageGroupKey) && (
-          <div className="w-full md:w-1/4 text-xs text-gray-500 flex flex-col gap-1">
-            {age !== null && (
-              <div>
-                <span className="font-medium">{dict.students.age}:</span> {age}
-              </div>
-            )}
-            {ageGroupKey && (
-              <div>
-                <span className="font-medium">{dict.students.ageGroup}:</span>{" "}
-                {dict.students.groups?.[ageGroupKey] || ageGroupKey}
-              </div>
-            )}
-          </div>
-        )}
         <div className="flex flex-col gap-2 w-full md:w-1/4">
           <label className="text-xs text-gray-500">{dict.forms.parent}</label>
           <select
@@ -267,8 +275,10 @@ const StudentForm = ({
             {...register("parentId")}
             defaultValue={data?.parentId ?? ""}
           >
-            <option value="">{dict.forms.selectParent}</option>
-            {(parents ?? []).map((p) => (
+            <option value="" disabled>
+              {dict.forms.selectParent}
+            </option>
+            {parents.map((p) => (
               <option value={p.id} key={p.id}>
                 {p.name} {p.surname}
               </option>
@@ -311,26 +321,25 @@ const StudentForm = ({
           <select
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
             {...register("classId")}
-            defaultValue={data?.classId}
+            defaultValue={data?.classId ?? ""}
+            disabled={allowedGradeLevel === null}
           >
-            {classes.map(
-              (classItem: {
-                id: number;
-                name: string;
-                capacity: number;
-                _count: { students: number };
-              }) => (
-                <option value={classItem.id} key={classItem.id}>
-                  ({classItem.name} -{" "}
-                  {classItem._count.students + "/" + classItem.capacity}{" "}
-                  {dict.forms.capacity})
-                </option>
-              )
-            )}
+            <option value="" disabled>
+              {allowedGradeLevel === null
+                ? "Select birthday first"
+                : dict.forms.selectClass}
+            </option>
+            {filteredClasses.map((classItem) => (
+              <option value={classItem.id} key={classItem.id}>
+                ({classItem.name} -{" "}
+                {classItem._count.students + "/" + classItem.capacity}{" "}
+                {dict.forms.capacity})
+              </option>
+            ))}
           </select>
           {errors.classId?.message && (
             <p className="text-xs text-red-400">
-              {errors.classId.message.toString()}
+              {dict.forms.required}
             </p>
           )}
         </div>

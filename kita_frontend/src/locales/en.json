@@ -68,6 +68,8 @@
     "parentId": "Parent ID",
     "parent": "Parent",
     "selectParent": "Select parent",
+    "selectClass": "Select group",
+    "selectGrade": "Select age group",
     "group": "Group",
     "groupName": "Group Name",
     "capacity": "Capacity",
@@ -77,6 +79,7 @@
     "activity": "Activity",
     "lesson": "Activity",
     "subject": "Play Area",
+    "playArea": "Play Area",
     "educator": "Educator",
     "startTime": "Start Time",
     "endTime": "End Time",
@@ -153,6 +156,8 @@
       "teacherId": "Educator ID",
       "subjects": "Subjects",
       "classes": "Classes",
+      "activities": "Activities",
+      "areas": "Areas",
       "phone": "Phone",
       "address": "Address"
     }
@@ -167,10 +172,13 @@
       "kindergarten": "Kindergarten"
     },
     "columns": {
+      "photo": "Photo",
+      "name": "Name",
       "info": "Info",
       "studentId": "Child ID",
       "grade": "Group",
       "phone": "Phone",
+      "parentContact": "Parent contact",
       "address": "Address"
     }
   },
@@ -248,6 +256,8 @@
     "shortcutParent": "Parent profile",
     "shortcutSibling": "Sibling",
     "selectSibling": "Select sibling",
+    "timeByPlayArea": "Time by Play Area",
+    "noAreaData": "No area data",
     "favouriteActivities": "Favourite activities",
     "noFavouriteActivitiesData": "No activity data yet",
     "attendance": "Attendance",
@@ -292,6 +302,7 @@
     "subtitle": "Mark each child as present or absent for the selected day.",
     "date": "Date",
     "today": "Today",
+    "printPdf": "Print / Save PDF",
     "filterGroup": "Group",
     "allGroups": "All groups",
     "childName": "Child",

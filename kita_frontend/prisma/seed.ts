@@ -75,21 +75,33 @@ async function main() {
     });
   }
 
+  let zones = await prisma.zone.findMany();
+  if (zones.length === 0) {
+    await prisma.zone.createMany({
+      data: [
+        { name: "Turnhalle" },
+        { name: "Spielplatz" },
+        { name: "Atelier" },
+      ],
+    });
+    zones = await prisma.zone.findMany();
+  }
+
   // LESSON
   for (let i = 1; i <= 30; i++) {
     await prisma.lesson.create({
       data: {
-        name: `Lesson${i}`, 
+        name: `Lesson${i}`,
         day: Day[
           Object.keys(Day)[
             Math.floor(Math.random() * Object.keys(Day).length)
           ] as keyof typeof Day
-        ], 
-        startTime: new Date(new Date().setHours(new Date().getHours() + 1)), 
-        endTime: new Date(new Date().setHours(new Date().getHours() + 3)), 
-        subjectId: (i % 10) + 1, 
-        classId: (i % 6) + 1, 
-        teacherId: `teacher${(i % 15) + 1}`, 
+        ],
+        startTime: new Date(new Date().setHours(new Date().getHours() + 1)),
+        endTime: new Date(new Date().setHours(new Date().getHours() + 3)),
+        zoneId: zones[(i - 1) % zones.length].id,
+        classId: (i % 6) + 1,
+        teacherId: `teacher${(i % 15) + 1}`,
       },
     });
   }

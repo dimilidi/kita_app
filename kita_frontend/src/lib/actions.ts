@@ -19,6 +19,7 @@ import { parseDateStrToUtcRange } from "./attendanceDate";
 import prisma from "./prisma";
 import { clerkClient } from "@clerk/nextjs/server";
 import { getAuthData } from "./utils";
+import { randomUUID } from "crypto";
 
 type CurrentState = { success: boolean; error: boolean };
 
@@ -172,9 +173,10 @@ export const createTeacher = async (
         bloodType: data.bloodType,
         sex: data.sex,
         birthday: data.birthday,
-        subjects: {
-          connect: data.subjects?.map((subjectId: string) => ({
-            id: parseInt(subjectId),
+        zones: {
+          create: (data.zoneIds ?? []).map((zoneId) => ({
+            id: randomUUID(),
+            zoneId,
           })),
         },
       },
@@ -219,9 +221,11 @@ export const updateTeacher = async (
         sex: data.sex,
         birthday: data.birthday,
         ...(data.img !== undefined && { img: data.img }),
-        subjects: {
-          set: data.subjects?.map((subjectId: string) => ({
-            id: parseInt(subjectId),
+        zones: {
+          deleteMany: {},
+          create: (data.zoneIds ?? []).map((zoneId) => ({
+            id: randomUUID(),
+            zoneId,
           })),
         },
       },
@@ -286,7 +290,7 @@ export const createStudent = async (
         name: data.name,
         surname: data.surname,
         email: data.email,
-        phone: data.phone,
+        phone: null,
         address: data.address,
         img: data.img,
         bloodType: data.bloodType,
@@ -326,12 +330,12 @@ export const updateStudent = async (
         id: data.id,
       },
       data: {
-        ...(data.password !== "" && { password: data.password }),
+         ...(data.password !== "" && { password: data.password }),
         username: data.username,
         name: data.name,
         surname: data.surname,
         email: data.email || null,
-        phone: data.phone || null,
+        phone: null,
         address: data.address,
         ...(data.img !== undefined && { img: data.img }),
         bloodType: data.bloodType,
@@ -561,15 +565,21 @@ export const createLesson = async (
   data: LessonSchema
 ) => {
   try {
+    const classId = finiteNumberFromForm(data.classId);
+    const teacherId = data.teacherId?.trim() || null;
+    const zoneId = data.zoneId?.trim() || null;
+    if (classId == null || classId < 1 || !teacherId || !zoneId) {
+      return { success: false, error: true };
+    }
     await prisma.lesson.create({
       data: {
         name: data.name,
         day: data.day,
         startTime: data.startTime,
         endTime: data.endTime,
-        subjectId: data.subjectId,
-        classId: data.classId,
-        teacherId: data.teacherId,
+        zoneId,
+        classId,
+        teacherId,
       },
     });
     return { success: true, error: false };
@@ -579,11 +589,26 @@ export const createLesson = async (
   }
 };
 
+function finiteNumberFromForm(v: unknown): number | null {
+  if (v === "" || v === undefined || v === null) return null;
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 export const updateLesson = async (
   currentState: CurrentState,
   data: LessonSchema
 ) => {
   try {
+    if (data.id == null) {
+      return { success: false, error: true };
+    }
+    const classId = finiteNumberFromForm(data.classId);
+    const teacherId = data.teacherId?.trim() || null;
+    const zoneId = data.zoneId?.trim() || null;
+    if (classId == null || classId < 1 || !teacherId || !zoneId) {
+      return { success: false, error: true };
+    }
     await prisma.lesson.update({
       where: { id: data.id },
       data: {
@@ -591,9 +616,9 @@ export const updateLesson = async (
         day: data.day,
         startTime: data.startTime,
         endTime: data.endTime,
-        subjectId: data.subjectId,
-        classId: data.classId,
-        teacherId: data.teacherId,
+        zoneId,
+        classId,
+        teacherId,
       },
     });
     return { success: true, error: false };
@@ -602,6 +627,10 @@ export const updateLesson = async (
     return { success: false, error: true };
   }
 };
+
+/** Alias: activities in UI are backed by Lesson + Zone play areas */
+export const createActivity = createLesson;
+export const updateActivity = updateLesson;
 
 export const deleteLesson = async (
   currentState: CurrentState,
@@ -994,11 +1023,40 @@ export async function saveZones(zones: Record<string, string[]>) {
       return;
     }
 
+    // Log movement history: whenever a student's "current zone" changes,
+    // create a ZoneHistory record. (Needed for the "Time by Play Area" chart.)
+    const existingStudentZones = await prisma.studentZone.findMany({
+      select: { studentId: true, zoneId: true },
+    });
+
+    const prevByStudentId = new Map(
+      existingStudentZones.map((z) => [z.studentId, z.zoneId])
+    );
+
+    const nextByStudentId = new Map(
+      records.map((r) => [r.studentId, r.zoneId])
+    );
+
+    const historyToCreate = Array.from(nextByStudentId.entries())
+      .filter(([studentId, nextZoneId]) => prevByStudentId.get(studentId) !== nextZoneId)
+      .map(([studentId, nextZoneId]) => ({
+        id: randomUUID(),
+        studentId,
+        zoneId: nextZoneId,
+      }));
+
     await prisma.$transaction([
       prisma.studentZone.deleteMany(),
       prisma.studentZone.createMany({
         data: records,
       }),
+      ...(historyToCreate.length > 0
+        ? [
+            prisma.zoneHistory.createMany({
+              data: historyToCreate,
+            }),
+          ]
+        : []),
     ]);
   } catch (error) {
     console.error("Failed to save zones:", error);
