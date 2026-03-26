@@ -91,17 +91,26 @@ export default async function AttendancePage({
       : [];
 
   const key = (studentId: string, lessonId: number) => `${studentId}:${lessonId}`;
-  const attendanceMap = new Map<string, boolean>();
+  const attendanceByKey = new Map<
+    string,
+    { present: boolean; note: string | null; actualPickupTime: string | null }
+  >();
   for (const row of attendanceRows) {
-    attendanceMap.set(key(row.studentId, row.lessonId), row.present);
+    attendanceByKey.set(key(row.studentId, row.lessonId), {
+      present: row.present,
+      note: row.note ?? null,
+      actualPickupTime: row.actualPickupTime ?? null,
+    });
   }
 
   const rows: AttendanceRow[] = students.map((s) => {
     const lessonId = lessonIdByClass.get(s.classId) ?? null;
-    const present =
-      lessonId !== null
-        ? attendanceMap.get(key(s.id, lessonId)) ?? false
-        : false;
+    const att =
+      lessonId !== null ? attendanceByKey.get(key(s.id, lessonId)) : undefined;
+    const present = att?.present ?? false;
+    const defaultPickup = s.pickupTime ?? null;
+    const actualPickup = att?.actualPickupTime ?? null;
+    const displayPickupTime = actualPickup ?? defaultPickup ?? null;
     return {
       id: s.id,
       name: s.name,
@@ -110,6 +119,11 @@ export default async function AttendancePage({
       className: s.class.name,
       lessonId,
       present,
+      bringTime: s.bringTime ?? null,
+      defaultPickupTime: defaultPickup,
+      actualPickupTime: actualPickup,
+      displayPickupTime,
+      note: att?.note ?? null,
     };
   });
 

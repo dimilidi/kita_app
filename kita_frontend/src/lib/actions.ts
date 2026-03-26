@@ -299,6 +299,8 @@ export const createStudent = async (
         gradeId: data.gradeId,
         classId: data.classId,
         parentId: data.parentId,
+        bringTime: data.bringTime?.trim() || null,
+        pickupTime: data.pickupTime?.trim() || null,
       },
     });
 
@@ -344,6 +346,8 @@ export const updateStudent = async (
         gradeId: data.gradeId,
         classId: data.classId,
         parentId: data.parentId,
+        bringTime: data.bringTime?.trim() || null,
+        pickupTime: data.pickupTime?.trim() || null,
       },
     });
     // revalidatePath("/list/students");
@@ -879,6 +883,103 @@ export async function saveDailyAttendance({
           lessonId: lesson.id,
           date: start,
           present,
+        },
+      });
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.log(err);
+    return { success: false, error: "server" };
+  }
+}
+
+/** Daily attendance note and/or pickup override. Creates row if missing. Omit a field to leave it unchanged. */
+export async function saveAttendanceDayDetail({
+  studentId,
+  dateStr,
+  note,
+  actualPickupTime,
+}: {
+  studentId: string;
+  dateStr: string;
+  note?: string | null;
+  actualPickupTime?: string | null;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { userId, role } = getAuthData();
+    if (role !== "admin" && role !== "teacher") {
+      return { success: false, error: "forbidden" };
+    }
+
+    const range = parseDateStrToUtcRange(dateStr);
+    if (!range) {
+      return { success: false, error: "invalidDate" };
+    }
+    const { start, end } = range;
+
+    const student = await prisma.student.findUnique({
+      where: { id: studentId },
+    });
+    if (!student) {
+      return { success: false, error: "notFound" };
+    }
+
+    if (role === "teacher") {
+      const teachesHere = await prisma.lesson.findFirst({
+        where: {
+          classId: student.classId,
+          teacherId: userId!,
+        },
+      });
+      if (!teachesHere) {
+        return { success: false, error: "forbidden" };
+      }
+    }
+
+    const lesson = await prisma.lesson.findFirst({
+      where: { classId: student.classId },
+      orderBy: { startTime: "asc" },
+    });
+    if (!lesson) {
+      return { success: false, error: "noLesson" };
+    }
+
+    const noteNorm =
+      note === undefined ? undefined : note?.trim() ? note.trim() : null;
+    const pickupNorm =
+      actualPickupTime === undefined
+        ? undefined
+        : actualPickupTime?.trim()
+          ? actualPickupTime.trim()
+          : null;
+
+    const existing = await prisma.attendance.findFirst({
+      where: {
+        studentId,
+        lessonId: lesson.id,
+        date: { gte: start, lt: end },
+      },
+    });
+
+    if (existing) {
+      await prisma.attendance.update({
+        where: { id: existing.id },
+        data: {
+          ...(noteNorm !== undefined ? { note: noteNorm } : {}),
+          ...(pickupNorm !== undefined ? { actualPickupTime: pickupNorm } : {}),
+        },
+      });
+    } else {
+      await prisma.attendance.create({
+        data: {
+          studentId,
+          lessonId: lesson.id,
+          date: start,
+          present: false,
+          note: note !== undefined ? (noteNorm ?? null) : null,
+          actualPickupTime:
+            actualPickupTime !== undefined ? (pickupNorm ?? null) : null,
         },
       });
     }

@@ -106,6 +106,8 @@ export const studentSchema = z.object({
       .min(1, { message: "forms.required" })
   ),
   parentId: z.string().trim().min(1, { message: "forms.required" }),
+  bringTime: z.string().optional().or(z.literal("")),
+  pickupTime: z.string().optional().or(z.literal("")),
 });
 
 // export type StudentSchema = z.infer<typeof studentSchema>;

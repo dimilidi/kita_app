@@ -344,6 +344,27 @@ const StudentForm = ({
           )}
         </div>
 
+        {type === "update" && (
+          <>
+            <InputField
+              label={dict.forms.bringTime}
+              name="bringTime"
+              type="time"
+              register={register}
+              defaultValue={data?.bringTime ?? ""}
+              error={errors.bringTime}
+            />
+            <InputField
+              label={dict.forms.pickupTime}
+              name="pickupTime"
+              type="time"
+              register={register}
+              defaultValue={data?.pickupTime ?? ""}
+              error={errors.pickupTime}
+            />
+          </>
+        )}
+
         <CldUploadWidget
           uploadPreset="kita_app"
           onSuccess={(result, { widget }) => {

@@ -87,6 +87,8 @@
     "startDate": "Startdatum",
     "dueDate": "Fälligkeitsdatum",
     "none": "Keine",
+    "bringTime": "Bringzeit",
+    "pickupTime": "Abholzeit",
     "day": "Tag",
     "days": {
       "MONDAY": "Montag",
@@ -312,6 +314,10 @@
     "noStudents": "Keine Kinder für diese Auswahl.",
     "noLesson": "Für diese Gruppe ist keine Aktivität hinterlegt; Anwesenheit kann nicht gespeichert werden.",
     "noLessonShort": "Zuerst eine Aktivität für diese Gruppe anlegen.",
-    "saveFailed": "Anwesenheit konnte nicht gespeichert werden. Bitte erneut versuchen."
+    "saveFailed": "Anwesenheit konnte nicht gespeichert werden. Bitte erneut versuchen.",
+    "notes": "Notizen",
+    "pickupOverride": "Abholzeit (heute)",
+    "detailSaveFailed": "Notiz oder Abholzeit konnte nicht gespeichert werden.",
+    "downloadPdf": "PDF herunterladen"
   }
 }

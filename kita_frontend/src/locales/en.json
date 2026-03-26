@@ -87,6 +87,8 @@
     "startDate": "Start Date",
     "dueDate": "Due Date",
     "none": "None",
+    "bringTime": "Drop-off time",
+    "pickupTime": "Pickup time",
     "day": "Day",
     "days": {
       "MONDAY": "Monday",
@@ -312,6 +314,10 @@
     "noStudents": "No children match this filter.",
     "noLesson": "There is no activity linked to this group, so attendance cannot be saved.",
     "noLessonShort": "Add an activity for this group first.",
-    "saveFailed": "Could not save attendance. Please try again."
+    "saveFailed": "Could not save attendance. Please try again.",
+    "notes": "Notes",
+    "pickupOverride": "Override pickup (today)",
+    "detailSaveFailed": "Could not save note or pickup time.",
+    "downloadPdf": "Download PDF"
   }
 }

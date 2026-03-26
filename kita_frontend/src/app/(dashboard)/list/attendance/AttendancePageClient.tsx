@@ -1,6 +1,6 @@
 "use client";
 
-import { saveDailyAttendance } from "@/lib/actions";
+import { saveAttendanceDayDetail, saveDailyAttendance } from "@/lib/actions";
 import { todayDateStrLocal } from "@/lib/attendanceDate";
 import { useTranslations } from "@/i18n/TranslationsProvider";
 import { useRouter, usePathname } from "next/navigation";
@@ -15,6 +15,11 @@ export type AttendanceRow = {
   className: string;
   lessonId: number | null;
   present: boolean;
+  bringTime: string | null;
+  defaultPickupTime: string | null;
+  actualPickupTime: string | null;
+  displayPickupTime: string | null;
+  note: string | null;
 };
 
 export default function AttendancePageClient({
@@ -81,6 +86,34 @@ export default function AttendancePageClient({
       } else {
         toast(dict.attendancePage.saveFailed);
       }
+      return;
+    }
+    startTransition(() => router.refresh());
+  };
+
+  const onSaveNoteBlur = async (studentId: string, note: string) => {
+    if (!canEdit) return;
+    const res = await saveAttendanceDayDetail({
+      studentId,
+      dateStr,
+      note: note.trim() ? note.trim() : null,
+    });
+    if (!res.success) {
+      toast(dict.attendancePage.detailSaveFailed);
+      return;
+    }
+    startTransition(() => router.refresh());
+  };
+
+  const onSavePickupOverrideBlur = async (studentId: string, value: string) => {
+    if (!canEdit) return;
+    const res = await saveAttendanceDayDetail({
+      studentId,
+      dateStr,
+      actualPickupTime: value.trim() ? value.trim() : null,
+    });
+    if (!res.success) {
+      toast(dict.attendancePage.detailSaveFailed);
       return;
     }
     startTransition(() => router.refresh());
@@ -187,6 +220,8 @@ export default function AttendancePageClient({
           dict.attendancePage.childName,
           dict.attendancePage.group,
           dict.attendancePage.status,
+          dict.forms.pickupTime,
+          dict.attendancePage.notes,
         ],
       ];
 
@@ -197,6 +232,8 @@ export default function AttendancePageClient({
         // - present: we will draw a filled circle via didDrawCell (no unicode symbols)
         // - absent: empty
         row.present ? "1" : "",
+        row.displayPickupTime ?? "—",
+        row.note ?? "",
       ]);
 
       // `jspdf-autotable` is commonly used as: autoTable(doc, options)
@@ -220,9 +257,11 @@ export default function AttendancePageClient({
         },
         headStyles: { fillColor: [248, 250, 252], textColor: [55, 65, 81] },
         columnStyles: {
-          0: { cellWidth: 220 },
-          1: { cellWidth: 120, halign: "right" },
-          2: { cellWidth: 90, halign: "center" },
+          0: { cellWidth: 150 },
+          1: { cellWidth: 70, halign: "right" },
+          2: { cellWidth: 52, halign: "center" },
+          3: { cellWidth: 110 },
+          4: { cellWidth: 120 },
         },
         margin: { left, right },
         didParseCell: (data: any) => {
@@ -432,7 +471,7 @@ export default function AttendancePageClient({
                       <path d="M7 10l5 5 5-5" />
                       <path d="M12 15V3" />
                     </svg>
-                    <span>Download PDF</span>
+                    <span>{dict.attendancePage.downloadPdf}</span>
                   </button>
                 </div>
               )}
@@ -470,12 +509,18 @@ export default function AttendancePageClient({
                 <th className="p-4 font-medium text-gray-700 w-[min(100%,14rem)]">
                   {dict.attendancePage.status}
                 </th>
+                <th className="p-4 font-medium text-gray-700 hidden lg:table-cell min-w-[10rem]">
+                  {dict.forms.pickupTime}
+                </th>
+                <th className="p-4 font-medium text-gray-700 hidden xl:table-cell min-w-[12rem]">
+                  {dict.attendancePage.notes}
+                </th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="p-8 text-center text-gray-500">
+                  <td colSpan={5} className="p-8 text-center text-gray-500">
                     {dict.attendancePage.noStudents}
                   </td>
                 </tr>
@@ -484,7 +529,7 @@ export default function AttendancePageClient({
                   const disabled = !canEdit || !row.lessonId || isPending;
                   return (
                     <tr
-                      key={row.id}
+                      key={`${row.id}-${dateStr}`}
                       className="border-b border-gray-100 even:bg-slate-50/60 hover:bg-kitaPurpleLight/40"
                     >
                       <td className="p-4 font-medium text-gray-900">
@@ -512,6 +557,44 @@ export default function AttendancePageClient({
                           <p className="text-xs text-amber-600 mt-1">
                             {dict.attendancePage.noLessonShort}
                           </p>
+                        )}
+                      </td>
+                      <td className="p-4 hidden lg:table-cell align-top min-w-0">
+                        <div className="flex flex-col gap-1 text-xs text-gray-700">
+                          <span className="font-medium">
+                            {row.displayPickupTime ?? "—"}
+                          </span>
+                          {canEdit && row.lessonId && (
+                            <label className="flex flex-col gap-0.5 mt-1">
+                              <span className="text-[10px] text-gray-500">
+                                {dict.attendancePage.pickupOverride}
+                              </span>
+                              <input
+                                type="time"
+                                className="border rounded px-2 py-1 text-xs max-w-[7rem]"
+                                defaultValue={row.actualPickupTime ?? ""}
+                                disabled={disabled}
+                                onBlur={(e) =>
+                                  onSavePickupOverrideBlur(row.id, e.target.value)
+                                }
+                              />
+                            </label>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-4 hidden xl:table-cell align-top min-w-0">
+                        {canEdit && row.lessonId ? (
+                          <textarea
+                            className="w-full min-h-[3rem] border rounded-md px-2 py-1 text-xs"
+                            defaultValue={row.note ?? ""}
+                            disabled={disabled}
+                            onBlur={(e) => onSaveNoteBlur(row.id, e.target.value)}
+                            placeholder={dict.attendancePage.notes}
+                          />
+                        ) : (
+                          <span className="text-xs text-gray-600 break-words">
+                            {row.note ?? "—"}
+                          </span>
                         )}
                       </td>
                     </tr>
