@@ -2,15 +2,19 @@
 
 import {
   DndContext,
+  DragEndEvent,
   DragOverlay,
   PointerSensor,
-  useDroppable,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { saveLunchGroups, saveLunchVote } from "@/lib/actions";
+import { saveLunchGroups, saveLunchVote, saveTeacherLunchGroups } from "@/lib/actions";
 import Child from "@/components/Child";
+import EducatorCard from "@/components/EducatorCard";
 import LunchGroup from "@/components/LunchGroup";
+import PlayPoolCard from "@/components/PlayPoolCard";
+import type { TeacherLite } from "@/components/PlayAreaCard";
+import type { StudentWithClass } from "@/types/student";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -34,20 +38,42 @@ type Tischspruch = {
 
 type Props = {
   students: LunchStudent[];
+  teachers: TeacherLite[];
   initialGroups: Record<GroupId, string[]>;
+  initialTeacherLunchGroups: Record<GroupId, string[]>;
   lunchGroups: { id: string; name: string; color?: string; capacity: number }[];
   initialVotes: Record<string, number>;
   initialTischsprueche: Tischspruch[];
-  canManageTischsprueche: boolean;
 };
+
+function parseDragId(raw: string): { kind: "child" | "teacher"; id: string } | null {
+  if (raw.startsWith("child:")) return { kind: "child", id: raw.slice(6) };
+  if (raw.startsWith("teacher:")) return { kind: "teacher", id: raw.slice(8) };
+  return null;
+}
+
+function parseDropTarget(
+  overId: string
+): { kind: "child" | "teacher"; zone: string } | null {
+  if (overId === "pool") return { kind: "child", zone: "pool" };
+  if (overId === "teacherPool") return { kind: "teacher", zone: "teacherPool" };
+  if (overId.startsWith("kid-lunch-")) {
+    return { kind: "child", zone: overId.replace("kid-lunch-", "") };
+  }
+  if (overId.startsWith("teacher-lunch-")) {
+    return { kind: "teacher", zone: overId.replace("teacher-lunch-", "") };
+  }
+  return null;
+}
 
 export default function LunchBoardClient({
   students,
+  teachers,
   initialGroups,
+  initialTeacherLunchGroups: initialTeacherLunchProp,
   lunchGroups,
   initialVotes,
   initialTischsprueche,
-  canManageTischsprueche,
 }: Props) {
   const pathname = usePathname();
   const localeSegments = pathname.split("/").filter(Boolean);
@@ -56,13 +82,24 @@ export default function LunchBoardClient({
     : "de") as "en" | "de";
   const dict = useTranslations();
 
-  const [groups, setGroups] = useState<Record<GroupId, string[]>>(initialGroups);
+  const [groups, setGroups] = useState<Record<GroupId, string[]>>(() => ({
+    ...initialGroups,
+    pool: initialGroups.pool ?? [],
+  }));
+  const [teacherLunchState, setTeacherLunchState] = useState<
+    Record<string, string[]>
+  >(() => {
+    const t = initialTeacherLunchProp ?? {};
+    return {
+      ...t,
+      teacherPool: t.teacherPool ?? [],
+    };
+  });
+
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeChildForVote, setActiveChildForVote] = useState<string | null>(null);
   const [childVotes, setChildVotes] = useState<Record<string, number | null>>(initialVotes);
   const [tischsprueche] = useState<Tischspruch[]>(initialTischsprueche);
-
-  const poolDroppable = useDroppable({ id: "pool" });
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -77,10 +114,29 @@ export default function LunchBoardClient({
     () => Object.fromEntries(students.map((student) => [student.id, student])),
     [students]
   );
+  const teacherMap = useMemo(
+    () => Object.fromEntries(teachers.map((x) => [x.id, x])),
+    [teachers]
+  );
+
   const groupCapacityMap = useMemo(
     () => Object.fromEntries(lunchGroups.map((group) => [group.id, group.capacity])),
     [lunchGroups]
   );
+
+  const getTeacher = (id: string) => teacherMap[id];
+
+  const getStudentForPool = (id: string): StudentWithClass | undefined => {
+    const s = studentMap[id];
+    if (!s) return undefined;
+    return {
+      id: s.id,
+      name: s.name,
+      surname: s.surname,
+      img: s.img,
+      class: { name: s.className },
+    } as StudentWithClass;
+  };
 
   const getVotesForGroup = (groupId: Exclude<GroupId, "pool">) => {
     const result: Record<number, number> = Object.fromEntries(
@@ -107,9 +163,65 @@ export default function LunchBoardClient({
     };
   };
 
+  const onDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+    if (!over) return;
+
+    const parsed = parseDragId(String(active.id));
+    const target = parseDropTarget(String(over.id));
+    if (!parsed || !target) return;
+    if (parsed.kind !== target.kind) return;
+
+    const entityId = parsed.id;
+    const toZone = target.zone;
+
+    if (parsed.kind === "child") {
+      setGroups((prev) => {
+        const from = (Object.keys(prev) as GroupId[]).find((g) =>
+          prev[g].includes(entityId)
+        );
+        if (!from || from === toZone) return prev;
+        if (
+          toZone !== "pool" &&
+          prev[toZone].length >= (groupCapacityMap[toZone] ?? 15)
+        ) {
+          return prev;
+        }
+
+        const next = {
+          ...prev,
+          [from]: prev[from].filter((c) => c !== entityId),
+          [toZone]: [...prev[toZone], entityId],
+        };
+        void saveLunchGroups(next);
+        return next;
+      });
+    } else {
+      setTeacherLunchState((prev) => {
+        const from = Object.keys(prev).find((z) => prev[z].includes(entityId));
+        if (!from || from === toZone) return prev;
+
+        const next: Record<string, string[]> = {
+          ...prev,
+          [from]: prev[from].filter((t) => t !== entityId),
+          [toZone]: [...(prev[toZone] ?? []), entityId],
+        };
+        void saveTeacherLunchGroups(next);
+        return next;
+      });
+    }
+  };
+
+  const activeParsed = activeId ? parseDragId(activeId) : null;
+  const activeStudent =
+    activeParsed?.kind === "child" ? getChild(activeParsed.id) : null;
+  const activeTeacher =
+    activeParsed?.kind === "teacher" ? getTeacher(activeParsed.id) : null;
+
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col gap-6 max-w-[100vw] mx-auto">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="hidden md:block text-lg font-semibold">
           {dict.lunch.boardTitle}
         </h1>
@@ -132,94 +244,87 @@ export default function LunchBoardClient({
       <DndContext
         sensors={sensors}
         autoScroll
-        onDragStart={({ active }) => {
-          setActiveId(active.id as string);
-        }}
-        onDragEnd={({ active, over }) => {
-          setActiveId(null);
-          if (!over) return;
-
-          setGroups((prev) => {
-            const from = (Object.keys(prev) as GroupId[]).find((g) =>
-              prev[g].includes(active.id as string)
-            );
-
-            const to = over.id as GroupId;
-
-            if (!from || from === to) return prev;
-            if (to !== "pool" && prev[to].length >= (groupCapacityMap[to] ?? 15)) return prev;
-
-            const newGroups = {
-              ...prev,
-              [from]: prev[from].filter((c) => c !== active.id),
-              [to]: [...prev[to], active.id as string],
-            };
-
-            void saveLunchGroups(newGroups);
-            return newGroups;
-          });
-        }}
+        onDragStart={({ active }) => setActiveId(String(active.id))}
+        onDragEnd={onDragEnd}
       >
-        <div className="flex justify-center gap-6 flex-wrap">
-          {lunchGroups.map((group) => (
-            <LunchGroup
-              key={group.id}
-              id={group.id}
-              title={group.name}
-              color={group.color ?? "bg-gray-50 border-gray-300"}
-              childrenIds={groups[group.id] ?? []}
-              voteOptions={tischsprueche}
-              votes={getVotesForGroup(group.id)}
-              votedChildren={(groups[group.id] ?? []).filter((c) => childVotes[c] != null)}
-              maxPerGroup={group.capacity}
-              onSelectChild={setActiveChildForVote}
-              onVote={(tischspruchId: number) => {
-                if (!activeChildForVote) return;
+        <div className="w-full pb-2">
+          <div className="grid w-full gap-4 items-stretch [grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
+            {lunchGroups.map((group) => (
+              <LunchGroup
+                key={group.id}
+                id={group.id}
+                title={group.name}
+                color={group.color ?? "bg-gray-50 border-gray-300"}
+                educatorIds={teacherLunchState[group.id] ?? []}
+                childrenIds={groups[group.id] ?? []}
+                voteOptions={tischsprueche}
+                votes={getVotesForGroup(group.id)}
+                votedChildren={(groups[group.id] ?? []).filter(
+                  (c) => childVotes[c] != null
+                )}
+                maxPerGroup={group.capacity}
+                onSelectChild={setActiveChildForVote}
+                onVote={(tischspruchId: number) => {
+                  if (!activeChildForVote) return;
 
-                setChildVotes((prev) => ({
-                  ...prev,
-                  [activeChildForVote]: tischspruchId,
-                }));
+                  setChildVotes((prev) => ({
+                    ...prev,
+                    [activeChildForVote]: tischspruchId,
+                  }));
 
-                void saveLunchVote({
-                  studentId: activeChildForVote,
-                  groupId: group.id,
-                  tischspruchId,
-                });
+                  void saveLunchVote({
+                    studentId: activeChildForVote,
+                    groupId: group.id,
+                    tischspruchId,
+                  });
 
-                setActiveChildForVote(null);
-              }}
-              getChild={getChild}
-            />
-          ))}
-        </div>
-
-        <div
-          ref={poolDroppable.setNodeRef}
-          className="rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 p-4 h-[450px] overflow-y-auto"
-        >
-          <h3 className="mb-3 text-center font-semibold sticky top-0 bg-gray-50 z-10">
-            All kids
-          </h3>
-
-          <div className="grid grid-cols-8 gap-4">
-            {groups.pool.map((childId) => {
-              const child = getChild(childId);
-              if (!child) return null;
-
-              return (
-                <Child
-                  key={child.id}
-                  id={child.id}
-                  name={child.name}
-                  img={child.img}
-                  group={child.group}
-                />
-              );
-            })}
+                  setActiveChildForVote(null);
+                }}
+                getChild={getChild}
+                getTeacher={getTeacher}
+                detailHref={`/${locale}/list/lunch-groups/${group.id}`}
+              />
+            ))}
           </div>
         </div>
-        <DragOverlay>{activeId && getChild(activeId) ? <Child {...getChild(activeId)!} /> : null}</DragOverlay>
+
+        <div className="flex flex-col lg:flex-row gap-4 border-t border-gray-200 pt-6">
+          <PlayPoolCard
+            droppableId="pool"
+            title={dict.playBoard.kidsPool}
+            variant="kids"
+            ids={groups.pool ?? []}
+            getStudent={getStudentForPool}
+            getTeacher={getTeacher}
+          />
+          <PlayPoolCard
+            droppableId="teacherPool"
+            title={dict.playBoard.educatorsPool}
+            variant="teachers"
+            ids={teacherLunchState.teacherPool ?? []}
+            getStudent={getStudentForPool}
+            getTeacher={getTeacher}
+          />
+        </div>
+
+        <DragOverlay>
+          {activeStudent ? (
+            <Child
+              id={activeStudent.id}
+              dragId={`child:${activeStudent.id}`}
+              name={activeStudent.name}
+              img={activeStudent.img}
+              group={activeStudent.group}
+            />
+          ) : activeTeacher ? (
+            <EducatorCard
+              id={activeTeacher.id}
+              name={`${activeTeacher.name} ${activeTeacher.surname}`}
+              img={activeTeacher.img}
+              readOnly
+            />
+          ) : null}
+        </DragOverlay>
       </DndContext>
     </div>
   );

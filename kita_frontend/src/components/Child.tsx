@@ -5,25 +5,31 @@ import clsx from "clsx";
 
 type ChildProps = {
   id: string;
+  /** Defaults to `id`. Use `child:${id}` on the play board to avoid id clashes with educators. */
+  dragId?: string;
   name?: string;
   img?: string;
   group?: string;
   voted?: boolean;
   inGroup?: boolean;
   onSelect?: (id: string) => void;
+  /** Static display (e.g. lunch group detail page) — no drag. */
+  readOnly?: boolean;
 };
 
 export default function Child({
   id,
+  dragId,
   name,
   img,
   group,
   voted = false,
   inGroup = false,
   onSelect,
+  readOnly,
 }: ChildProps) {
   const { setNodeRef, listeners, attributes, transform, isDragging } =
-    useDraggable({ id });
+    useDraggable({ id: dragId ?? id, disabled: readOnly });
 
   const style = transform
     ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
@@ -33,12 +39,12 @@ export default function Child({
     <div
       ref={setNodeRef}
       style={style}
-      {...listeners}
-      {...attributes}
-      onClick={() => inGroup && onSelect?.(id)}
+      {...(readOnly ? {} : listeners)}
+      {...(readOnly ? {} : attributes)}
+      onClick={() => !readOnly && inGroup && onSelect?.(id)}
       className={clsx(
-        "flex flex-col items-center justify-center w-[80px] p-2 rounded-lg bg-white shadow-sm border text-center cursor-pointer select-none transition",
-        "hover:shadow-md",
+        "flex flex-col items-center justify-center w-[80px] p-2 rounded-lg bg-white shadow-sm border text-center select-none transition",
+        readOnly ? "cursor-default" : "cursor-pointer hover:shadow-md",
         isDragging && "opacity-50 scale-105",
         inGroup &&
           (voted

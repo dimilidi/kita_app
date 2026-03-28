@@ -1,5 +1,4 @@
 import prisma from "@/lib/prisma";
-import { getAuthData } from "@/lib/utils";
 import LunchBoardClient from "./LunchBoardClient";
 import { Prisma } from "@prisma/client";
 
@@ -8,7 +7,6 @@ export default async function LunchPage({
 }: {
   searchParams: { [key: string]: string | undefined };
 }) {
-  const { role } = getAuthData();
   const query: Prisma.StudentWhereInput = {};
   const { search } = searchParams;
 
@@ -58,6 +56,36 @@ export default async function LunchPage({
     lunchVotes.map((vote) => [vote.studentId, vote.tischspruchId])
   );
 
+  const teachers = await prisma.teacher.findMany({
+    select: { id: true, name: true, surname: true, img: true },
+    orderBy: { name: "asc" },
+  });
+
+  const teacherLunchRows = await prisma.teacherLunchGroup.findMany();
+
+  const initialTeacherLunchGroups: Record<string, string[]> = {
+    teacherPool: [],
+  };
+  lunchGroups.forEach((group: { id: string }) => {
+    initialTeacherLunchGroups[group.id] = [];
+  });
+
+  const teacherToGroup = new Map<string, string>();
+  for (const row of teacherLunchRows) {
+    if (!teacherToGroup.has(row.teacherId)) {
+      teacherToGroup.set(row.teacherId, row.groupId);
+    }
+  }
+
+  for (const t of teachers) {
+    const gid = teacherToGroup.get(t.id);
+    if (gid != null && initialTeacherLunchGroups[gid] !== undefined) {
+      initialTeacherLunchGroups[gid].push(t.id);
+    } else {
+      initialTeacherLunchGroups.teacherPool.push(t.id);
+    }
+  }
+
   return (
     <div className="p-4">
       <LunchBoardClient
@@ -68,7 +96,9 @@ export default async function LunchPage({
           img: student.img ?? null,
           className: student.class.name,
         }))}
+        teachers={teachers}
         initialGroups={initialGroups}
+        initialTeacherLunchGroups={initialTeacherLunchGroups}
         lunchGroups={lunchGroups.map((group: any) => ({
           id: group.id,
           name: group.name,
@@ -77,7 +107,6 @@ export default async function LunchPage({
         }))}
         initialVotes={initialVotes}
         initialTischsprueche={tischsprueche}
-        canManageTischsprueche={role === "admin" || role === "teacher"}
       />
     </div>
   );

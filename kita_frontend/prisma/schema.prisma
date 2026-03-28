@@ -58,8 +58,9 @@ model Teacher {
   birthday  DateTime
   classes   Class[]
   lessons   Lesson[]
-  zones     TeacherZone[]
-  subjects  Subject[]     @relation("SubjectToTeacher")
+  zones             TeacherZone[]
+  teacherLunchGroups TeacherLunchGroup[]
+  subjects          Subject[]     @relation("SubjectToTeacher")
 }
 
 model Parent {
@@ -173,12 +174,25 @@ model Event {
 }
 
 model Announcement {
-  id          Int      @id @default(autoincrement())
+  id          Int                 @id @default(autoincrement())
   title       String
   description String
   date        DateTime
   classId     Int?
-  class       Class?   @relation(fields: [classId], references: [id])
+  class       Class?              @relation(fields: [classId], references: [id])
+  reads       AnnouncementRead[]
+}
+
+/// Marks which announcements a user has seen (Clerk user id matches Student/Teacher/Parent/Admin id).
+model AnnouncementRead {
+  id             Int          @id @default(autoincrement())
+  userId         String
+  announcementId Int
+  readAt         DateTime     @default(now())
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, announcementId])
+  @@index([userId])
 }
 
 model Zone {
@@ -238,6 +252,18 @@ model LunchGroupEntity {
   createdAt   DateTime            @default(now())
   assignments StudentLunchGroup[]
   votes       StudentLunchVote[]
+  teacherAssignments TeacherLunchGroup[]
+}
+
+// Educator assigned to a lunch group for the lunch board (pool = no row).
+model TeacherLunchGroup {
+  id        String   @id @default(cuid())
+  teacherId String
+  groupId   String
+  teacher   Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  lunchGroup LunchGroupEntity @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId])
 }
 
 model TeacherZone {

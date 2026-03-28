@@ -2,13 +2,48 @@
 
 import { UserButton, useUser } from "@clerk/nextjs";
 import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { getUnreadAnnouncementCountAction } from "@/lib/actions";
+import { DEFAULT_LOCALE } from "@/i18n/lang";
 import LanguageSwitcher from "./LanguageSwitcher";
 
 import { useTranslations } from "@/i18n/TranslationsProvider";
 
-const Navbar = () => {
+const getLangFromPathname = (pathname: string) => {
+  const segments = pathname.split("/").filter(Boolean);
+  const maybe = segments[0];
+  if (maybe === "en" || maybe === "de") return maybe;
+  return DEFAULT_LOCALE;
+};
+
+const Navbar = ({
+  unreadAnnouncementCount: initialUnread,
+}: {
+  unreadAnnouncementCount: number;
+}) => {
   const { user } = useUser();
   const dict = useTranslations();
+  const pathname = usePathname();
+  const lang = getLangFromPathname(pathname);
+  const [unread, setUnread] = useState(initialUnread);
+
+  useEffect(() => {
+    setUnread(initialUnread);
+  }, [initialUnread]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getUnreadAnnouncementCountAction().then((n) => {
+      if (!cancelled) setUnread(n);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
+
+  const announcementsHref = `/${lang}/list/announcements`;
 
   return (
     <div className="flex items-center justify-between p-4">
@@ -29,12 +64,19 @@ const Navbar = () => {
         <div className="bg-white rounded-full w-7 h-7 flex items-center justify-center cursor-pointer">
           <Image src="/message.png" alt="" width={20} height={20} />
         </div>
-        <div className="bg-white rounded-full w-7 h-7 flex items-center justify-center cursor-pointer relative">
+        <Link
+          href={announcementsHref}
+          className="bg-white rounded-full w-7 h-7 flex items-center justify-center cursor-pointer relative"
+          title={dict.menu.announcements}
+          aria-label={dict.menu.announcements}
+        >
           <Image src="/announcement.png" alt="" width={20} height={20} />
-          <div className="absolute -top-3 -right-3 w-5 h-5 flex items-center justify-center bg-purple-500 text-white rounded-full text-xs">
-            1
-          </div>
-        </div>
+          {unread > 0 ? (
+            <div className="absolute -top-3 -right-3 min-w-[1.25rem] h-5 px-1 flex items-center justify-center bg-purple-500 text-white rounded-full text-[10px] font-semibold leading-none">
+              {unread > 99 ? "99+" : unread}
+            </div>
+          ) : null}
+        </Link>
         <div className="flex flex-col">
           <span className="text-xs leading-3 font-medium">
             {user?.firstName ?? user?.username ?? ""}

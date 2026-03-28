@@ -1,19 +1,32 @@
 import clsx from "clsx";
 
+type TischspruchVoteProps = {
+  options: { id: number; title: string; text: string }[];
+  votes: Record<number, number>;
+  onVote: (id: number) => void;
+  disabled: boolean;
+  /** Omit the inner "Tischspruch" heading when the parent already shows a section title. */
+  hideHeading?: boolean;
+  /** Denser padding and typography (e.g. lunch group cards). */
+  compact?: boolean;
+};
+
 const TischspruchVote = ({
   options,
   votes,
   onVote,
   disabled,
-}: {
-  options: { id: number; title: string; text: string }[];
-  votes: Record<number, number>;
-  onVote: (id: number) => void;
-  disabled: boolean;
-}) => {
+  hideHeading = false,
+  compact = false,
+}: TischspruchVoteProps) => {
   if (options.length === 0) {
     return (
-      <div className="mt-3 rounded-xl bg-white/80 p-2 text-xs text-center text-gray-500">
+      <div
+        className={clsx(
+          "rounded-lg bg-white/80 text-center text-gray-500",
+          compact ? "px-2 py-1.5 text-[10px]" : "mt-3 rounded-xl p-2 text-xs"
+        )}
+      >
         No Tischsprueche available.
       </div>
     );
@@ -26,22 +39,31 @@ const TischspruchVote = ({
   }, options[0]);
 
   return (
-    <div className="mt-3 rounded-xl bg-white/80 p-2 text-xs">
-      <div className="mb-2 text-center font-semibold">
-        🍽️ Tischspruch
-      </div>
+    <div
+      className={clsx(
+        "rounded-lg bg-white/80 text-xs",
+        compact ? "p-1.5" : "mt-3 rounded-xl p-2"
+      )}
+    >
+      {!hideHeading && (
+        <div className={clsx("text-center font-semibold", compact ? "mb-1 text-[11px]" : "mb-2")}>
+          🍽️ Tischspruch
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 gap-2">
+      <div className={clsx("grid grid-cols-1", compact ? "gap-1" : "gap-2")}>
         {options.map((option) => (
           <div
             key={option.id}
             className={clsx(
-              "rounded-lg border p-2 bg-gray-50",
+              "rounded-lg border bg-gray-50",
+              compact ? "p-1.5" : "p-2",
               winner.id === option.id && "border-green-400 bg-green-100"
             )}
           >
             <div className="flex items-start justify-between gap-2">
               <button
+                type="button"
                 onClick={() => onVote(option.id)}
                 disabled={disabled}
                 className={clsx(
@@ -49,18 +71,28 @@ const TischspruchVote = ({
                   disabled ? "cursor-not-allowed opacity-70" : "cursor-pointer"
                 )}
               >
-                <div className="font-semibold">{option.title}</div>
-                <div className="mt-1 text-[11px]">Votes: {votes[option.id] ?? 0}</div>
+                <div className={clsx("font-semibold", compact && "text-[11px] leading-tight")}>
+                  {option.title}
+                </div>
+                <div className={clsx(compact ? "mt-0.5 text-[10px]" : "mt-1 text-[11px]")}>
+                  Votes: {votes[option.id] ?? 0}
+                </div>
               </button>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="mt-2 text-center text-sm font-semibold">
+      <div
+        className={clsx(
+          "text-center font-semibold",
+          compact ? "mt-1 text-[10px] leading-tight" : "mt-2 text-sm"
+        )}
+      >
         Winner: {winner.title}
       </div>
     </div>
   );
 };
- export default TischspruchVote;
+
+export default TischspruchVote;

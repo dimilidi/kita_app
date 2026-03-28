@@ -1,22 +1,26 @@
 "use client";
 
 import Child from "@/components/Child";
+import EducatorCard from "@/components/EducatorCard";
+import type { TeacherLite } from "@/components/PlayAreaCard";
 import { StudentWithClass } from "@/types/student";
 import { useTranslations } from "@/i18n/TranslationsProvider";
 
 type Props = {
-  zoneId: string;
   title: string;
   childrenIds: string[];
+  educatorIds: string[];
   getStudent: (id: string) => StudentWithClass | undefined;
+  getTeacher: (id: string) => TeacherLite | undefined;
   onClose: () => void;
 };
 
 export default function ZonePanel({
-  zoneId,
   title,
   childrenIds,
+  educatorIds,
   getStudent,
+  getTeacher,
   onClose,
 }: Props) {
   const dict = useTranslations();
@@ -37,12 +41,25 @@ export default function ZonePanel({
           </button>
         </div>
 
-        {/* TEACHERS */}
+        {/* EDUCATORS */}
         <div>
-          <h3 className="font-semibold mb-2">{dict.zones.educators}</h3>
-          <div className="flex gap-3">
-            <div className="px-3 py-1 bg-gray-100 rounded">Anna</div>
-            <div className="px-3 py-1 bg-gray-100 rounded">Maria</div>
+          <h3 className="font-semibold mb-2">
+            {dict.zones.educators} ({educatorIds.length})
+          </h3>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] gap-3">
+            {educatorIds.map((id) => {
+              const teacher = getTeacher(id);
+              if (!teacher) return null;
+              return (
+                <EducatorCard
+                  key={id}
+                  id={teacher.id}
+                  name={`${teacher.name} ${teacher.surname}`}
+                  img={teacher.img}
+                  readOnly
+                />
+              );
+            })}
           </div>
         </div>
 
@@ -71,7 +88,7 @@ export default function ZonePanel({
                 <Child
                   key={id}
                   id={student.id}
-                  name={student.name}
+                  name={`${student.name} ${student.surname}`}
                   img={student.img ?? undefined}
                   group={student.class.name}
                 />

@@ -3,6 +3,7 @@
 import {
   deleteAnnouncement,
   deleteAssignment,
+  deleteZone,
   deleteAttendance,
   deleteClass,
   deleteEvent,
@@ -37,6 +38,7 @@ const deleteActionMap = {
   attendance: deleteAttendance,
   event: deleteEvent,
   announcement: deleteAnnouncement,
+  zone: deleteZone,
 };
 
 // USE LAZY LOADING
@@ -83,6 +85,9 @@ const EventForm = dynamic(() => import("./forms/EventForm"), {
   loading: () => <LoadingFallback />,
 });
 const AnnouncementForm = dynamic(() => import("./forms/AnnouncementForm"), {
+  loading: () => <LoadingFallback />,
+});
+const ZoneForm = dynamic(() => import("./forms/ZoneForm"), {
   loading: () => <LoadingFallback />,
 });
 // TODO: OTHER FORMS
@@ -172,6 +177,9 @@ const forms: {
       relatedData={relatedData}
     />
   ),
+  zone: (setOpen, type, data) => (
+    <ZoneForm type={type} data={data} setOpen={setOpen} />
+  ),
 };
 
 const FormModal = ({
@@ -211,6 +219,17 @@ const FormModal = ({
         router.refresh();
       }
     }, [state, router, label, dict]);
+
+    useEffect(() => {
+      if (type !== "delete" || !state?.error) {
+        return;
+      }
+      if (table === "zone" && "inUse" in state && state.inUse) {
+        toast(dict.areasList.deleteInUse);
+      } else {
+        toast(dict.forms.somethingWentWrong);
+      }
+    }, [state, type, table, dict]);
 
     return type === "delete" && id ? (
       <form action={formAction} className="p-4 flex flex-col gap-4">

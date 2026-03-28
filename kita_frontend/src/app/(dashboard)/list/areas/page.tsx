@@ -1,52 +1,55 @@
 import prisma from "@/lib/prisma";
-import PlayBoard from "../../play/PlayBoard";
+import { ITEM_PER_PAGE } from "@/lib/settings";
+import { getAuthData } from "@/lib/utils";
 import { Prisma } from "@prisma/client";
+import AreaListClient from "./AreaListClient";
 
-type StudentWithClass = Prisma.StudentGetPayload<{
-  include: { class: true };
-}>;
+export default async function AreasListPage({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | undefined };
+}) {
+  const { role } = getAuthData();
+  const { page, ...queryParams } = searchParams;
+  const p = page ? parseInt(page, 10) : 1;
 
-export default async function PlayPage() {
-  const students: StudentWithClass[] = await prisma.student.findMany({
-    include: {
-      class: true,
-    },
-    orderBy: {
-      name: "asc",
-    },
-  });
+  const query: Prisma.ZoneWhereInput = {};
 
-  const zones = await prisma.zone.findMany();
-
-  const studentZones = await prisma.studentZone.findMany();
-
-  const initialZones: Record<string, string[]> = {};
-
-  zones.forEach((z) => {
-    initialZones[z.id] = [];
-  });
-
-  initialZones["pool"] = [];
-
-  studentZones.forEach((sz) => {
-    initialZones[sz.zoneId]?.push(sz.studentId);
-  });
-
-  const placedStudents = new Set(studentZones.map((z) => z.studentId));
-
-  students.forEach((s) => {
-    if (!placedStudents.has(s.id)) {
-      initialZones.pool.push(s.id);
+  if (queryParams) {
+    for (const [key, value] of Object.entries(queryParams)) {
+      if (value !== undefined) {
+        switch (key) {
+          case "search":
+            query.name = { contains: value, mode: "insensitive" };
+            break;
+          default:
+            break;
+        }
+      }
     }
-  });
+  }
+
+  const [data, count] = await prisma.$transaction([
+    prisma.zone.findMany({
+      where: query,
+      include: {
+        _count: {
+          select: { lessons: true },
+        },
+      },
+      orderBy: { name: "asc" },
+      take: ITEM_PER_PAGE,
+      skip: ITEM_PER_PAGE * (p - 1),
+    }),
+    prisma.zone.count({ where: query }),
+  ]);
 
   return (
-    <div className="p-4">
-      <PlayBoard
-        students={students}
-        zones={zones}
-        initialZones={initialZones}
-      />
-    </div>
+    <AreaListClient
+      data={data}
+      count={count}
+      page={p}
+      role={role as string}
+    />
   );
 }

@@ -14,14 +14,19 @@ import {
   StudentSchema,
   SubjectSchema,
   TeacherSchema,
+  ZoneSchema,
 } from "./formValidationSchemas";
 import { parseDateStrToUtcRange } from "./attendanceDate";
+import { announcementAccessWhere } from "./announcementVisibility";
+import { getUnreadAnnouncementCount } from "./announcementUnread";
+import { loadAttendancePageData } from "./attendancePageData";
 import prisma from "./prisma";
 import { clerkClient } from "@clerk/nextjs/server";
 import { getAuthData } from "./utils";
 import { randomUUID } from "crypto";
+import type { AttendanceRow } from "@/app/(dashboard)/list/attendance/types";
 
-type CurrentState = { success: boolean; error: boolean };
+type CurrentState = { success: boolean; error: boolean; inUse?: boolean };
 
 export const createSubject = async (
   currentState: CurrentState,
@@ -991,6 +996,56 @@ export async function saveAttendanceDayDetail({
   }
 }
 
+/** Full attendance rows for PDF export (all matching students, not paginated). */
+export async function getAttendanceRowsForPdfExport(
+  dateStr: string,
+  classIdParam: string
+): Promise<AttendanceRow[]> {
+  const { rows } = await loadAttendancePageData({
+    dateStr,
+    classIdParam,
+    page: 1,
+    fetchAllRows: true,
+  });
+  return rows;
+}
+
+/** Marks every announcement visible to the current user as read (e.g. after opening the list). */
+export async function markVisibleAnnouncementsAsRead(): Promise<void> {
+  const { userId, role } = getAuthData();
+  if (!userId) {
+    return;
+  }
+  const access = announcementAccessWhere(role, userId);
+  const unread = await prisma.announcement.findMany({
+    where: {
+      AND: [
+        access,
+        {
+          reads: {
+            none: {
+              userId,
+            },
+          },
+        },
+      ],
+    },
+    select: { id: true },
+  });
+  if (unread.length === 0) {
+    return;
+  }
+  await prisma.announcementRead.createMany({
+    data: unread.map((a) => ({ userId, announcementId: a.id })),
+    skipDuplicates: true,
+  });
+}
+
+/** For client components (navbar badge refresh on navigation). */
+export async function getUnreadAnnouncementCountAction(): Promise<number> {
+  return getUnreadAnnouncementCount();
+}
+
 export const createEvent = async (
   currentState: CurrentState,
   data: EventSchema
@@ -1103,6 +1158,86 @@ export const deleteAnnouncement = async (
   }
 };
 
+export const createZone = async (
+  currentState: CurrentState,
+  data: ZoneSchema
+) => {
+  try {
+    const { role } = getAuthData();
+    if (role !== "admin") {
+      return { success: false, error: true };
+    }
+    await prisma.zone.create({
+      data: {
+        name: data.name.trim(),
+        capacity: data.capacity ?? null,
+        description: data.description?.trim() || null,
+        color: data.color?.trim() || null,
+      },
+    });
+    return { success: true, error: false };
+  } catch (err) {
+    console.log(err);
+    return { success: false, error: true };
+  }
+};
+
+export const updateZone = async (
+  currentState: CurrentState,
+  data: ZoneSchema
+) => {
+  try {
+    const { role } = getAuthData();
+    if (role !== "admin" || !data.id) {
+      return { success: false, error: true };
+    }
+    await prisma.zone.update({
+      where: { id: data.id },
+      data: {
+        name: data.name.trim(),
+        capacity: data.capacity ?? null,
+        description: data.description?.trim() || null,
+        color: data.color?.trim() || null,
+      },
+    });
+    return { success: true, error: false };
+  } catch (err) {
+    console.log(err);
+    return { success: false, error: true };
+  }
+};
+
+export const deleteZone = async (
+  currentState: CurrentState,
+  data: FormData
+) => {
+  const id = data.get("id") as string;
+  try {
+    const { role } = getAuthData();
+    if (role !== "admin") {
+      return { success: false, error: true };
+    }
+    const [lessons, activities, studentZones, teacherZones, history] =
+      await Promise.all([
+        prisma.lesson.count({ where: { zoneId: id } }),
+        prisma.activity.count({ where: { zoneId: id } }),
+        prisma.studentZone.count({ where: { zoneId: id } }),
+        prisma.teacherZone.count({ where: { zoneId: id } }),
+        prisma.zoneHistory.count({ where: { zoneId: id } }),
+      ]);
+    if (
+      lessons + activities + studentZones + teacherZones + history >
+      0
+    ) {
+      return { success: false, error: true, inUse: true };
+    }
+    await prisma.zone.delete({ where: { id } });
+    return { success: true, error: false };
+  } catch (err) {
+    console.log(err);
+    return { success: false, error: true };
+  }
+};
 
 export async function saveZones(zones: Record<string, string[]>) {
   try {
@@ -1161,6 +1296,83 @@ export async function saveZones(zones: Record<string, string[]>) {
     ]);
   } catch (error) {
     console.error("Failed to save zones:", error);
+    throw error;
+  }
+}
+
+/** Persists educator placement: one zone per teacher (pool = no TeacherZone rows). Uses existing TeacherZone table. */
+export async function saveTeacherZones(zones: Record<string, string[]>) {
+  try {
+    if (!zones || typeof zones !== "object") {
+      throw new Error("teacher zones undefined or invalid");
+    }
+
+    const records = Object.entries(zones)
+      .flatMap(([zoneId, teacherIds]) =>
+        teacherIds.map((teacherId) => ({
+          id: randomUUID(),
+          teacherId,
+          zoneId,
+        }))
+      )
+      .filter((z) => z.zoneId !== "teacherPool");
+
+    await prisma.$transaction([
+      prisma.teacherZone.deleteMany(),
+      ...(records.length > 0
+        ? [
+            prisma.teacherZone.createMany({
+              data: records,
+            }),
+          ]
+        : []),
+    ]);
+  } catch (error) {
+    console.error("Failed to save teacher zones:", error);
+    throw error;
+  }
+}
+
+/** Persists educator placement on lunch board (pool = no TeacherLunchGroup rows). */
+export async function saveTeacherLunchGroups(groups: Record<string, string[]>) {
+  try {
+    if (!groups || typeof groups !== "object") {
+      throw new Error("teacher lunch groups undefined or invalid");
+    }
+
+    const validGroupIds = new Set(
+      (
+        await (prisma as any).lunchGroupEntity.findMany({
+          select: { id: true },
+        })
+      ).map((g: { id: string }) => g.id)
+    );
+
+    const records = Object.entries(groups)
+      .flatMap(([groupId, teacherIds]) =>
+        teacherIds.map((teacherId) => ({
+          id: randomUUID(),
+          teacherId,
+          groupId,
+        }))
+      )
+      .filter(
+        (z) => z.groupId !== "teacherPool" && validGroupIds.has(z.groupId)
+      );
+
+    await prisma.$transaction([
+      prisma.teacherLunchGroup.deleteMany(),
+      ...(records.length > 0
+        ? [
+            prisma.teacherLunchGroup.createMany({
+              data: records,
+            }),
+          ]
+        : []),
+    ]);
+    revalidatePath("/list/lunch");
+  } catch (error) {
+    console.error("Failed to save teacher lunch groups:", error);
     throw error;
   }
 }

@@ -1,37 +1,36 @@
 "use client";
 
-import { saveAttendanceDayDetail, saveDailyAttendance } from "@/lib/actions";
+import {
+  getAttendanceRowsForPdfExport,
+  saveAttendanceDayDetail,
+  saveDailyAttendance,
+} from "@/lib/actions";
+import Pagination from "@/components/Pagination";
 import { todayDateStrLocal } from "@/lib/attendanceDate";
 import { useTranslations } from "@/i18n/TranslationsProvider";
 import { useRouter, usePathname } from "next/navigation";
-import { useEffect, useMemo, useRef, useTransition, useState } from "react";
+import { useEffect, useRef, useTransition, useState } from "react";
 import { toast } from "react-toastify";
+import type { AttendanceRow } from "./types";
 
-export type AttendanceRow = {
-  id: string;
-  name: string;
-  surname: string;
-  classId: number;
-  className: string;
-  lessonId: number | null;
-  present: boolean;
-  bringTime: string | null;
-  defaultPickupTime: string | null;
-  actualPickupTime: string | null;
-  displayPickupTime: string | null;
-  note: string | null;
-};
+export type { AttendanceRow };
 
 export default function AttendancePageClient({
   dateStr,
   classId,
   rows,
+  count,
+  page,
+  summary,
   classes,
   canEdit,
 }: {
   dateStr: string;
   classId: string;
   rows: AttendanceRow[];
+  count: number;
+  page: number;
+  summary: { total: number; presentCount: number; absentCount: number };
   classes: { id: number; name: string }[];
   canEdit: boolean;
 }) {
@@ -42,6 +41,18 @@ export default function AttendancePageClient({
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const actionsRef = useRef<HTMLDivElement | null>(null);
+  const [pickupModalStudentId, setPickupModalStudentId] = useState<string | null>(null);
+  const [pickupDraft, setPickupDraft] = useState("");
+  const [isSavingPickup, setIsSavingPickup] = useState(false);
+
+  useEffect(() => {
+    if (!pickupModalStudentId) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPickupModalStudentId(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [pickupModalStudentId]);
 
   useEffect(() => {
     if (!actionsOpen) return;
@@ -63,15 +74,7 @@ export default function AttendancePageClient({
     return params.toString();
   };
 
-  const { total, presentCount, absentCount } = useMemo(() => {
-    const total = rows.length;
-    const presentCount = rows.filter((r) => r.present).length;
-    return {
-      total,
-      presentCount,
-      absentCount: total - presentCount,
-    };
-  }, [rows]);
+  const { total, presentCount, absentCount } = summary;
 
   const onToggle = async (studentId: string, nextPresent: boolean) => {
     if (!canEdit) return;
@@ -105,7 +108,7 @@ export default function AttendancePageClient({
     startTransition(() => router.refresh());
   };
 
-  const onSavePickupOverrideBlur = async (studentId: string, value: string) => {
+  const savePickupOverride = async (studentId: string, value: string) => {
     if (!canEdit) return;
     const res = await saveAttendanceDayDetail({
       studentId,
@@ -119,9 +122,21 @@ export default function AttendancePageClient({
     startTransition(() => router.refresh());
   };
 
+  const onSavePickupModal = async () => {
+    if (!pickupModalStudentId || isSavingPickup) return;
+    setIsSavingPickup(true);
+    try {
+      await savePickupOverride(pickupModalStudentId, pickupDraft);
+      setPickupModalStudentId(null);
+    } finally {
+      setIsSavingPickup(false);
+    }
+  };
+
   const onDownloadPdf = async () => {
     setIsDownloadingPdf(true);
     try {
+      const pdfRows = await getAttendanceRowsForPdfExport(dateStr, classId);
       // Client-side PDF export (multi-page) so printing after download works reliably.
       // Lazy-load to avoid Next/SSR import quirks.
       const [jspdfMod] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
@@ -225,7 +240,7 @@ export default function AttendancePageClient({
         ],
       ];
 
-      const body = rows.map((row) => [
+      const body = pdfRows.map((row) => [
         `${row.name} ${row.surname}`.trim(),
         row.className ?? "—",
         // Keep the status cell clean:
@@ -496,23 +511,23 @@ export default function AttendancePageClient({
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden print:overflow-visible">
-        <div className="overflow-x-auto print:overflow-visible">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto overscroll-x-contain print:overflow-visible [-webkit-overflow-scrolling:touch]">
+          <table className="w-full min-w-[44rem] text-sm">
             <thead>
               <tr className="bg-slate-50 border-b border-gray-200 text-left">
-                <th className="p-4 font-medium text-gray-700">
+                <th className="p-3 sm:p-4 font-medium text-gray-700 min-w-[9rem]">
                   {dict.attendancePage.childName}
                 </th>
-                <th className="p-4 font-medium text-gray-700 hidden sm:table-cell">
+                <th className="p-3 sm:p-4 font-medium text-gray-700 min-w-[5rem]">
                   {dict.attendancePage.group}
                 </th>
-                <th className="p-4 font-medium text-gray-700 w-[min(100%,14rem)]">
+                <th className="p-3 sm:p-4 font-medium text-gray-700 min-w-[8.5rem]">
                   {dict.attendancePage.status}
                 </th>
-                <th className="p-4 font-medium text-gray-700 hidden lg:table-cell min-w-[10rem]">
+                <th className="p-3 sm:p-4 font-medium text-gray-700 min-w-[10rem]">
                   {dict.forms.pickupTime}
                 </th>
-                <th className="p-4 font-medium text-gray-700 hidden xl:table-cell min-w-[12rem]">
+                <th className="p-3 sm:p-4 font-medium text-gray-700 min-w-[12rem]">
                   {dict.attendancePage.notes}
                 </th>
               </tr>
@@ -532,13 +547,13 @@ export default function AttendancePageClient({
                       key={`${row.id}-${dateStr}`}
                       className="border-b border-gray-100 even:bg-slate-50/60 hover:bg-kitaPurpleLight/40"
                     >
-                      <td className="p-4 font-medium text-gray-900">
+                      <td className="p-3 sm:p-4 font-medium text-gray-900">
                         {row.name} {row.surname}
                       </td>
-                      <td className="p-4 text-gray-600 hidden sm:table-cell">
+                      <td className="p-3 sm:p-4 text-gray-600">
                         {row.className}
                       </td>
-                      <td className="p-4">
+                      <td className="p-3 sm:p-4">
                         <label className="inline-flex items-center gap-2">
                           <input
                             type="checkbox"
@@ -559,30 +574,38 @@ export default function AttendancePageClient({
                           </p>
                         )}
                       </td>
-                      <td className="p-4 hidden lg:table-cell align-top min-w-0">
-                        <div className="flex flex-col gap-1 text-xs text-gray-700">
-                          <span className="font-medium">
+                      <td className="p-3 sm:p-4 align-middle min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium text-xs text-gray-900 tabular-nums min-w-0 break-words">
                             {row.displayPickupTime ?? "—"}
                           </span>
-                          {canEdit && row.lessonId && (
-                            <label className="flex flex-col gap-0.5 mt-1">
-                              <span className="text-[10px] text-gray-500">
-                                {dict.attendancePage.pickupOverride}
-                              </span>
-                              <input
-                                type="time"
-                                className="border rounded px-2 py-1 text-xs max-w-[7rem]"
-                                defaultValue={row.actualPickupTime ?? ""}
-                                disabled={disabled}
-                                onBlur={(e) =>
-                                  onSavePickupOverrideBlur(row.id, e.target.value)
-                                }
-                              />
-                            </label>
-                          )}
+                          {canEdit && row.lessonId ? (
+                            <button
+                              type="button"
+                              className="shrink-0 w-8 h-8 inline-flex items-center justify-center rounded-md border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-50"
+                              disabled={disabled}
+                              aria-label={dict.attendancePage.pickupEditModalTitle}
+                              title={dict.attendancePage.pickupEditModalTitle}
+                              onClick={() => {
+                                setPickupModalStudentId(row.id);
+                                setPickupDraft(row.actualPickupTime ?? "");
+                              }}
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                className="w-4 h-4 text-gray-600"
+                                aria-hidden
+                              >
+                                <circle cx="12" cy="5.5" r="1.5" fill="currentColor" />
+                                <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+                                <circle cx="12" cy="18.5" r="1.5" fill="currentColor" />
+                              </svg>
+                            </button>
+                          ) : null}
                         </div>
                       </td>
-                      <td className="p-4 hidden xl:table-cell align-top min-w-0">
+                      <td className="p-3 sm:p-4 align-top min-w-0">
                         {canEdit && row.lessonId ? (
                           <textarea
                             className="w-full min-h-[3rem] border rounded-md px-2 py-1 text-xs"
@@ -604,7 +627,77 @@ export default function AttendancePageClient({
             </tbody>
           </table>
         </div>
+        <div className="print:hidden">
+          <Pagination page={page} count={count} />
+        </div>
       </div>
+      {pickupModalStudentId ? (
+        (() => {
+          const modalRow = rows.find((r) => r.id === pickupModalStudentId);
+          if (!modalRow) return null;
+          return (
+            <div
+              className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 print:hidden"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="pickup-modal-title"
+              onClick={() => !isSavingPickup && setPickupModalStudentId(null)}
+            >
+              <div
+                className="bg-white rounded-lg shadow-xl border border-gray-200 p-4 w-full max-w-sm"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3
+                  id="pickup-modal-title"
+                  className="text-sm font-semibold text-gray-900 mb-3"
+                >
+                  {dict.attendancePage.pickupEditModalTitle}
+                </h3>
+                <p className="text-xs text-gray-500 mb-3">
+                  <span className="text-gray-600">
+                    {dict.attendancePage.defaultPickupLabel}:
+                  </span>{" "}
+                  <span className="font-medium text-gray-800 tabular-nums">
+                    {modalRow.defaultPickupTime ?? "—"}
+                  </span>
+                </p>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                  {dict.attendancePage.pickupOverride}
+                </label>
+                <input
+                  type="time"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm ring-[1.5px] ring-transparent focus:ring-kitaSky focus:border-kitaSky outline-none"
+                  value={pickupDraft}
+                  onChange={(e) => setPickupDraft(e.target.value)}
+                  disabled={isSavingPickup}
+                />
+                <p className="text-[10px] text-gray-400 mt-2">
+                  {dict.attendancePage.pickupOverrideHint}
+                </p>
+                <div className="flex justify-end gap-2 mt-4">
+                  <button
+                    type="button"
+                    className="px-3 py-1.5 text-sm rounded-md border border-gray-300 bg-white hover:bg-gray-50"
+                    disabled={isSavingPickup}
+                    onClick={() => setPickupModalStudentId(null)}
+                  >
+                    {dict.common.close}
+                  </button>
+                  <button
+                    type="button"
+                    className="px-3 py-1.5 text-sm rounded-md bg-kitaYellow hover:opacity-90"
+                    disabled={isSavingPickup}
+                    onClick={() => onSavePickupModal()}
+                  >
+                    {dict.common.save}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()
+      ) : null}
+
       <style jsx global>{`
         @media print {
           thead {

@@ -1,0 +1,205 @@
+import prisma from "@/lib/prisma";
+import { parseDateStrToUtcRange, todayDateStrLocal } from "@/lib/attendanceDate";
+import { ITEM_PER_PAGE } from "@/lib/settings";
+import { getAuthData } from "@/lib/utils";
+import { Prisma } from "@prisma/client";
+import type { AttendanceRow } from "@/app/(dashboard)/list/attendance/types";
+
+function normalizeDateParam(value: string | undefined) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return todayDateStrLocal();
+  }
+  return value;
+}
+
+type LoadOpts = {
+  dateStr?: string;
+  classIdParam: string;
+  page?: number;
+  /** Load every row (e.g. PDF export); ignores pagination. */
+  fetchAllRows?: boolean;
+};
+
+export async function loadAttendancePageData(opts: LoadOpts) {
+  const { userId, role } = getAuthData();
+  const dateStr = normalizeDateParam(opts.dateStr);
+  const classIdParam = opts.classIdParam ?? "all";
+  const fetchAllRows = opts.fetchAllRows ?? false;
+  const rawPage = opts.page;
+  const parsed =
+    rawPage !== undefined ? parseInt(String(rawPage), 10) : 1;
+  const safePage =
+    Number.isNaN(parsed) || parsed < 1 ? 1 : parsed;
+
+  const studentWhere: Prisma.StudentWhereInput = {};
+
+  switch (role) {
+    case "admin":
+      break;
+    case "teacher":
+      studentWhere.class = {
+        lessons: { some: { teacherId: userId! } },
+      };
+      break;
+    case "student":
+      studentWhere.id = userId!;
+      break;
+    case "parent":
+      studentWhere.parentId = userId!;
+      break;
+    default:
+      break;
+  }
+
+  if (classIdParam && classIdParam !== "all") {
+    const cid = parseInt(classIdParam, 10);
+    if (!Number.isNaN(cid)) {
+      studentWhere.classId = cid;
+    }
+  }
+
+  const studentCount = await prisma.student.count({ where: studentWhere });
+
+  const classIdGroups = await prisma.student.groupBy({
+    by: ["classId"],
+    where: studentWhere,
+  });
+  const classIds = classIdGroups.map((g) => g.classId);
+
+  const { start, end } = parseDateStrToUtcRange(dateStr)!;
+
+  const lessonsByClass =
+    classIds.length > 0
+      ? await prisma.lesson.findMany({
+          where: { classId: { in: classIds } },
+          orderBy: { startTime: "asc" },
+          select: { id: true, classId: true },
+        })
+      : [];
+
+  const lessonIdByClass = new Map<number, number>();
+  for (const l of lessonsByClass) {
+    if (!lessonIdByClass.has(l.classId)) {
+      lessonIdByClass.set(l.classId, l.id);
+    }
+  }
+
+  const lessonIds = classIds
+    .map((cid) => lessonIdByClass.get(cid))
+    .filter((id): id is number => id !== undefined);
+
+  const allStudentsMinimal = await prisma.student.findMany({
+    where: studentWhere,
+    select: { id: true, classId: true },
+  });
+
+  const studentIdsForAttendance = allStudentsMinimal.map((s) => s.id);
+
+  const attendanceRows =
+    lessonIds.length > 0 && studentIdsForAttendance.length > 0
+      ? await prisma.attendance.findMany({
+          where: {
+            date: { gte: start, lt: end },
+            lessonId: { in: lessonIds },
+            studentId: { in: studentIdsForAttendance },
+          },
+        })
+      : [];
+
+  const key = (studentId: string, lessonId: number) =>
+    `${studentId}:${lessonId}`;
+  const attendanceByKey = new Map<
+    string,
+    { present: boolean; note: string | null; actualPickupTime: string | null }
+  >();
+  for (const row of attendanceRows) {
+    attendanceByKey.set(key(row.studentId, row.lessonId), {
+      present: row.present,
+      note: row.note ?? null,
+      actualPickupTime: row.actualPickupTime ?? null,
+    });
+  }
+
+  let presentCount = 0;
+  for (const s of allStudentsMinimal) {
+    const lessonId = lessonIdByClass.get(s.classId) ?? null;
+    const att =
+      lessonId !== null ? attendanceByKey.get(key(s.id, lessonId)) : undefined;
+    const present = att?.present ?? false;
+    if (present) presentCount++;
+  }
+  const absentCount = allStudentsMinimal.length - presentCount;
+
+  const students = await prisma.student.findMany({
+    where: studentWhere,
+    include: { class: true },
+    orderBy: [{ surname: "asc" }, { name: "asc" }],
+    ...(fetchAllRows
+      ? {}
+      : {
+          take: ITEM_PER_PAGE,
+          skip: ITEM_PER_PAGE * (safePage - 1),
+        }),
+  });
+
+  const rows: AttendanceRow[] = students.map((s) => {
+    const lessonId = lessonIdByClass.get(s.classId) ?? null;
+    const att =
+      lessonId !== null ? attendanceByKey.get(key(s.id, lessonId)) : undefined;
+    const present = att?.present ?? false;
+    const defaultPickup = s.pickupTime ?? null;
+    const actualPickup = att?.actualPickupTime ?? null;
+    const displayPickupTime = actualPickup ?? defaultPickup ?? null;
+    return {
+      id: s.id,
+      name: s.name,
+      surname: s.surname,
+      classId: s.classId,
+      className: s.class.name,
+      lessonId,
+      present,
+      bringTime: s.bringTime ?? null,
+      defaultPickupTime: defaultPickup,
+      actualPickupTime: actualPickup,
+      displayPickupTime,
+      note: att?.note ?? null,
+    };
+  });
+
+  let classesForFilter: { id: number; name: string }[] = [];
+  if (role === "admin") {
+    classesForFilter = await prisma.class.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    });
+  } else if (role === "teacher") {
+    classesForFilter = await prisma.class.findMany({
+      where: { lessons: { some: { teacherId: userId! } } },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    });
+  } else if (classIds.length > 0) {
+    classesForFilter = await prisma.class.findMany({
+      where: { id: { in: classIds } },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    });
+  }
+
+  const canEdit = role === "admin" || role === "teacher";
+
+  return {
+    dateStr,
+    classIdParam,
+    rows,
+    count: studentCount,
+    page: safePage,
+    summary: {
+      total: studentCount,
+      presentCount,
+      absentCount,
+    },
+    classesForFilter,
+    canEdit,
+  };
+}

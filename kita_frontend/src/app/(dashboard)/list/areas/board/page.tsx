@@ -1,0 +1,85 @@
+import prisma from "@/lib/prisma";
+import PlayBoard from "../../../play/PlayBoard";
+import { Prisma } from "@prisma/client";
+
+type StudentWithClass = Prisma.StudentGetPayload<{
+  include: { class: true };
+}>;
+
+export default async function PlayBoardPage() {
+  const students: StudentWithClass[] = await prisma.student.findMany({
+    include: {
+      class: true,
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
+
+  const zones = await prisma.zone.findMany({
+    orderBy: { name: "asc" },
+  });
+
+  const studentZones = await prisma.studentZone.findMany();
+
+  const teachers = await prisma.teacher.findMany({
+    select: { id: true, name: true, surname: true, img: true },
+    orderBy: { name: "asc" },
+  });
+
+  const teacherZoneRows = await prisma.teacherZone.findMany();
+
+  const initialZones: Record<string, string[]> = {};
+
+  zones.forEach((z) => {
+    initialZones[z.id] = [];
+  });
+
+  initialZones["pool"] = [];
+
+  studentZones.forEach((sz) => {
+    initialZones[sz.zoneId]?.push(sz.studentId);
+  });
+
+  const placedStudents = new Set(studentZones.map((z) => z.studentId));
+
+  students.forEach((s) => {
+    if (!placedStudents.has(s.id)) {
+      initialZones.pool.push(s.id);
+    }
+  });
+
+  const initialTeacherZones: Record<string, string[]> = {};
+  zones.forEach((z) => {
+    initialTeacherZones[z.id] = [];
+  });
+  initialTeacherZones.teacherPool = [];
+
+  const teacherToZone = new Map<string, string>();
+  for (const row of teacherZoneRows) {
+    if (!teacherToZone.has(row.teacherId)) {
+      teacherToZone.set(row.teacherId, row.zoneId);
+    }
+  }
+
+  for (const t of teachers) {
+    const zid = teacherToZone.get(t.id);
+    if (zid != null && initialTeacherZones[zid] !== undefined) {
+      initialTeacherZones[zid].push(t.id);
+    } else {
+      initialTeacherZones.teacherPool.push(t.id);
+    }
+  }
+
+  return (
+    <div className="p-4">
+      <PlayBoard
+        students={students}
+        teachers={teachers}
+        zones={zones}
+        initialZones={initialZones}
+        initialTeacherZones={initialTeacherZones}
+      />
+    </div>
+  );
+}

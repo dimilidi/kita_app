@@ -4,8 +4,11 @@ import FormModal from "@/components/FormModal";
 import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
+import { markVisibleAnnouncementsAsRead } from "@/lib/actions";
 import { useTranslations } from "@/i18n/TranslationsProvider";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function AnnouncementListClient({
   data,
@@ -21,6 +24,20 @@ export default function AnnouncementListClient({
   relatedData?: any;
 }) {
   const dict = useTranslations();
+  const router = useRouter();
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      await markVisibleAnnouncementsAsRead();
+      if (!cancelled) {
+        router.refresh();
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   const columns = [
     { header: dict.common.title, accessor: "title" },

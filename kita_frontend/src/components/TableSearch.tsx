@@ -4,7 +4,12 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "@/i18n/TranslationsProvider";
 
-const TableSearch = () => {
+type TableSearchProps = {
+  /** Synced from URL search param (e.g. `useSearchParams().get("search")`). */
+  defaultValue?: string;
+};
+
+const TableSearch = ({ defaultValue = "" }: TableSearchProps) => {
   const router = useRouter();
   const dict = useTranslations();
 
@@ -14,7 +19,12 @@ const TableSearch = () => {
     const value = (e.currentTarget[0] as HTMLInputElement).value;
 
     const params = new URLSearchParams(window.location.search);
-    params.set("search", value);
+    if (value.trim()) {
+      params.set("search", value.trim());
+    } else {
+      params.delete("search");
+    }
+    params.set("page", "1");
     router.push(`${window.location.pathname}?${params}`);
   };
 
@@ -25,7 +35,10 @@ const TableSearch = () => {
     >
       <Image src="/search.png" alt="" width={14} height={14} />
       <input
+        key={defaultValue}
         type="text"
+        name="search"
+        defaultValue={defaultValue}
         placeholder={dict.common.search}
         className="w-[200px] p-2 bg-transparent outline-none"
       />

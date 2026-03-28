@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { announcementAccessWhere } from "@/lib/announcementVisibility";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { getAuthData } from "@/lib/utils";
 import { Announcement, Class, Prisma } from "@prisma/client";
@@ -11,15 +12,15 @@ const AnnouncementListPage = async ({
 }: {
   searchParams: { [key: string]: string | undefined };
 }) => {
-    const { userId, role } = getAuthData();
-  
+  const { userId, role } = getAuthData();
+
   const { page, ...queryParams } = searchParams;
 
   const p = page ? parseInt(page) : 1;
 
-  // URL PARAMS CONDITION
-
-  const query: Prisma.AnnouncementWhereInput = {};
+  const query: Prisma.AnnouncementWhereInput = {
+    ...announcementAccessWhere(role, userId),
+  };
 
   if (queryParams) {
     for (const [key, value] of Object.entries(queryParams)) {
@@ -33,23 +34,6 @@ const AnnouncementListPage = async ({
         }
       }
     }
-  }
-
-  // ROLE CONDITIONS
-
-  const roleConditions = {
-    teacher: { lessons: { some: { teacherId: userId! } } },
-    student: { students: { some: { id: userId! } } },
-    parent: { students: { some: { parentId: userId! } } },
-  };
-
-  if (role !== "admin") {
-    query.OR = [
-      { classId: null },
-      {
-        class: roleConditions[role as keyof typeof roleConditions] || {},
-      },
-    ];
   }
 
   const [data, count] = await prisma.$transaction([

@@ -96,13 +96,13 @@ const Menu = () => {
         {
           icon: "/lunch.png",
           label: dict.menu.lunch,
-          href: `/${lang}/list/lunch`,
+          href: `/${lang}/list/lunch-groups`,
           visible: ["admin", "teacher"],
         },
         {
           icon: "/class.png",
-          label: dict.menu.lunchGroups,
-          href: `/${lang}/list/lunch-groups`,
+          label: dict.menu.lunchBoard,
+          href: `/${lang}/list/lunch`,
           visible: ["admin", "teacher"],
         },
         {

@@ -229,3 +229,17 @@ export const announcementSchema = z.object({
 
 export type AnnouncementInput = z.input<typeof announcementSchema>;
 export type AnnouncementSchema = z.output<typeof announcementSchema>;
+
+const emptyToUndefined = (v: unknown) =>
+  v === "" || v === undefined || v === null ? undefined : v;
+
+export const zoneSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1, { message: "forms.required" }),
+  capacity: z.preprocess(emptyToUndefined, z.coerce.number().int().positive().optional()),
+  description: z.preprocess(emptyToUndefined, z.string().optional()),
+  color: z.preprocess(emptyToUndefined, z.string().optional()),
+});
+
+export type ZoneInput = z.input<typeof zoneSchema>;
+export type ZoneSchema = z.output<typeof zoneSchema>;

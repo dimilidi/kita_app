@@ -33,7 +33,8 @@
     "attendance": "Attendance",
     "event": "Event",
     "announcement": "Announcement",
-    "parent": "Parent"
+    "parent": "Parent",
+    "zone": "Play area"
   },
   "entitiesPlural": {
     "admin": "Admins",
@@ -96,7 +97,9 @@
       "WEDNESDAY": "Wednesday",
       "THURSDAY": "Thursday",
       "FRIDAY": "Friday"
-    }
+    },
+    "description": "Description",
+    "colorHint": "Color (optional, e.g. #64748b)"
   },
   "menu": {
     "menu": "MENU",
@@ -117,6 +120,7 @@
     "announcements": "Announcements",
     "areas": "Play Areas",
     "lunch": "Lunch",
+    "lunchBoard": "Lunch board",
     "lunchGroups": "Meal Groups",
     "tischsprueche": "Tischsprüche",
     "profile": "Profile",
@@ -133,7 +137,10 @@
   "lunch": {
     "groups": "Lunch Groups",
     "tischsprueche": "Tischsprüche",
-    "boardTitle": "Lunch Board"
+    "boardTitle": "Lunch Board",
+    "tischspruchSection": "Tischspruch",
+    "showTischspruch": "Show Tischspruch",
+    "hideTischspruch": "Hide Tischspruch"
   },
   "events": {
     "title": "Events"
@@ -198,6 +205,18 @@
     "columns": {
       "subjectName": "Subject Name",
       "teachers": "Teachers"
+    }
+  },
+  "areasList": {
+    "titleAll": "All play areas",
+    "intro": "In our open concept, children move freely through the kindergarten according to their needs and wishes, exploring each play area. There are no fixed groups assigned to one room.",
+    "openBoard": "Open play board",
+    "descriptionPlaceholder": "Short note for staff (optional)",
+    "deleteInUse": "This play area is still used by activities, placements, or history and cannot be deleted.",
+    "columns": {
+      "name": "Name",
+      "capacity": "Capacity",
+      "scheduledActivities": "Scheduled activities"
     }
   },
   "lessons": {
@@ -271,6 +290,10 @@
     "boys": "Boys",
     "girls": "Girls"
   },
+  "playBoard": {
+    "kidsPool": "All children",
+    "educatorsPool": "Educators pool"
+  },
   "zones": {
     "educators": "Educators",
     "activities": "Activities",
@@ -283,6 +306,8 @@
   },
   "lunchGroups": {
     "titleAll": "All Lunch Groups",
+    "intro": "Create and edit lunch groups here, then open the lunch board to assign children to groups and manage table sayings.",
+    "openBoard": "Open lunch groups",
     "add": "Add Lunch Group",
     "edit": "Edit Lunch Group",
     "name": "Name",
@@ -290,7 +315,38 @@
     "capacity": "Capacity",
     "children": "Children",
     "defaultColor": "Default (Gray)",
-    "customExisting": "Custom (existing)"
+    "customExisting": "Custom (existing)",
+    "detail": {
+      "back": "Back to all lunch groups",
+      "openBoard": "Open lunch board",
+      "overview": "Overview",
+      "assignedChildren": "Children in this group",
+      "assignedEducators": "Educators",
+      "emptyChildren": "No children assigned to this group yet. Assign them on the lunch board.",
+      "emptyEducators": "No educators assigned yet. Assign them on the lunch board.",
+      "created": "Created",
+      "appearance": "Board appearance",
+      "viewDetail": "Open detailed view",
+      "sortBy": "Sort",
+      "filterBy": "Filter",
+      "sortNameAsc": "Name A–Z",
+      "sortNameDesc": "Name Z–A",
+      "sortCapacityAsc": "Capacity (low to high)",
+      "sortCapacityDesc": "Capacity (high to low)",
+      "filterAll": "All groups",
+      "filterWithChildren": "With children assigned",
+      "filterWithSpace": "With free places",
+      "exportUsedMax": "Used / max",
+      "printList": "Print list",
+      "downloadListPdf": "Download PDF",
+      "pdfColNum": "N°",
+      "pdfColChildName": "Child's name",
+      "pdfColGroup": "Group",
+      "pdfTotal": "Total",
+      "pdfEducators": "Educators",
+      "pdfTischspruch": "Tischspruch",
+      "pdfBrandName": "KitaKarlstraße"
+    }
   },
   "tischsprueche": {
     "titleAll": "All Tischsprueche",
@@ -317,6 +373,9 @@
     "saveFailed": "Could not save attendance. Please try again.",
     "notes": "Notes",
     "pickupOverride": "Override pickup (today)",
+    "pickupEditModalTitle": "Edit pickup time",
+    "defaultPickupLabel": "Default (agreed)",
+    "pickupOverrideHint": "Leave empty to use the default pickup time for today.",
     "detailSaveFailed": "Could not save note or pickup time.",
     "downloadPdf": "Download PDF"
   }

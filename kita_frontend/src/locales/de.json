@@ -33,7 +33,8 @@
     "attendance": "Anwesenheit",
     "event": "Ereignis",
     "announcement": "Ankündigung",
-    "parent": "Elternteil"
+    "parent": "Elternteil",
+    "zone": "Spielbereich"
   },
   "entitiesPlural": {
     "admin": "Admins",
@@ -96,7 +97,9 @@
       "WEDNESDAY": "Mittwoch",
       "THURSDAY": "Donnerstag",
       "FRIDAY": "Freitag"
-    }
+    },
+    "description": "Beschreibung",
+    "colorHint": "Farbe (optional, z. B. #64748b)"
   },
   "menu": {
     "menu": "MENÜ",
@@ -117,6 +120,7 @@
     "announcements": "Ankündigungen",
     "areas": "Spielbereiche",
     "lunch": "Mittagessen",
+    "lunchBoard": "Mittagstisch",
     "lunchGroups": "Essensgruppen",
     "tischsprueche": "Tischsprüche",
     "profile": "Profil",
@@ -133,7 +137,10 @@
   "lunch": {
     "groups": "Mittagsgruppen",
     "tischsprueche": "Tischsprüche",
-    "boardTitle": "Mittagstafel"
+    "boardTitle": "Mittagstafel",
+    "tischspruchSection": "Tischspruch",
+    "showTischspruch": "Tischspruch einblenden",
+    "hideTischspruch": "Tischspruch ausblenden"
   },
   "events": {
     "title": "Ereignisse"
@@ -198,6 +205,18 @@
     "columns": {
       "subjectName": "Fachname",
       "teachers": "Lehrer"
+    }
+  },
+  "areasList": {
+    "titleAll": "Alle Spielbereiche",
+    "intro": "Im offenen Konzept bewegen sich die Kinder frei in der Einrichtung – entsprechend ihren Bedürfnissen und Wünschen – und erkunden jeden Spielbereich. Es gibt keine festen Gruppen, die einem Raum zugeordnet sind.",
+    "openBoard": "Spieltafel öffnen",
+    "descriptionPlaceholder": "Kurze Notiz für das Team (optional)",
+    "deleteInUse": "Dieser Spielbereich wird noch genutzt (Aktivitäten, Zuordnungen oder Verlauf) und kann nicht gelöscht werden.",
+    "columns": {
+      "name": "Name",
+      "capacity": "Kapazität",
+      "scheduledActivities": "Geplante Aktivitäten"
     }
   },
   "lessons": {
@@ -271,6 +290,10 @@
     "boys": "Jungen",
     "girls": "Mädchen"
   },
+  "playBoard": {
+    "kidsPool": "Alle Kinder",
+    "educatorsPool": "Erzieher-Pool"
+  },
   "zones": {
     "educators": "Erzieher",
     "activities": "Aktivitäten",
@@ -283,6 +306,8 @@
   },
   "lunchGroups": {
     "titleAll": "Alle Mittagsgruppen",
+    "intro": "Lege hier Mittagsgruppen an und bearbeite sie. Öffne den Mittagstisch, um Kinder zuzuweisen und Tischsprüche zu verwalten.",
+    "openBoard": "Mittagstisch öffnen",
     "add": "Mittagsgruppe hinzufügen",
     "edit": "Mittagsgruppe bearbeiten",
     "name": "Name",
@@ -290,7 +315,38 @@
     "capacity": "Kapazität",
     "children": "Kinder",
     "defaultColor": "Standard (Grau)",
-    "customExisting": "Benutzerdefiniert (vorhanden)"
+    "customExisting": "Benutzerdefiniert (vorhanden)",
+    "detail": {
+      "back": "Zurück zu allen Mittagsgruppen",
+      "openBoard": "Mittagstisch öffnen",
+      "overview": "Übersicht",
+      "assignedChildren": "Kinder in dieser Gruppe",
+      "assignedEducators": "Erzieher",
+      "emptyChildren": "Noch keine Kinder zugewiesen. Zuweisung auf dem Mittagstisch.",
+      "emptyEducators": "Noch keine Erzieher zugewiesen. Zuweisung auf dem Mittagstisch.",
+      "created": "Angelegt",
+      "appearance": "Darstellung auf dem Brett",
+      "viewDetail": "Detailansicht öffnen",
+      "sortBy": "Sortieren",
+      "filterBy": "Filtern",
+      "sortNameAsc": "Name A–Z",
+      "sortNameDesc": "Name Z–A",
+      "sortCapacityAsc": "Kapazität (niedrig → hoch)",
+      "sortCapacityDesc": "Kapazität (hoch → niedrig)",
+      "filterAll": "Alle Gruppen",
+      "filterWithChildren": "Mit zugewiesenen Kindern",
+      "filterWithSpace": "Mit freien Plätzen",
+      "exportUsedMax": "Belegt / max.",
+      "printList": "Liste drucken",
+      "downloadListPdf": "PDF herunterladen",
+      "pdfColNum": "Nr.",
+      "pdfColChildName": "Name des Kindes",
+      "pdfColGroup": "Gruppe",
+      "pdfTotal": "Gesamt",
+      "pdfEducators": "Erzieher",
+      "pdfTischspruch": "Tischspruch",
+      "pdfBrandName": "KitaKarlstraße"
+    }
   },
   "tischsprueche": {
     "titleAll": "Alle Tischsprüche",
@@ -317,6 +373,9 @@
     "saveFailed": "Anwesenheit konnte nicht gespeichert werden. Bitte erneut versuchen.",
     "notes": "Notizen",
     "pickupOverride": "Abholzeit (heute)",
+    "pickupEditModalTitle": "Abholzeit bearbeiten",
+    "defaultPickupLabel": "Vereinbart",
+    "pickupOverrideHint": "Leer lassen, um die vereinbarte Abholzeit für heute zu nutzen.",
     "detailSaveFailed": "Notiz oder Abholzeit konnte nicht gespeichert werden.",
     "downloadPdf": "PDF herunterladen"
   }
