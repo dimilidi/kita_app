@@ -1,66 +1,73 @@
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import InputField from "../InputField";
-import Image from "next/image";
-import { Dispatch, SetStateAction, useEffect, useState } from "react";
-import {
-  StudentInput,
-  studentSchema,
-  StudentSchema,
-  teacherSchema,
-  TeacherSchema,
-} from "@/lib/formValidationSchemas";
+import { Dispatch, SetStateAction, useEffect, useMemo } from "react";
 import { useFormState } from "react-dom";
-import {
-  createStudent,
-  createTeacher,
-  updateStudent,
-  updateTeacher,
-} from "@/lib/actions";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import { CldUploadWidget } from "next-cloudinary";
 import { useTranslations } from "@/i18n/TranslationsProvider";
+import InputField from "../InputField";
+import {
+  SubjectInput,
+  subjectSchema,
+  SubjectSchema,
+} from "@/lib/formValidationSchemas";
+import { createSubject, updateSubject } from "@/lib/actions";
 
-const StudentForm = ({
+export default function SubjectForm({
   type,
   data,
   setOpen,
   relatedData,
 }: {
   type: "create" | "update";
-  data?: any;
+  data?: {
+    id?: number;
+    name?: string;
+    teachers?: { id: string; name: string; surname: string }[];
+  };
   setOpen: Dispatch<SetStateAction<boolean>>;
-  relatedData?: any;
-}) => {
+  relatedData?: {
+    teachers?: { id: string; name: string; surname: string }[];
+  };
+}) {
   const dict = useTranslations();
-  const label = dict.entities?.student || "student";
+  const label = dict.entities?.subject ?? "subject";
+
+  const teacherList = useMemo(
+    () => relatedData?.teachers ?? [],
+    [relatedData?.teachers]
+  );
+
+  const defaultTeachers = useMemo(
+    () =>
+      Array.isArray(data?.teachers)
+        ? data.teachers.map((t) => t.id)
+        : ([] as string[]),
+    [data?.teachers]
+  );
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<StudentInput, any, StudentSchema>({
-    resolver: zodResolver(studentSchema),
+  } = useForm<SubjectInput, unknown, SubjectSchema>({
+    resolver: zodResolver(subjectSchema),
+    defaultValues: {
+      name: data?.name ?? "",
+      teachers: defaultTeachers,
+      id: data?.id,
+    },
   });
 
-  const [img, setImg] = useState<any>();
-
   const [state, formAction] = useFormState(
-    type === "create" ? createStudent : updateStudent,
-    {
-      success: false,
-      error: false,
-    }
+    type === "create" ? createSubject : updateSubject,
+    { success: false, error: false }
   );
 
-  const onSubmit = handleSubmit((data) => {
-    console.log("hello");
-    console.log(data);
-    formAction({ ...data, img: img?.secure_url });
+  const onSubmit = handleSubmit((form) => {
+    formAction(subjectSchema.parse(form));
   });
 
   const router = useRouter();
@@ -75,7 +82,9 @@ const StudentForm = ({
     }
   }, [state, router, type, setOpen, dict, label]);
 
-  const { grades, classes } = relatedData;
+  if (!relatedData) {
+    return <p>{dict.common.loading}</p>;
+  }
 
   return (
     <form className="flex flex-col gap-8" onSubmit={onSubmit}>
@@ -84,188 +93,68 @@ const StudentForm = ({
           ? dict.common.createEntity.replace("{label}", label)
           : dict.common.updateEntity.replace("{label}", label)}
       </h1>
-      <span className="text-xs text-gray-400 font-medium">
-        {dict.forms.authInfo}
-      </span>
-      <div className="flex justify-between flex-wrap gap-4">
+
+      <div className="flex flex-wrap gap-4">
         <InputField
-          label={dict.forms.username}
-          name="username"
-          defaultValue={data?.username}
-          register={register}
-          error={errors?.username}
-        />
-        <InputField
-          label={dict.forms.email}
-          name="email"
-          defaultValue={data?.email}
-          register={register}
-          error={errors?.email}
-        />
-        <InputField
-          label={dict.forms.password}
-          name="password"
-          type="password"
-          defaultValue={data?.password}
-          register={register}
-          error={errors?.password}
-        />
-      </div>
-      <span className="text-xs text-gray-400 font-medium">
-        {dict.forms.personalInfo}
-      </span>
-      <CldUploadWidget
-        uploadPreset="school"
-        onSuccess={(result, { widget }) => {
-          setImg(result.info);
-          widget.close();
-        }}
-      >
-        {({ open }) => {
-          return (
-            <div
-              className="text-xs text-gray-500 flex items-center gap-2 cursor-pointer"
-              onClick={() => open()}
-            >
-              <Image src="/upload.png" alt="" width={28} height={28} />
-              <span>{dict.forms.uploadPhoto}</span>
-            </div>
-          );
-        }}
-      </CldUploadWidget>
-      <div className="flex justify-between flex-wrap gap-4">
-        <InputField
-          label="First Name"
+          label={dict.subjects?.columns?.subjectName ?? "Name"}
           name="name"
           defaultValue={data?.name}
           register={register}
           error={errors.name}
         />
-        <InputField
-          label="Last Name"
-          name="surname"
-          defaultValue={data?.surname}
-          register={register}
-          error={errors.surname}
-        />
-        <InputField
-          label="Phone"
-          name="phone"
-          defaultValue={data?.phone}
-          register={register}
-          error={errors.phone}
-        />
-        <InputField
-          label="Address"
-          name="address"
-          defaultValue={data?.address}
-          register={register}
-          error={errors.address}
-        />
-        <InputField
-          label="Blood Type"
-          name="bloodType"
-          defaultValue={data?.bloodType}
-          register={register}
-          error={errors.bloodType}
-        />
-        <InputField
-          label="Birthday"
-          name="birthday"
-          defaultValue={data?.birthday.toISOString().split("T")[0]}
-          register={register}
-          error={errors.birthday}
-          type="date"
-        />
-        <InputField
-          label="Parent Id"
-          name="parentId"
-          defaultValue={data?.parentId}
-          register={register}
-          error={errors.parentId}
-        />
-        {data && (
+        {type === "update" && data?.id != null && (
           <InputField
             label="Id"
             name="id"
-            defaultValue={data?.id}
+            defaultValue={String(data.id)}
             register={register}
-            error={errors?.id}
+            error={errors.id}
             hidden
           />
         )}
-        <div className="flex flex-col gap-2 w-full md:w-1/4">
-          <label className="text-xs text-gray-500">Sex</label>
-          <select
-            className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
-            {...register("sex")}
-            defaultValue={data?.sex}
-          >
-            <option value="MALE">Male</option>
-            <option value="FEMALE">Female</option>
-          </select>
-          {errors.sex?.message && (
-            <p className="text-xs text-red-400">
-              {errors.sex.message.toString()}
-            </p>
-          )}
-        </div>
-        <div className="flex flex-col gap-2 w-full md:w-1/4">
-          <label className="text-xs text-gray-500">Grade</label>
-          <select
-            className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
-            {...register("gradeId")}
-            defaultValue={data?.gradeId}
-          >
-            {grades.map((grade: { id: number; level: number }) => (
-              <option value={grade.id} key={grade.id}>
-                {grade.level}
-              </option>
-            ))}
-          </select>
-          {errors.gradeId?.message && (
-            <p className="text-xs text-red-400">
-              {errors.gradeId.message.toString()}
-            </p>
-          )}
-        </div>
-        <div className="flex flex-col gap-2 w-full md:w-1/4">
-          <label className="text-xs text-gray-500">Class</label>
-          <select
-            className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
-            {...register("classId")}
-            defaultValue={data?.classId}
-          >
-            {classes.map(
-              (classItem: {
-                id: number;
-                name: string;
-                capacity: number;
-                _count: { students: number };
-              }) => (
-                <option value={classItem.id} key={classItem.id}>
-                  ({classItem.name} -{" "}
-                  {classItem._count.students + "/" + classItem.capacity}{" "}
-                  Capacity)
-                </option>
-              )
-            )}
-          </select>
-          {errors.classId?.message && (
-            <p className="text-xs text-red-400">
-              {errors.classId.message.toString()}
-            </p>
-          )}
-        </div>
       </div>
+
+      <div className="flex flex-col gap-2">
+        <span className="text-xs text-gray-500">
+          {dict.subjects?.columns?.teachers ?? "Teachers"}
+        </span>
+        <div className="flex flex-col gap-2 max-h-48 overflow-y-auto rounded-md border border-gray-200 p-3">
+          {teacherList.length === 0 ? (
+            <span className="text-xs text-gray-400">
+              {dict.common.loading}
+            </span>
+          ) : (
+            teacherList.map((t) => (
+              <label
+                key={t.id}
+                className="flex cursor-pointer items-center gap-2 text-sm"
+              >
+                <input
+                  type="checkbox"
+                  value={t.id}
+                  {...register("teachers")}
+                />
+                <span>
+                  {t.name} {t.surname}
+                </span>
+              </label>
+            ))
+          )}
+        </div>
+        {errors.teachers?.message && (
+          <p className="text-xs text-red-400">
+            {String(errors.teachers.message)}
+          </p>
+        )}
+      </div>
+
       {state.error && (
         <span className="text-red-500">{dict.forms.somethingWentWrong}</span>
       )}
+
       <button type="submit" className="bg-blue-400 text-white p-2 rounded-md">
         {type === "create" ? dict.common.create : dict.common.update}
       </button>
     </form>
   );
-};
-
-export default StudentForm;
+}

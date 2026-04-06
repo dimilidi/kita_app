@@ -143,7 +143,10 @@
     "hideTischspruch": "Hide Tischspruch",
     "clearLunchboard": "Clear Lunchboard",
     "clearLunchboardConfirm": "Clear the lunch board? All student and educator assignments will be moved to the pools and all Tischspruch votes will be removed.",
-    "clearLunchboardSuccess": "Lunch board cleared."
+    "clearLunchboardSuccess": "Lunch board cleared.",
+    "attendanceDayLabel": "Attendance day",
+    "presentChildrenOnly": "Only children marked present on this day are listed.",
+    "noAttendanceForDayShowingAll": "No attendance recorded for this day — all children are shown."
   },
   "events": {
     "title": "Events"

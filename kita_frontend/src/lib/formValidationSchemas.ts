@@ -89,21 +89,11 @@ export const studentSchema = z.object({
   sex: z.enum(["MALE", "FEMALE"], { message: "forms.required" }),
   gradeId: z.preprocess(
     requiredPositiveInt,
-    z
-      .number({
-        required_error: "forms.required",
-        invalid_type_error: "forms.required",
-      })
-      .min(1, { message: "forms.required" })
+    z.number({ message: "forms.required" }).min(1, { message: "forms.required" })
   ),
   classId: z.preprocess(
     requiredPositiveInt,
-    z
-      .number({
-        required_error: "forms.required",
-        invalid_type_error: "forms.required",
-      })
-      .min(1, { message: "forms.required" })
+    z.number({ message: "forms.required" }).min(1, { message: "forms.required" })
   ),
   parentId: z.string().trim().min(1, { message: "forms.required" }),
   bringTime: z.string().optional().or(z.literal("")),

@@ -1,12 +1,37 @@
 import prisma from "@/lib/prisma";
 import LunchBoardClient from "./LunchBoardClient";
 import { Prisma } from "@prisma/client";
+import {
+  normalizeAttendanceDateStr,
+  parseDateStrToUtcRange,
+} from "@/lib/attendanceDate";
 
 export default async function LunchPage({
   searchParams,
 }: {
   searchParams: { [key: string]: string | undefined };
 }) {
+  const dateStr = normalizeAttendanceDateStr(searchParams.date);
+  const dayRange = parseDateStrToUtcRange(dateStr);
+
+  const attendanceForDate =
+    dayRange != null
+      ? await prisma.attendance.findMany({
+          where: {
+            date: { gte: dayRange.start, lt: dayRange.end },
+          },
+          select: { studentId: true, present: true },
+        })
+      : [];
+
+  /** No rows for this day → show all students (same as before attendance exists). */
+  const useAttendanceFilter = attendanceForDate.length > 0;
+  const presentStudentIds = useAttendanceFilter
+    ? new Set(
+        attendanceForDate.filter((a) => a.present).map((a) => a.studentId)
+      )
+    : null;
+
   const query: Prisma.StudentWhereInput = {};
   const { search } = searchParams;
 
@@ -17,11 +42,17 @@ export default async function LunchPage({
     ];
   }
 
+  if (presentStudentIds !== null) {
+    query.id = { in: Array.from(presentStudentIds) };
+  }
+
   const students = await prisma.student.findMany({
     where: query,
     include: { class: true },
     orderBy: { name: "asc" },
   });
+
+  const allowedStudentIds = new Set(students.map((s) => s.id));
 
   const lunchGroups = await (prisma as any).lunchGroupEntity.findMany({
     orderBy: { createdAt: "asc" },
@@ -34,13 +65,18 @@ export default async function LunchPage({
   });
 
   lunchAssignments.forEach((assignment) => {
+    if (!allowedStudentIds.has(assignment.studentId)) return;
     const assignmentGroupId = (assignment as any).groupId as string | undefined;
     if (assignmentGroupId && initialGroups[assignmentGroupId]) {
       initialGroups[assignmentGroupId].push(assignment.studentId);
     }
   });
 
-  const assignedStudents = new Set(lunchAssignments.map((item) => item.studentId));
+  const assignedStudents = new Set(
+    lunchAssignments
+      .filter((item) => allowedStudentIds.has(item.studentId))
+      .map((item) => item.studentId)
+  );
   students.forEach((student) => {
     if (!assignedStudents.has(student.id)) {
       initialGroups.pool.push(student.id);
@@ -53,7 +89,9 @@ export default async function LunchPage({
 
   const lunchVotes = await prisma.studentLunchVote.findMany();
   const initialVotes = Object.fromEntries(
-    lunchVotes.map((vote) => [vote.studentId, vote.tischspruchId])
+    lunchVotes
+      .filter((vote) => allowedStudentIds.has(vote.studentId))
+      .map((vote) => [vote.studentId, vote.tischspruchId])
   );
 
   const teachers = await prisma.teacher.findMany({
@@ -107,6 +145,8 @@ export default async function LunchPage({
         }))}
         initialVotes={initialVotes}
         initialTischsprueche={tischsprueche}
+        attendanceDateStr={dateStr}
+        attendanceFilterActive={useAttendanceFilter}
       />
     </div>
   );

@@ -62,6 +62,10 @@ type Props = {
   lunchGroups: { id: string; name: string; color?: string; capacity: number }[];
   initialVotes: Record<string, number>;
   initialTischsprueche: Tischspruch[];
+  /** YYYY-MM-DD; same query as Attendance (`?date=`). */
+  attendanceDateStr: string;
+  /** True when any attendance row exists that day — children list is present-only. */
+  attendanceFilterActive: boolean;
 };
 
 function parseDragId(raw: string): { kind: "child" | "teacher"; id: string } | null {
@@ -398,6 +402,8 @@ export default function LunchBoardClient({
   lunchGroups,
   initialVotes,
   initialTischsprueche,
+  attendanceDateStr,
+  attendanceFilterActive,
 }: Props) {
   const pathname = usePathname();
   const localeSegments = pathname.split("/").filter(Boolean);
@@ -653,11 +659,25 @@ export default function LunchBoardClient({
 
   return (
     <div className="flex flex-col gap-6 max-w-[100vw] mx-auto">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="hidden md:block text-lg font-semibold">
-          {dict.lunch.boardTitle}
-        </h1>
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+        <div className="min-w-0 flex-1">
+          <h1 className="hidden md:block text-lg font-semibold">
+            {dict.lunch.boardTitle}
+          </h1>
+          <p className="mt-1 text-xs text-gray-600">
+            <Link
+              href={`/${locale}/list/attendance?date=${encodeURIComponent(attendanceDateStr)}`}
+              className="font-medium text-gray-800 underline-offset-2 hover:underline"
+            >
+              {dict.lunch.attendanceDayLabel}: {attendanceDateStr}
+            </Link>
+            {" — "}
+            {attendanceFilterActive
+              ? dict.lunch.presentChildrenOnly
+              : dict.lunch.noAttendanceForDayShowingAll}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-3">
           <Link
             href={`/${locale}/list/lunch-groups`}
             className="rounded-full bg-kitaYellow px-3 py-2 text-xs font-medium"

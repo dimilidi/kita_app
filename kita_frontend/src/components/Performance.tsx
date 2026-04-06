@@ -175,7 +175,7 @@ const Performance = ({
           <ResponsiveContainer width="100%" height="100%">
             <PieChart margin={{ top: 4, right: 4, left: 4, bottom: 4 }}>
               <Tooltip
-                formatter={(value: number, name: string) => {
+                formatter={(value, name) => {
                   const pct =
                     total > 0
                       ? Math.round((Number(value) / total) * 100)

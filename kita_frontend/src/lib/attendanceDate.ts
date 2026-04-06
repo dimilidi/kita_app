@@ -13,3 +13,11 @@ export function parseDateStrToUtcRange(dateStr: string) {
 export function todayDateStrLocal() {
   return new Date().toLocaleDateString("en-CA");
 }
+
+/** Same as Attendance page: `YYYY-MM-DD` or today (local). */
+export function normalizeAttendanceDateStr(value: string | undefined): string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return todayDateStrLocal();
+  }
+  return value;
+}

@@ -143,7 +143,10 @@
     "hideTischspruch": "Tischspruch ausblenden",
     "clearLunchboard": "Mittagstafel leeren",
     "clearLunchboardConfirm": "Mittagstafel wirklich leeren? Alle Zuordnungen gehen in die Pools, alle Tischspruch-Stimmen werden gelöscht.",
-    "clearLunchboardSuccess": "Mittagstafel wurde geleert."
+    "clearLunchboardSuccess": "Mittagstafel wurde geleert.",
+    "attendanceDayLabel": "Anwesenheitstag",
+    "presentChildrenOnly": "Es werden nur Kinder angezeigt, die an diesem Tag als anwesend eingetragen sind.",
+    "noAttendanceForDayShowingAll": "Für diesen Tag liegt keine Anwesenheit vor — alle Kinder werden angezeigt."
   },
   "events": {
     "title": "Ereignisse"

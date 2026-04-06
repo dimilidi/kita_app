@@ -1,16 +1,12 @@
 import prisma from "@/lib/prisma";
-import { parseDateStrToUtcRange, todayDateStrLocal } from "@/lib/attendanceDate";
+import {
+  normalizeAttendanceDateStr,
+  parseDateStrToUtcRange,
+} from "@/lib/attendanceDate";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { getAuthData } from "@/lib/utils";
 import { Prisma } from "@prisma/client";
 import type { AttendanceRow } from "@/app/(dashboard)/list/attendance/types";
-
-function normalizeDateParam(value: string | undefined) {
-  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return todayDateStrLocal();
-  }
-  return value;
-}
 
 type LoadOpts = {
   dateStr?: string;
@@ -22,7 +18,7 @@ type LoadOpts = {
 
 export async function loadAttendancePageData(opts: LoadOpts) {
   const { userId, role } = getAuthData();
-  const dateStr = normalizeDateParam(opts.dateStr);
+  const dateStr = normalizeAttendanceDateStr(opts.dateStr);
   const classIdParam = opts.classIdParam ?? "all";
   const fetchAllRows = opts.fetchAllRows ?? false;
   const rawPage = opts.page;
