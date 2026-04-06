@@ -149,6 +149,7 @@ const StudentForm = ({
     : undefined;
 
 console.log("CLOUDINARY NAME:", process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME);
+console.log("ALL ENV:", process.env);
 
 
   return (
