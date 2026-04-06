@@ -148,8 +148,13 @@ const StudentForm = ({
     ? new Date(data.birthday).toISOString().split("T")[0]
     : undefined;
 
+console.log("CLOUDINARY NAME:", process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME);
+
   return (
     <form className="flex flex-col gap-8" onSubmit={onSubmit}>
+    
+
+    
       <h1 className="text-xl font-semibold">
         {type === "create"
           ? dict.common.createEntity.replace("{label}", label)
