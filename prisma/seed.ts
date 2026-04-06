@@ -272,6 +272,17 @@ async function main() {
     skipDuplicates: true,
   });
 
+    // 🏫 ZONES
+  await prisma.zone.createMany({
+    data: [
+      { name: "Spielplatz" },
+      { name: "Atelier" },
+      { name: "Schlafraum" },
+      { name: "Essraum" },
+    ],
+    skipDuplicates: true,
+  });
+
   // 🎨 ACTIVITIES (Subjects)
   await prisma.subject.createMany({
     data: [
@@ -284,6 +295,24 @@ async function main() {
     ],
     skipDuplicates: true,
   });
+
+  // ACTIVITY (за детска градина)
+const activities = [
+  { name: "Drawing", zoneIndex: 0 },
+  { name: "Playing", zoneIndex: 1 },
+  { name: "Sports", zoneIndex: 2 },
+  { name: "Music", zoneIndex: 0 },
+  { name: "Crafts", zoneIndex: 2 },
+];
+
+for (const activity of activities) {
+  await prisma.activity.create({
+    data: {
+      name: activity.name,
+      zoneId: zones[activity.zoneIndex % zones.length].id,
+    },
+  });
+}
 
   // 👩‍🏫 TEACHERS (Erzieher)
   for (let i = 1; i <= 6; i++) {
@@ -352,16 +381,7 @@ async function main() {
     });
   }
 
-  // 🏫 ZONES
-  await prisma.zone.createMany({
-    data: [
-      { name: "Spielplatz" },
-      { name: "Atelier" },
-      { name: "Schlafraum" },
-      { name: "Essraum" },
-    ],
-    skipDuplicates: true,
-  });
+
 
   console.log("✅ Kita seed completed");
 }
