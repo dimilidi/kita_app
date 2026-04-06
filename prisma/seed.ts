@@ -273,15 +273,22 @@ async function main() {
   });
 
     // 🏫 ZONES
-  await prisma.zone.createMany({
-    data: [
-      { name: "Spielplatz" },
-      { name: "Atelier" },
-      { name: "Schlafraum" },
-      { name: "Essraum" },
-    ],
-    skipDuplicates: true,
-  });
+  let zones = await prisma.zone.findMany();
+
+  if (zones.length === 0) {
+    await prisma.zone.createMany({
+      data: [
+        { name: "Turnhalle" },
+        { name: "Spielplatz" },
+        { name: "Atelier" },
+        { name: "Schlafraum" },
+        { name: "Essraum" },
+      ],
+      skipDuplicates: true,
+    });
+
+    zones = await prisma.zone.findMany();
+  }
 
   // 🎨 ACTIVITIES (Subjects)
   await prisma.subject.createMany({
@@ -298,10 +305,10 @@ async function main() {
 
   // ACTIVITY (за детска градина)
 const activities = [
-  { name: "Drawing", zoneIndex: 0 },
+  { name: "Drawing", zoneIndex: 2 },
   { name: "Playing", zoneIndex: 1 },
-  { name: "Sports", zoneIndex: 2 },
-  { name: "Music", zoneIndex: 0 },
+  { name: "Sports", zoneIndex: 0 },
+  { name: "Music", zoneIndex: 2 },
   { name: "Crafts", zoneIndex: 2 },
 ];
 
