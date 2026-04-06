@@ -27,6 +27,12 @@ type LunchGroupProps = {
     | undefined;
   getTeacher: (id: string) => TeacherLite | undefined;
   detailHref?: string;
+  /** Board layout: section reorder handle (listeners only on this control) */
+  dragHandle?: ReactNode;
+  /** When true, group zones do not accept drags (section reorder drag active) */
+  suspendDroppables?: boolean;
+  /** Lunch board: fill resizable section height instead of fixed 480px */
+  fillSectionHeight?: boolean;
 };
 
 type LunchCollapsibleProps = {
@@ -74,41 +80,56 @@ export default function LunchGroup({
   getChild,
   getTeacher,
   detailHref,
+  dragHandle,
+  suspendDroppables = false,
+  fillSectionHeight = false,
 }: LunchGroupProps) {
   const dict = useTranslations();
   const [isKidsOpen, setIsKidsOpen] = useState(true);
   const [isEducatorsOpen, setIsEducatorsOpen] = useState(false);
   const [showTischspruch, setShowTischspruch] = useState(true);
-  const kidDrop = useDroppable({ id: `kid-lunch-${id}` });
-  const teacherDrop = useDroppable({ id: `teacher-lunch-${id}` });
+  const kidDrop = useDroppable({
+    id: `kid-lunch-${id}`,
+    disabled: suspendDroppables,
+  });
+  const teacherDrop = useDroppable({
+    id: `teacher-lunch-${id}`,
+    disabled: suspendDroppables,
+  });
   const isOverZone = kidDrop.isOver || teacherDrop.isOver;
   const isFull = childrenIds.length >= maxPerGroup;
 
   return (
     <div
       className={clsx(
-        "relative flex flex-col min-w-0 w-full h-[480px] rounded-2xl overflow-hidden",
+        "relative flex flex-col min-w-0 w-full rounded-2xl overflow-hidden",
+        fillSectionHeight ? "h-full min-h-[240px]" : "h-[480px]",
         "border-2 border-dashed transition-all duration-150",
         isFull ? "bg-gray-200 border-gray-400" : color,
         isOverZone && "ring-4 ring-kitaSky bg-blue-50"
       )}
     >
-      <h3 className="shrink-0 text-center font-semibold px-2 pt-3 pb-2">
-        {detailHref ? (
-          <Link
-            href={detailHref}
-            className="text-gray-900 no-underline opacity-100 transition-opacity hover:opacity-75 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/50 rounded-sm"
-            title={dict.lunchGroups.detail.viewDetail}
-          >
-            {title}
-          </Link>
-        ) : (
-          title
-        )}
-        <div className="text-xs text-gray-600">
-          {childrenIds.length} / {maxPerGroup}
-        </div>
-      </h3>
+      <div className="shrink-0 flex items-start gap-2 px-2 pt-3 pb-2 w-full min-w-0">
+        {dragHandle ? (
+          <div className="shrink-0 pt-0.5">{dragHandle}</div>
+        ) : null}
+        <h3 className="flex-1 min-w-0 text-center font-semibold">
+          {detailHref ? (
+            <Link
+              href={detailHref}
+              className="text-gray-900 no-underline opacity-100 transition-opacity hover:opacity-75 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/50 rounded-sm"
+              title={dict.lunchGroups.detail.viewDetail}
+            >
+              {title}
+            </Link>
+          ) : (
+            title
+          )}
+          <div className="text-xs text-gray-600 font-normal">
+            {childrenIds.length} / {maxPerGroup}
+          </div>
+        </h3>
+      </div>
 
       <div className="flex flex-1 flex-col min-h-0 px-3 pb-2 gap-2">
         <LunchCollapsible

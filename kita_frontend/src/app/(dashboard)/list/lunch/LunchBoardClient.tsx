@@ -1,13 +1,17 @@
 "use client";
 
 import {
+  closestCorners,
   DndContext,
   DragEndEvent,
   DragOverlay,
   PointerSensor,
+  useDraggable,
+  useDroppable,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import { saveLunchGroups, saveLunchVote, saveTeacherLunchGroups } from "@/lib/actions";
 import Child from "@/components/Child";
 import EducatorCard from "@/components/EducatorCard";
@@ -15,7 +19,15 @@ import LunchGroup from "@/components/LunchGroup";
 import PlayPoolCard from "@/components/PlayPoolCard";
 import type { TeacherLite } from "@/components/PlayAreaCard";
 import type { StudentWithClass } from "@/types/student";
-import { useMemo, useState } from "react";
+import clsx from "clsx";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "@/i18n/TranslationsProvider";
@@ -66,6 +78,286 @@ function parseDropTarget(
   return null;
 }
 
+const SECTION_STORAGE_KEY = "lunch-board-section-order";
+const SECTION_SIZES_KEY = "lunch-board-section-sizes";
+
+type SectionSize = { width: number; height: number };
+
+const MIN_SECTION_W = 180;
+const MAX_SECTION_W = 1400;
+const MIN_SECTION_H = 200;
+const MAX_SECTION_H = 1200;
+
+function clampSize(n: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, n));
+}
+
+function defaultSizeForSectionKey(key: string): SectionSize {
+  if (key === "kids-pool") {
+    return { width: 400, height: 480 };
+  }
+  return { width: 250, height: 480 };
+}
+
+function mergeSectionSizes(
+  orderKeys: string[],
+  storedRaw: string | null
+): Record<string, SectionSize> {
+  const out: Record<string, SectionSize> = {};
+  let stored: Record<string, SectionSize> = {};
+  if (storedRaw) {
+    try {
+      const p = JSON.parse(storedRaw) as unknown;
+      if (p && typeof p === "object" && !Array.isArray(p)) {
+        for (const [k, v] of Object.entries(p as Record<string, unknown>)) {
+          if (!v || typeof v !== "object") continue;
+          const o = v as Record<string, unknown>;
+          const w = Number(o.width);
+          const h = Number(o.height);
+          if (Number.isFinite(w) && Number.isFinite(h)) {
+            stored[k] = {
+              width: Math.round(clampSize(w, MIN_SECTION_W, MAX_SECTION_W)),
+              height: Math.round(clampSize(h, MIN_SECTION_H, MAX_SECTION_H)),
+            };
+          }
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  for (const key of orderKeys) {
+    out[key] = stored[key] ?? defaultSizeForSectionKey(key);
+  }
+  return out;
+}
+
+function groupSectionId(groupId: string): string {
+  return `group-${groupId}`;
+}
+
+function parseGroupIdFromSection(sectionId: string): string | null {
+  if (!sectionId.startsWith("group-")) return null;
+  return sectionId.slice("group-".length);
+}
+
+/** Merge saved order with current lunch groups; migrates legacy `lunch-groups` bucket. */
+function mergeSectionOrder(
+  lunchGroupIds: string[],
+  storedRaw: string | null
+): string[] {
+  const groupKeys = lunchGroupIds.map((id) => groupSectionId(id));
+  const pools = ["kids-pool", "educators-pool"] as const;
+  const validGroupSet = new Set(groupKeys);
+
+  let stored: unknown = null;
+  if (storedRaw) {
+    try {
+      stored = JSON.parse(storedRaw);
+    } catch {
+      stored = null;
+    }
+  }
+
+  if (!Array.isArray(stored)) {
+    return [...groupKeys, ...pools];
+  }
+
+  const expanded: string[] = [];
+  for (const key of stored) {
+    if (typeof key !== "string") continue;
+    if (key === "lunch-groups") {
+      expanded.push(...groupKeys);
+    } else {
+      expanded.push(key);
+    }
+  }
+
+  const result: string[] = [];
+  const seen = new Set<string>();
+
+  for (const key of expanded) {
+    if (seen.has(key)) continue;
+    if (key === "kids-pool" || key === "educators-pool") {
+      result.push(key);
+      seen.add(key);
+    } else if (key.startsWith("group-") && validGroupSet.has(key)) {
+      result.push(key);
+      seen.add(key);
+    }
+  }
+
+  for (const gk of groupKeys) {
+    if (!seen.has(gk)) {
+      result.push(gk);
+      seen.add(gk);
+    }
+  }
+
+  for (const p of pools) {
+    if (!seen.has(p)) {
+      result.push(p);
+      seen.add(p);
+    }
+  }
+
+  return result;
+}
+
+const SECTION_DRAG_PREFIX = "section-drag-";
+const SECTION_DROP_PREFIX = "section-drop-";
+
+function sectionDragId(sectionKey: string): string {
+  return `${SECTION_DRAG_PREFIX}${sectionKey}`;
+}
+
+function sectionDropId(sectionKey: string): string {
+  return `${SECTION_DROP_PREFIX}${sectionKey}`;
+}
+
+function parseSectionDragId(raw: string): string | null {
+  if (!raw.startsWith(SECTION_DRAG_PREFIX)) return null;
+  return raw.slice(SECTION_DRAG_PREFIX.length);
+}
+
+function parseSectionDropId(raw: string): string | null {
+  if (!raw.startsWith(SECTION_DROP_PREFIX)) return null;
+  return raw.slice(SECTION_DROP_PREFIX.length);
+}
+
+/** Pointer left of target center → insert before; right → insert after */
+function shouldInsertSectionBeforeTarget(
+  pointerX: number,
+  overRect: { left: number; width: number }
+): boolean {
+  const midX = overRect.left + overRect.width / 2;
+  return pointerX < midX;
+}
+
+function BoardSection({
+  sectionKey,
+  size,
+  onSizeChange,
+  onResizeEnd,
+  children,
+  className,
+}: {
+  sectionKey: string;
+  size: SectionSize;
+  onSizeChange: (next: SectionSize) => void;
+  onResizeEnd: (next: SectionSize) => void;
+  children: (dragHandle: ReactNode) => ReactNode;
+  className?: string;
+}) {
+  const dragId = sectionDragId(sectionKey);
+  const dropId = sectionDropId(sectionKey);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setDragNodeRef,
+    transform,
+    isDragging,
+  } = useDraggable({ id: dragId });
+  const { setNodeRef: setDropNodeRef, isOver: isDropOver } = useDroppable({
+    id: dropId,
+  });
+
+  const setRefs = (node: HTMLElement | null) => {
+    setDragNodeRef(node);
+    setDropNodeRef(node);
+  };
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    zIndex: isDragging ? 20 : undefined,
+    opacity: isDragging ? 0.88 : undefined,
+  };
+
+  const dragHandle = (
+    <button
+      type="button"
+      className="cursor-grab active:cursor-grabbing touch-none shrink-0 rounded p-1 text-gray-500 hover:bg-gray-200/80"
+      aria-label="Reorder section"
+      {...attributes}
+      {...listeners}
+    >
+      <span className="text-base leading-none select-none" aria-hidden>
+        ⋮⋮
+      </span>
+    </button>
+  );
+
+  const resizeEndRef = useRef<SectionSize | null>(null);
+
+  const onResizePointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const captureEl = e.currentTarget;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const w0 = size.width;
+    const h0 = size.height;
+    resizeEndRef.current = size;
+    captureEl.setPointerCapture(e.pointerId);
+
+    const onMove = (ev: PointerEvent) => {
+      const dw = ev.clientX - startX;
+      const dh = ev.clientY - startY;
+      const next: SectionSize = {
+        width: Math.round(clampSize(w0 + dw, MIN_SECTION_W, MAX_SECTION_W)),
+        height: Math.round(clampSize(h0 + dh, MIN_SECTION_H, MAX_SECTION_H)),
+      };
+      resizeEndRef.current = next;
+      onSizeChange(next);
+    };
+
+    const onUp = (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      try {
+        captureEl.releasePointerCapture(ev.pointerId);
+      } catch {
+        /* ignore */
+      }
+      const final = resizeEndRef.current;
+      resizeEndRef.current = null;
+      if (final) onResizeEnd(final);
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+  };
+
+  return (
+    <div
+      ref={setRefs}
+      style={{
+        ...style,
+        width: size.width,
+        height: size.height,
+      }}
+      className={clsx(
+        "relative flex min-h-0 shrink-0 flex-col overflow-hidden max-w-full",
+        isDropOver && "ring-2 ring-kitaSky/40 rounded-lg",
+        className
+      )}
+    >
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        {children(dragHandle)}
+      </div>
+      <div
+        aria-label="Resize section"
+        title="Resize section"
+        className="absolute bottom-1 right-1 z-30 h-3 w-3 cursor-se-resize touch-none rounded-sm border border-gray-500 bg-white shadow"
+        onPointerDown={onResizePointerDown}
+      />
+    </div>
+  );
+}
+
 export default function LunchBoardClient({
   students,
   teachers,
@@ -100,6 +392,62 @@ export default function LunchBoardClient({
   const [activeChildForVote, setActiveChildForVote] = useState<string | null>(null);
   const [childVotes, setChildVotes] = useState<Record<string, number | null>>(initialVotes);
   const [tischsprueche] = useState<Tischspruch[]>(initialTischsprueche);
+
+  const lunchGroupIds = useMemo(
+    () => lunchGroups.map((g) => g.id),
+    [lunchGroups]
+  );
+  const lunchGroupIdsKey = lunchGroupIds.join(",");
+
+  const [sectionOrder, setSectionOrder] = useState<string[]>(() =>
+    mergeSectionOrder(lunchGroupIds, null)
+  );
+
+  const [sectionSizes, setSectionSizes] = useState<Record<string, SectionSize>>(
+    () => ({})
+  );
+
+  /** Latest pointer for section drop: before/after target by horizontal midpoint */
+  const pointerRef = useRef({ x: 0, y: 0 });
+  const [draggingSection, setDraggingSection] = useState(false);
+
+  useEffect(() => {
+    const fn = (e: PointerEvent) => {
+      pointerRef.current = { x: e.clientX, y: e.clientY };
+    };
+    window.addEventListener("pointermove", fn, { passive: true });
+    return () => window.removeEventListener("pointermove", fn);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = localStorage.getItem(SECTION_STORAGE_KEY);
+    setSectionOrder(mergeSectionOrder(lunchGroupIds, raw));
+  }, [lunchGroupIdsKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const rawOrder = localStorage.getItem(SECTION_STORAGE_KEY);
+    const order = mergeSectionOrder(lunchGroupIds, rawOrder);
+    const rawSizes = localStorage.getItem(SECTION_SIZES_KEY);
+    setSectionSizes(mergeSectionSizes(order, rawSizes));
+  }, [lunchGroupIdsKey]);
+
+  const handleSectionSizeChange = (sectionKey: string, next: SectionSize) => {
+    setSectionSizes((prev) => ({ ...prev, [sectionKey]: next }));
+  };
+
+  const handleSectionResizeEnd = (sectionKey: string, next: SectionSize) => {
+    setSectionSizes((prev) => {
+      const merged = { ...prev, [sectionKey]: next };
+      try {
+        localStorage.setItem(SECTION_SIZES_KEY, JSON.stringify(merged));
+      } catch {
+        /* ignore */
+      }
+      return merged;
+    });
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -166,6 +514,36 @@ export default function LunchBoardClient({
   const onDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
+    setDraggingSection(false);
+
+    const fromKey = parseSectionDragId(String(active.id));
+    if (fromKey) {
+      if (!over) return;
+      const toKey = parseSectionDropId(String(over.id));
+      if (!toKey || fromKey === toKey) return;
+
+      const insertBefore = shouldInsertSectionBeforeTarget(
+        pointerRef.current.x,
+        over.rect
+      );
+
+      setSectionOrder((prev) => {
+        const without = prev.filter((k) => k !== fromKey);
+        const targetIdx = without.indexOf(toKey);
+        if (targetIdx === -1) return prev;
+        const insertAt = insertBefore ? targetIdx : targetIdx + 1;
+        const next = [...without];
+        next.splice(insertAt, 0, fromKey);
+        try {
+          localStorage.setItem(SECTION_STORAGE_KEY, JSON.stringify(next));
+        } catch {
+          /* ignore */
+        }
+        return next;
+      });
+      return;
+    }
+
     if (!over) return;
 
     const parsed = parseDragId(String(active.id));
@@ -243,68 +621,141 @@ export default function LunchBoardClient({
 
       <DndContext
         sensors={sensors}
+        collisionDetection={closestCorners}
         autoScroll
-        onDragStart={({ active }) => setActiveId(String(active.id))}
+        onDragStart={({ active }) => {
+          const id = String(active.id);
+          setActiveId(id);
+          setDraggingSection(id.startsWith(SECTION_DRAG_PREFIX));
+        }}
+        onDragCancel={() => setDraggingSection(false)}
         onDragEnd={onDragEnd}
       >
-        <div className="w-full pb-2">
-          <div className="grid w-full gap-4 items-stretch [grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
-            {lunchGroups.map((group) => (
-              <LunchGroup
-                key={group.id}
-                id={group.id}
-                title={group.name}
-                color={group.color ?? "bg-gray-50 border-gray-300"}
-                educatorIds={teacherLunchState[group.id] ?? []}
-                childrenIds={groups[group.id] ?? []}
-                voteOptions={tischsprueche}
-                votes={getVotesForGroup(group.id)}
-                votedChildren={(groups[group.id] ?? []).filter(
-                  (c) => childVotes[c] != null
+        <div className="flex w-full flex-wrap gap-4 items-start pb-2">
+          {sectionOrder.map((sectionId) => {
+            if (sectionId === "kids-pool") {
+              const sz =
+                sectionSizes[sectionId] ?? defaultSizeForSectionKey(sectionId);
+              return (
+                <BoardSection
+                  key={sectionId}
+                  sectionKey={sectionId}
+                  size={sz}
+                  onSizeChange={(next) =>
+                    handleSectionSizeChange(sectionId, next)
+                  }
+                  onResizeEnd={(next) =>
+                    handleSectionResizeEnd(sectionId, next)
+                  }
+                >
+                  {(handle) => (
+                    <PlayPoolCard
+                      droppableId="pool"
+                      dragHandle={handle}
+                      title={dict.playBoard.kidsPool}
+                      variant="kids"
+                      ids={groups.pool ?? []}
+                      getStudent={getStudentForPool}
+                      getTeacher={getTeacher}
+                      suspendDroppables={draggingSection}
+                      fillSectionHeight
+                    />
+                  )}
+                </BoardSection>
+              );
+            }
+            if (sectionId === "educators-pool") {
+              const sz =
+                sectionSizes[sectionId] ?? defaultSizeForSectionKey(sectionId);
+              return (
+                <BoardSection
+                  key={sectionId}
+                  sectionKey={sectionId}
+                  size={sz}
+                  onSizeChange={(next) =>
+                    handleSectionSizeChange(sectionId, next)
+                  }
+                  onResizeEnd={(next) =>
+                    handleSectionResizeEnd(sectionId, next)
+                  }
+                >
+                  {(handle) => (
+                    <PlayPoolCard
+                      droppableId="teacherPool"
+                      dragHandle={handle}
+                      title={dict.playBoard.educatorsPool}
+                      variant="teachers"
+                      ids={teacherLunchState.teacherPool ?? []}
+                      getStudent={getStudentForPool}
+                      getTeacher={getTeacher}
+                      suspendDroppables={draggingSection}
+                      fillSectionHeight
+                    />
+                  )}
+                </BoardSection>
+              );
+            }
+
+            const gid = parseGroupIdFromSection(sectionId);
+            if (!gid) return null;
+            const group = lunchGroups.find((g) => g.id === gid);
+            if (!group) return null;
+
+            const sz =
+              sectionSizes[sectionId] ?? defaultSizeForSectionKey(sectionId);
+            return (
+              <BoardSection
+                key={sectionId}
+                sectionKey={sectionId}
+                size={sz}
+                onSizeChange={(next) =>
+                  handleSectionSizeChange(sectionId, next)
+                }
+                onResizeEnd={(next) =>
+                  handleSectionResizeEnd(sectionId, next)
+                }
+              >
+                {(handle) => (
+                  <LunchGroup
+                    dragHandle={handle}
+                    suspendDroppables={draggingSection}
+                    fillSectionHeight
+                    id={group.id}
+                    title={group.name}
+                    color={group.color ?? "bg-gray-50 border-gray-300"}
+                    educatorIds={teacherLunchState[group.id] ?? []}
+                    childrenIds={groups[group.id] ?? []}
+                    voteOptions={tischsprueche}
+                    votes={getVotesForGroup(group.id)}
+                    votedChildren={(groups[group.id] ?? []).filter(
+                      (c) => childVotes[c] != null
+                    )}
+                    maxPerGroup={group.capacity}
+                    onSelectChild={setActiveChildForVote}
+                    onVote={(tischspruchId: number) => {
+                      if (!activeChildForVote) return;
+
+                      setChildVotes((prev) => ({
+                        ...prev,
+                        [activeChildForVote]: tischspruchId,
+                      }));
+
+                      void saveLunchVote({
+                        studentId: activeChildForVote,
+                        groupId: group.id,
+                        tischspruchId,
+                      });
+
+                      setActiveChildForVote(null);
+                    }}
+                    getChild={getChild}
+                    getTeacher={getTeacher}
+                    detailHref={`/${locale}/list/lunch-groups/${group.id}`}
+                  />
                 )}
-                maxPerGroup={group.capacity}
-                onSelectChild={setActiveChildForVote}
-                onVote={(tischspruchId: number) => {
-                  if (!activeChildForVote) return;
-
-                  setChildVotes((prev) => ({
-                    ...prev,
-                    [activeChildForVote]: tischspruchId,
-                  }));
-
-                  void saveLunchVote({
-                    studentId: activeChildForVote,
-                    groupId: group.id,
-                    tischspruchId,
-                  });
-
-                  setActiveChildForVote(null);
-                }}
-                getChild={getChild}
-                getTeacher={getTeacher}
-                detailHref={`/${locale}/list/lunch-groups/${group.id}`}
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className="flex flex-col lg:flex-row gap-4 border-t border-gray-200 pt-6">
-          <PlayPoolCard
-            droppableId="pool"
-            title={dict.playBoard.kidsPool}
-            variant="kids"
-            ids={groups.pool ?? []}
-            getStudent={getStudentForPool}
-            getTeacher={getTeacher}
-          />
-          <PlayPoolCard
-            droppableId="teacherPool"
-            title={dict.playBoard.educatorsPool}
-            variant="teachers"
-            ids={teacherLunchState.teacherPool ?? []}
-            getStudent={getStudentForPool}
-            getTeacher={getTeacher}
-          />
+              </BoardSection>
+            );
+          })}
         </div>
 
         <DragOverlay>
