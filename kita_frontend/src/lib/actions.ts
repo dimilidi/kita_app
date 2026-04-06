@@ -1416,6 +1416,21 @@ export async function saveLunchGroups(groups: Record<string, string[]>) {
   }
 }
 
+/** Removes all lunch assignments and Tischspruch votes (fresh start). */
+export async function clearLunchBoard() {
+  try {
+    await prisma.$transaction([
+      prisma.studentLunchGroup.deleteMany(),
+      prisma.teacherLunchGroup.deleteMany(),
+      prisma.studentLunchVote.deleteMany(),
+    ]);
+    revalidatePath("/list/lunch");
+  } catch (error) {
+    console.error("Failed to clear lunch board:", error);
+    throw error;
+  }
+}
+
 export async function saveLunchVote(params: {
   studentId: string;
   groupId: string;

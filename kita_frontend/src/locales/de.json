@@ -140,7 +140,10 @@
     "boardTitle": "Mittagstafel",
     "tischspruchSection": "Tischspruch",
     "showTischspruch": "Tischspruch einblenden",
-    "hideTischspruch": "Tischspruch ausblenden"
+    "hideTischspruch": "Tischspruch ausblenden",
+    "clearLunchboard": "Mittagstafel leeren",
+    "clearLunchboardConfirm": "Mittagstafel wirklich leeren? Alle Zuordnungen gehen in die Pools, alle Tischspruch-Stimmen werden gelöscht.",
+    "clearLunchboardSuccess": "Mittagstafel wurde geleert."
   },
   "events": {
     "title": "Ereignisse"

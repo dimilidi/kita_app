@@ -140,7 +140,10 @@
     "boardTitle": "Lunch Board",
     "tischspruchSection": "Tischspruch",
     "showTischspruch": "Show Tischspruch",
-    "hideTischspruch": "Hide Tischspruch"
+    "hideTischspruch": "Hide Tischspruch",
+    "clearLunchboard": "Clear Lunchboard",
+    "clearLunchboardConfirm": "Clear the lunch board? All student and educator assignments will be moved to the pools and all Tischspruch votes will be removed.",
+    "clearLunchboardSuccess": "Lunch board cleared."
   },
   "events": {
     "title": "Events"

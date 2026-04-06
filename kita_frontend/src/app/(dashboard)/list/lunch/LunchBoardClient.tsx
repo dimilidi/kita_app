@@ -12,7 +12,12 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { saveLunchGroups, saveLunchVote, saveTeacherLunchGroups } from "@/lib/actions";
+import {
+  clearLunchBoard,
+  saveLunchGroups,
+  saveLunchVote,
+  saveTeacherLunchGroups,
+} from "@/lib/actions";
 import Child from "@/components/Child";
 import EducatorCard from "@/components/EducatorCard";
 import LunchGroup from "@/components/LunchGroup";
@@ -31,6 +36,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "@/i18n/TranslationsProvider";
+import { toast } from "react-toastify";
 
 type GroupId = string;
 
@@ -130,6 +136,32 @@ function mergeSectionSizes(
     out[key] = stored[key] ?? defaultSizeForSectionKey(key);
   }
   return out;
+}
+
+function buildEmptyLunchGroups(
+  studentIds: string[],
+  lunchGroupIds: string[]
+): Record<string, string[]> {
+  const next: Record<string, string[]> = {
+    pool: [...studentIds],
+  };
+  for (const gid of lunchGroupIds) {
+    next[gid] = [];
+  }
+  return next;
+}
+
+function buildEmptyTeacherLunchGroups(
+  teacherIds: string[],
+  lunchGroupIds: string[]
+): Record<string, string[]> {
+  const next: Record<string, string[]> = {
+    teacherPool: [...teacherIds],
+  };
+  for (const gid of lunchGroupIds) {
+    next[gid] = [];
+  }
+  return next;
 }
 
 function groupSectionId(groupId: string): string {
@@ -410,6 +442,7 @@ export default function LunchBoardClient({
   /** Latest pointer for section drop: before/after target by horizontal midpoint */
   const pointerRef = useRef({ x: 0, y: 0 });
   const [draggingSection, setDraggingSection] = useState(false);
+  const [clearingBoard, setClearingBoard] = useState(false);
 
   useEffect(() => {
     const fn = (e: PointerEvent) => {
@@ -509,6 +542,27 @@ export default function LunchBoardClient({
       img: child.img ?? undefined,
       group: child.className,
     };
+  };
+
+  const handleClearLunchboard = async () => {
+    if (!window.confirm(dict.lunch.clearLunchboardConfirm)) return;
+    setClearingBoard(true);
+    try {
+      await clearLunchBoard();
+      const studentIds = students.map((s) => s.id);
+      const teacherIds = teachers.map((t) => t.id);
+      setGroups(buildEmptyLunchGroups(studentIds, lunchGroupIds));
+      setTeacherLunchState(
+        buildEmptyTeacherLunchGroups(teacherIds, lunchGroupIds)
+      );
+      setChildVotes({});
+      setActiveChildForVote(null);
+      toast.success(dict.lunch.clearLunchboardSuccess);
+    } catch {
+      toast(dict.forms.somethingWentWrong);
+    } finally {
+      setClearingBoard(false);
+    }
   };
 
   const onDragEnd = (event: DragEndEvent) => {
@@ -616,6 +670,14 @@ export default function LunchBoardClient({
           >
             {dict.lunch.tischsprueche}
           </Link>
+          <button
+            type="button"
+            disabled={clearingBoard}
+            onClick={() => void handleClearLunchboard()}
+            className="rounded-full border border-amber-600/40 bg-amber-100 px-3 py-2 text-xs font-medium text-amber-950 hover:bg-amber-200/90 disabled:opacity-50"
+          >
+            {dict.lunch.clearLunchboard}
+          </button>
         </div>
       </div>
 
