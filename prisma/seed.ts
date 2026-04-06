@@ -1,6 +1,6 @@
-// import { Day, PrismaClient, UserSex } from "@prisma/client";
+//  import { Day, PrismaClient, UserSex } from "@prisma/client";
 
-// const prisma = new PrismaClient();
+//  const prisma = new PrismaClient();
 
 // async function main() {
 //   // ADMIN
@@ -87,24 +87,24 @@
 //     zones = await prisma.zone.findMany();
 //   }
 
-//   // LESSON
-//   for (let i = 1; i <= 30; i++) {
-//     await prisma.lesson.create({
-//       data: {
-//         name: `Lesson${i}`,
-//         day: Day[
-//           Object.keys(Day)[
-//             Math.floor(Math.random() * Object.keys(Day).length)
-//           ] as keyof typeof Day
-//         ],
-//         startTime: new Date(new Date().setHours(new Date().getHours() + 1)),
-//         endTime: new Date(new Date().setHours(new Date().getHours() + 3)),
-//         zoneId: zones[(i - 1) % zones.length].id,
-//         classId: (i % 6) + 1,
-//         teacherId: `teacher${(i % 15) + 1}`,
-//       },
-//     });
-//   }
+  // // LESSON
+  // for (let i = 1; i <= 30; i++) {
+  //   await prisma.lesson.create({
+  //     data: {
+  //       name: `Lesson${i}`,
+  //       day: Day[
+  //         Object.keys(Day)[
+  //           Math.floor(Math.random() * Object.keys(Day).length)
+  //         ] as keyof typeof Day
+  //       ],
+  //       startTime: new Date(new Date().setHours(new Date().getHours() + 1)),
+  //       endTime: new Date(new Date().setHours(new Date().getHours() + 3)),
+  //       zoneId: zones[(i - 1) % zones.length].id,
+  //       classId: (i % 6) + 1,
+  //       teacherId: `teacher${(i % 15) + 1}`,
+  //     },
+  //   });
+  // }
 
 //   // PARENT
 //   for (let i = 1; i <= 25; i++) {
@@ -239,7 +239,7 @@
 //     process.exit(1);
 //   });
 
-import { PrismaClient, UserSex } from "@prisma/client";
+import { Day, PrismaClient, UserSex } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -290,7 +290,7 @@ async function main() {
     zones = await prisma.zone.findMany();
   }
 
-  // 🎨 ACTIVITIES (Subjects)
+  // 🎨 Subjects
   await prisma.subject.createMany({
     data: [
       { name: "Art" },
@@ -320,6 +320,25 @@ for (const activity of activities) {
     },
   });
 }
+
+// LESSON
+  for (let i = 1; i <= 30; i++) {
+    await prisma.lesson.create({
+      data: {
+        name: `Lesson${i}`,
+        day: Day[
+          Object.keys(Day)[
+            Math.floor(Math.random() * Object.keys(Day).length)
+          ] as keyof typeof Day
+        ],
+        startTime: new Date(new Date().setHours(new Date().getHours() + 1)),
+        endTime: new Date(new Date().setHours(new Date().getHours() + 3)),
+        zoneId: zones[(i - 1) % zones.length].id,
+        classId: (i % 6) + 1,
+        teacherId: `teacher${(i % 15) + 1}`,
+      },
+    });
+  }
 
   // 👩‍🏫 TEACHERS (Erzieher)
   for (let i = 1; i <= 6; i++) {
