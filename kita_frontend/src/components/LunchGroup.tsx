@@ -2,7 +2,7 @@
 
 import { useDroppable } from "@dnd-kit/core";
 import clsx from "clsx";
-import { useState } from "react";
+import { forwardRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import Child from "./Child";
 import EducatorCard from "./EducatorCard";
@@ -29,6 +29,36 @@ type LunchGroupProps = {
   detailHref?: string;
 };
 
+type LunchCollapsibleProps = {
+  open: boolean;
+  onToggle: () => void;
+  label: ReactNode;
+  buttonTitle?: string;
+  children: ReactNode;
+  className?: string;
+};
+
+const LunchCollapsible = forwardRef<HTMLDivElement, LunchCollapsibleProps>(
+  ({ open, onToggle, label, buttonTitle, children, className }, ref) => (
+    <div ref={ref} className={className}>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        title={buttonTitle}
+        className="flex w-full items-center justify-between gap-2 rounded-lg px-1.5 py-1.5 text-left text-xs font-semibold text-gray-700 hover:bg-white/60 transition-colors shrink-0"
+      >
+        <span>{label}</span>
+        <span className="tabular-nums text-gray-500" aria-hidden>
+          {open ? "▾" : "▸"}
+        </span>
+      </button>
+      {open && children}
+    </div>
+  )
+);
+LunchCollapsible.displayName = "LunchCollapsible";
+
 export default function LunchGroup({
   id,
   title,
@@ -46,6 +76,8 @@ export default function LunchGroup({
   detailHref,
 }: LunchGroupProps) {
   const dict = useTranslations();
+  const [isKidsOpen, setIsKidsOpen] = useState(true);
+  const [isEducatorsOpen, setIsEducatorsOpen] = useState(false);
   const [showTischspruch, setShowTischspruch] = useState(true);
   const kidDrop = useDroppable({ id: `kid-lunch-${id}` });
   const teacherDrop = useDroppable({ id: `teacher-lunch-${id}` });
@@ -79,98 +111,94 @@ export default function LunchGroup({
       </h3>
 
       <div className="flex flex-1 flex-col min-h-0 px-3 pb-2 gap-2">
-        <div
+        <LunchCollapsible
           ref={teacherDrop.setNodeRef}
+          open={isEducatorsOpen}
+          onToggle={() => setIsEducatorsOpen((v) => !v)}
+          label={dict.lunchGroups.detail.assignedEducators}
           className={clsx(
-            "shrink-0 rounded-lg p-2 max-h-[130px] min-h-[56px] overflow-y-auto transition-colors",
+            "shrink-0 flex flex-col gap-1 rounded-lg px-3 py-3 min-h-[56px] max-h-[130px] transition-colors",
             teacherDrop.isOver && "ring-2 ring-amber-400 ring-inset bg-white/60"
           )}
         >
-          <p className="text-[10px] uppercase tracking-wide text-gray-600 mb-1.5">
-            Educators
-          </p>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-3 content-start">
-            {educatorIds.map((tid) => {
-              const t = getTeacher(tid);
-              if (!t) return null;
-              return (
-                <EducatorCard
-                  key={tid}
-                  id={t.id}
-                  name={`${t.name} ${t.surname}`}
-                  img={t.img}
-                />
-              );
-            })}
+          <div className="flex-1 min-h-0 overflow-y-auto py-2 px-2">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-4 content-start">
+              {educatorIds.map((tid) => {
+                const t = getTeacher(tid);
+                if (!t) return null;
+                return (
+                  <EducatorCard
+                    key={tid}
+                    id={t.id}
+                    name={`${t.name} ${t.surname}`}
+                    img={t.img}
+                  />
+                );
+              })}
+            </div>
           </div>
-        </div>
+        </LunchCollapsible>
 
-        <div
+        <LunchCollapsible
           ref={kidDrop.setNodeRef}
+          open={isKidsOpen}
+          onToggle={() => setIsKidsOpen((v) => !v)}
+          label="Kids"
           className={clsx(
-            "flex min-h-0 flex-1 flex-col rounded-lg p-2 overflow-y-auto transition-colors",
+            "flex min-h-0 flex-1 flex-col rounded-lg px-3 py-3 min-h-[140px] transition-colors",
             kidDrop.isOver && "ring-2 ring-blue-400 ring-inset bg-white/60"
           )}
         >
-          <p className="text-[10px] uppercase tracking-wide text-gray-600 mb-1.5 shrink-0">
-            Kids
-          </p>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-3 content-start">
-            {childrenIds.map((child: string) => {
-              const childData = getChild(child);
-              if (!childData) return null;
+          <div className="flex-1 min-h-0 overflow-y-auto py-2 px-2">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-4 content-start">
+              {childrenIds.map((child: string) => {
+                const childData = getChild(child);
+                if (!childData) return null;
 
-              return (
-                <Child
-                  key={child}
-                  id={childData.id}
-                  dragId={`child:${childData.id}`}
-                  name={childData.name}
-                  img={childData.img}
-                  group={childData.group}
-                  voted={votedChildren.includes(child)}
-                  inGroup
-                  onSelect={onSelectChild}
-                />
-              );
-            })}
+                return (
+                  <Child
+                    key={child}
+                    id={childData.id}
+                    dragId={`child:${childData.id}`}
+                    name={childData.name}
+                    img={childData.img}
+                    group={childData.group}
+                    voted={votedChildren.includes(child)}
+                    inGroup
+                    onSelect={onSelectChild}
+                  />
+                );
+              })}
+            </div>
           </div>
-        </div>
+        </LunchCollapsible>
 
         {childrenIds.length > 0 && (
-          <div className="shrink-0 flex flex-col gap-1 border-t border-black/10 pt-2 mt-1">
-            <button
-              type="button"
-              onClick={() => setShowTischspruch((v) => !v)}
-              aria-expanded={showTischspruch}
-              title={
-                showTischspruch
-                  ? dict.lunch.hideTischspruch
-                  : dict.lunch.showTischspruch
-              }
-              className="flex w-full items-center justify-between gap-2 rounded-lg px-1.5 py-1.5 text-left text-xs font-semibold text-gray-700 hover:bg-white/60 transition-colors"
-            >
-              <span>{dict.lunch.tischspruchSection}</span>
-              <span className="tabular-nums text-gray-500" aria-hidden>
-                {showTischspruch ? "▾" : "▸"}
-              </span>
-            </button>
-            {showTischspruch && (
-              <div className="max-h-[112px] overflow-y-auto">
-                <TischspruchVote
-                  options={voteOptions}
-                  votes={votes}
-                  onVote={onVote}
-                  disabled={
-                    voteOptions.length === 0 ||
-                    votedChildren.length === childrenIds.length
-                  }
-                  hideHeading
-                  compact
-                />
-              </div>
-            )}
-          </div>
+          <LunchCollapsible
+            open={showTischspruch}
+            onToggle={() => setShowTischspruch((v) => !v)}
+            label={dict.lunch.tischspruchSection}
+            buttonTitle={
+              showTischspruch
+                ? dict.lunch.hideTischspruch
+                : dict.lunch.showTischspruch
+            }
+            className="shrink-0 flex flex-col gap-1 border-t border-black/10 pt-2 mt-1"
+          >
+            <div className="max-h-[112px] overflow-y-auto">
+              <TischspruchVote
+                options={voteOptions}
+                votes={votes}
+                onVote={onVote}
+                disabled={
+                  voteOptions.length === 0 ||
+                  votedChildren.length === childrenIds.length
+                }
+                hideHeading
+                compact
+              />
+            </div>
+          </LunchCollapsible>
         )}
       </div>
     </div>

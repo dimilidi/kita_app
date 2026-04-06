@@ -4,8 +4,20 @@ import { useUser } from "@clerk/nextjs";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { DEFAULT_LOCALE } from "@/i18n/lang";
 import { useTranslations } from "@/i18n/TranslationsProvider";
+
+const LUNCH_SUBMENU_ID = "lunch";
+
+function isLunchSectionPath(pathname: string) {
+  return (
+    pathname.includes("/list/lunch") ||
+    pathname.includes("/list/lunchboard") ||
+    pathname.includes("/list/tischsprueche") ||
+    pathname.includes("/list/lunch-groups")
+  );
+}
 
 const getLangFromPathname = (pathname: string) => {
   const segments = pathname.split("/").filter(Boolean);
@@ -20,6 +32,14 @@ const Menu = () => {
   const { user, isLoaded } = useUser();
   const role = user?.publicMetadata.role as string;
   const dict = useTranslations();
+
+  const [openSubmenuId, setOpenSubmenuId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isLunchSectionPath(pathname)) {
+      setOpenSubmenuId(LUNCH_SUBMENU_ID);
+    }
+  }, [pathname]);
 
   if (!isLoaded) return null;
 
@@ -96,20 +116,22 @@ const Menu = () => {
         {
           icon: "/lunch.png",
           label: dict.menu.lunch,
-          href: `/${lang}/list/lunch-groups`,
           visible: ["admin", "teacher"],
-        },
-        {
-          icon: "/class.png",
-          label: dict.menu.lunchBoard,
-          href: `/${lang}/list/lunch`,
-          visible: ["admin", "teacher"],
-        },
-        {
-          icon: "/message.png",
-          label: dict.menu.tischsprueche,
-          href: `/${lang}/list/tischsprueche`,
-          visible: ["admin", "teacher"],
+          submenuId: LUNCH_SUBMENU_ID,
+          children: [
+            {
+              label: dict.menu.lunchBoard,
+              href: `/${lang}/list/lunch`,
+            },
+            {
+              label: dict.menu.tischsprueche,
+              href: `/${lang}/list/tischsprueche`,
+            },
+            {
+              label: dict.menu.lunchGroups,
+              href: `/${lang}/list/lunch-groups`,
+            },
+          ],
         },
       ],
     },
@@ -145,18 +167,57 @@ const Menu = () => {
             {i.title}
           </span>
           {i.items.map((item) => {
-            if (item.visible.includes(role)) {
+            if (!item.visible.includes(role)) return null;
+
+            if ("children" in item && item.children) {
+              const expanded = openSubmenuId === item.submenuId;
               return (
-                <Link
-                  href={item.href}
-                  key={item.label}
-                  className="flex items-center justify-center lg:justify-start gap-4 text-gray-500 py-2 md:px-2 rounded-md hover:bg-lamaSkyLight"
-                >
-                  <Image src={item.icon} alt="" width={20} height={20} />
-                  <span className="hidden lg:block">{item.label}</span>
-                </Link>
+                <div key={item.submenuId} className="flex flex-col">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setOpenSubmenuId((prev) =>
+                        prev === item.submenuId ? null : item.submenuId
+                      )
+                    }
+                    className="flex items-center justify-center lg:justify-start gap-4 text-gray-500 py-2 md:px-2 rounded-md hover:bg-lamaSkyLight w-full text-left"
+                  >
+                    <Image src={item.icon} alt="" width={20} height={20} />
+                    <span className="hidden lg:block flex-1">{item.label}</span>
+                    <span
+                      className="hidden lg:inline text-gray-400 text-xs"
+                      aria-hidden
+                    >
+                      {expanded ? "▾" : "▸"}
+                    </span>
+                  </button>
+                  {expanded && (
+                    <div className="flex flex-col border-l border-gray-200 ml-4 lg:ml-6 pl-3 lg:pl-4 mb-1">
+                      {item.children.map((child) => (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          className="flex items-center justify-center lg:justify-start text-gray-500 py-2 md:px-2 rounded-md hover:bg-lamaSkyLight text-sm"
+                        >
+                          {child.label}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
               );
             }
+
+            return (
+              <Link
+                href={item.href}
+                key={item.label}
+                className="flex items-center justify-center lg:justify-start gap-4 text-gray-500 py-2 md:px-2 rounded-md hover:bg-lamaSkyLight"
+              >
+                <Image src={item.icon} alt="" width={20} height={20} />
+                <span className="hidden lg:block">{item.label}</span>
+              </Link>
+            );
           })}
         </div>
       ))}
