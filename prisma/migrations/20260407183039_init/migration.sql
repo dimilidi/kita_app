@@ -255,9 +255,6 @@ CREATE UNIQUE INDEX "Admin_username_key" ON "Admin"("username");
 CREATE UNIQUE INDEX "Student_username_key" ON "Student"("username");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Student_email_key" ON "Student"("email");
-
--- CreateIndex
 CREATE UNIQUE INDEX "Student_phone_key" ON "Student"("phone");
 
 -- CreateIndex
