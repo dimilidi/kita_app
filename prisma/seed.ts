@@ -273,74 +273,54 @@ async function main() {
   });
 
     // 🏫 ZONES
-  let zones = await prisma.zone.findMany();
-
-  if (zones.length === 0) {
-    await prisma.zone.createMany({
-      data: [
-        { name: "Turnhalle" },
-        { name: "Spielplatz" },
-        { name: "Atelier" },
-        { name: "Schlafraum" },
-        { name: "Essraum" },
-      ],
-      skipDuplicates: true,
-    });
-
-    zones = await prisma.zone.findMany();
-  }
-
-  // 🎨 Subjects
-  await prisma.subject.createMany({
+  await prisma.zone.createMany({
     data: [
-      { name: "Art" },
-      { name: "Music" },
-      { name: "Sport" },
-      { name: "Language" },
-      { name: "Crafts" },
-      { name: "Outdoor Play" },
+      { id: "zone1", name: "Turnhalle" },
+      { id: "zone2", name: "Spielplatz" },
+      { id: "zone3", name: "Atelier" },
+      { id: "zone4", name: "Schlafraum" },
+      { id: "zone5", name: "Essraum" },
+      { id: "zone6", name: "Bauwelt" },
     ],
     skipDuplicates: true,
   });
 
-  // ACTIVITY (за детска градина)
-const activities = [
-  { name: "Drawing", zoneIndex: 2 },
-  { name: "Playing", zoneIndex: 1 },
-  { name: "Sports", zoneIndex: 0 },
-  { name: "Music", zoneIndex: 2 },
-  { name: "Crafts", zoneIndex: 2 },
-];
+  const zones = await prisma.zone.findMany();
 
-for (const activity of activities) {
-  await prisma.activity.create({
-    data: {
-      name: activity.name,
-      zoneId: zones[activity.zoneIndex % zones.length].id,
-    },
-  });
-}
+  // // 🎨 Subjects
+  // await prisma.subject.createMany({
+  //   data: [
+  //     { name: "Art" },
+  //     { name: "Music" },
+  //     { name: "Sport" },
+  //     { name: "Language" },
+  //     { name: "Crafts" },
+  //     { name: "Outdoor Play" },
+  //   ],
+  //   skipDuplicates: true,
+  // });
 
-// LESSON
-  for (let i = 1; i <= 30; i++) {
-    await prisma.lesson.create({
-      data: {
-        name: `Lesson${i}`,
-        day: Day[
-          Object.keys(Day)[
-            Math.floor(Math.random() * Object.keys(Day).length)
-          ] as keyof typeof Day
-        ],
-        startTime: new Date(new Date().setHours(new Date().getHours() + 1)),
-        endTime: new Date(new Date().setHours(new Date().getHours() + 3)),
-        zoneId: zones[(i - 1) % zones.length].id,
-        classId: (i % 6) + 1,
-        teacherId: `teacher${(i % 15) + 1}`,
-      },
-    });
-  }
+//   // ACTIVITY (за детска градина)
+// const activities = [
+//   { name: "Drawing", zoneIndex: 2 },
+//   { name: "Playing", zoneIndex: 1 },
+//   { name: "Sports", zoneIndex: 0 },
+//   { name: "Music", zoneIndex: 2 },
+//   { name: "Crafts", zoneIndex: 2 },
+// ];
 
-  // 👩‍🏫 TEACHERS (Erzieher)
+// for (const activity of activities) {
+//   await prisma.activity.create({
+//     data: {
+//       name: activity.name,
+//       zoneId: zones[activity.zoneIndex % zones.length].id,
+//     },
+//   });
+// }
+
+// 👩‍🏫 TEACHERS (Erzieher)
+ const classes = await prisma.class.findMany();
+
   for (let i = 1; i <= 6; i++) {
     await prisma.teacher.create({
       data: {
@@ -356,16 +336,60 @@ for (const activity of activities) {
         birthday: new Date(
           new Date().setFullYear(new Date().getFullYear() - 30)
         ),
-        subjects: {
-          connect: [{ id: (i % 6) + 1 }],
-        },
         classes: {
-          connect: [{ id: (i % 4) + 1 }],
+          connect: [{ id: classes[i % classes.length].id }],
         },
       },
     });
   }
 
+
+// LESSON
+  // for (let i = 1; i <= 30; i++) {
+  //   await prisma.lesson.create({
+  //     data: {
+  //       name: `Lesson${i}`,
+  //       day: Day[
+  //         Object.keys(Day)[
+  //           Math.floor(Math.random() * Object.keys(Day).length)
+  //         ] as keyof typeof Day
+  //       ],
+  //       startTime: new Date(new Date().setHours(new Date().getHours() + 1)),
+  //       endTime: new Date(new Date().setHours(new Date().getHours() + 3)),
+  //       zoneId: zones[(i - 1) % zones.length].id,
+  //       classId: (i % 4) + 1,
+  //       teacherId: `teacher${(i % 5) + 1}`,
+  //     },
+  //   });
+  // }
+
+  const teachers = await prisma.teacher.findMany();
+
+  for (let i = 1; i <= 8; i++) {
+    await prisma.lesson.create({
+      data: {
+        name: `Lesson${i}`,
+        day: Day[
+          Object.keys(Day)[
+            Math.floor(Math.random() * Object.keys(Day).length)
+          ] as keyof typeof Day
+        ],
+        startTime: new Date(),
+        endTime: new Date(),
+        zone: {
+          connect: { id: zones[(i - 1) % zones.length].id },
+        },
+        class: {
+          connect: { id: classes[i % classes.length].id },
+        },
+        teacher: {
+          connect: { id: teachers[i % teachers.length].id },
+        },
+      },
+    });
+  }
+
+  
   // 👨‍👩‍👧 PARENTS
   for (let i = 1; i <= 20; i++) {
     await prisma.parent.create({
@@ -403,6 +427,31 @@ for (const activity of activities) {
         birthday: new Date(
           new Date().setFullYear(new Date().getFullYear() - age)
         ),
+      },
+    });
+  }
+
+    // EVENT
+  for (let i = 1; i <= 5; i++) {
+    await prisma.event.create({
+      data: {
+        title: `Event ${i}`, 
+        description: `Description for Event ${i}`, 
+        startTime: new Date(new Date().setHours(new Date().getHours() + 1)), 
+        endTime: new Date(new Date().setHours(new Date().getHours() + 2)), 
+        classId: (i % 4) + 1, 
+      },
+    });
+  }
+
+  // ANNOUNCEMENT
+  for (let i = 1; i <= 5; i++) {
+    await prisma.announcement.create({
+      data: {
+        title: `Announcement ${i}`, 
+        description: `Description for Announcement ${i}`, 
+        date: new Date(), 
+        classId: (i % 4) + 1, 
       },
     });
   }
