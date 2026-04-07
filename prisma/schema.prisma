@@ -158,7 +158,7 @@ model AnnouncementRead {
 }
 
 model Zone {
-  id          String        @id 
+  id          String        @id @default(cuid()) 
   name        String        @unique
   capacity    Int?
   description String?

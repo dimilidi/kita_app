@@ -2,17 +2,13 @@
 
 import {
   deleteAnnouncement,
-  deleteAssignment,
   deleteZone,
   deleteAttendance,
   deleteClass,
   deleteEvent,
-  deleteExam,
   deleteLesson,
   deleteParent,
-  deleteResult,
   deleteStudent,
-  deleteSubject,
   deleteTeacher,
 } from "@/lib/actions";
 import dynamic from "next/dynamic";
@@ -26,15 +22,11 @@ import { useTranslations } from "@/i18n/TranslationsProvider";
 
 
 const deleteActionMap = {
-  subject: deleteSubject,
   class: deleteClass,
   teacher: deleteTeacher,
   student: deleteStudent,
-  exam: deleteExam,
   parent: deleteParent,
   lesson: deleteLesson,
-  assignment: deleteAssignment,
-  result: deleteResult,
   attendance: deleteAttendance,
   event: deleteEvent,
   announcement: deleteAnnouncement,
@@ -57,25 +49,13 @@ const TeacherForm = dynamic(() => import("./forms/TeacherForm"), {
 const StudentForm = dynamic(() => import("./forms/StudentForm"), {
   loading: () => <LoadingFallback />,
 });
-const SubjectForm = dynamic(() => import("./forms/SubjectForm"), {
-  loading: () => <LoadingFallback />,
-});
 const ClassForm = dynamic(() => import("./forms/ClassForm"), {
-  loading: () => <LoadingFallback />,
-});
-const ExamForm = dynamic(() => import("./forms/ExamForm"), {
   loading: () => <LoadingFallback />,
 });
 const ParentForm = dynamic(() => import("./forms/ParentForm"), {
   loading: () => <LoadingFallback />,
 });
 const LessonForm = dynamic(() => import("./forms/LessonForm"), {
-  loading: () => <LoadingFallback />,
-});
-const AssignmentForm = dynamic(() => import("./forms/AssignmentForm"), {
-  loading: () => <LoadingFallback />,
-});
-const ResultForm = dynamic(() => import("./forms/ResultForm"), {
   loading: () => <LoadingFallback />,
 });
 const AttendanceForm = dynamic(() => import("./forms/AttendanceForm"), {
@@ -100,14 +80,6 @@ const forms: {
     relatedData?: any
   ) => JSX.Element;
 } = {
-  subject: (setOpen, type, data, relatedData) => (
-    <SubjectForm
-      type={type}
-      data={data}
-      setOpen={setOpen}
-      relatedData={relatedData}
-    />
-  ),
   class: (setOpen, type, data, relatedData) => (
     <ClassForm
       type={type}
@@ -132,31 +104,11 @@ const forms: {
       relatedData={relatedData}
     />
   ),
-  exam: (setOpen, type, data, relatedData) => (
-    <ExamForm
-      type={type}
-      data={data}
-      setOpen={setOpen}
-      relatedData={relatedData}
-    />
-    // TODO OTHER LIST ITEMS
-  ),
   parent: (setOpen, type, data) => (
     <ParentForm type={type} data={data} setOpen={setOpen} />
   ),
   lesson: (setOpen, type, data, relatedData) => (
     <LessonForm type={type} data={data} setOpen={setOpen} relatedData={relatedData} />
-  ),
-  assignment: (setOpen, type, data, relatedData) => (
-    <AssignmentForm
-      type={type}
-      data={data}
-      setOpen={setOpen}
-      relatedData={relatedData}
-    />
-  ),
-  result: (setOpen, type, data, relatedData) => (
-    <ResultForm type={type} data={data} setOpen={setOpen} relatedData={relatedData} />
   ),
   attendance: (setOpen, type, data, relatedData) => (
     <AttendanceForm

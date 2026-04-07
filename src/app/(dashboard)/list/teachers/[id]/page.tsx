@@ -27,7 +27,6 @@ const SingleTeacherPage = async ({
     include: {
       _count: {
         select: {
-          subjects: true,
           lessons: true,
           classes: true,
         },
@@ -147,7 +146,8 @@ const SingleTeacherPage = async ({
               <Image src="/singleBranch.png" alt="" width={24} height={24} className="w-6 h-6" />
               <div>
                 <h1 className="text-xl font-semibold">
-                  {teacher._count.subjects}
+                  {/* {teacher._count.subjects} */}
+                  teacher[id]
                 </h1>
                 <span className="text-sm text-gray-400">
                   {dict.menu.areas}

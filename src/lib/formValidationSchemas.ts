@@ -1,16 +1,5 @@
 import { z } from "zod";
 
-export const subjectSchema = z.object({
-  id: z.coerce.number().optional(),
-  name: z.string().min(1, { message: "forms.required" }),
-  teachers: z.array(z.string()), //teacher ids
-});
-
-//export type SubjectSchema = z.infer<typeof subjectSchema>;
-export type SubjectInput = z.input<typeof subjectSchema>;
-export type SubjectSchema = z.output<typeof subjectSchema>;
-
-
 export const classSchema = z.object({
   id: z.coerce.number().optional(),
   name: z.string().min(1, { message: "forms.required" }),
@@ -47,8 +36,6 @@ export const teacherSchema = z.object({
   bloodType: z.string().min(1, { message: "forms.required" }),
   birthday: z.coerce.date({ message: "forms.required" }),
   sex: z.enum(["MALE", "FEMALE"], { message: "forms.required" }),
-  // Legacy (not used in UI anymore): subject ids
-  subjects: z.array(z.string()).optional(),
   // Kindergarten domain: play areas (zones)
   zoneIds: z.array(z.string()).optional(),
 });
@@ -104,18 +91,6 @@ export const studentSchema = z.object({
 export type StudentInput = z.input<typeof studentSchema>;
 export type StudentSchema = z.output<typeof studentSchema>;
 
-export const examSchema = z.object({
-  id: z.coerce.number().optional(),
-  title: z.string().min(1, { message: "forms.required" }),
-  startTime: z.coerce.date({ message: "forms.required" }),
-  endTime: z.coerce.date({ message: "forms.required" }),
-  lessonId: z.coerce.number({ message: "forms.required" }),
-});
-
-// export type ExamSchema = z.infer<typeof examSchema>;
-export type ExamInput = z.input<typeof examSchema>;
-export type ExamSchema = z.output<typeof examSchema>;
-
 export const parentSchema = z.object({
   id: z.string().optional(),
   username: z
@@ -163,28 +138,6 @@ export const lessonSchema = z.object({
 
 export type LessonInput = z.input<typeof lessonSchema>;
 export type LessonSchema = z.output<typeof lessonSchema>;
-
-export const assignmentSchema = z.object({
-  id: z.coerce.number().optional(),
-  title: z.string().min(1, { message: "forms.required" }),
-  startDate: z.coerce.date({ message: "forms.required" }),
-  dueDate: z.coerce.date({ message: "forms.required" }),
-  lessonId: z.coerce.number().min(1, { message: "forms.required" }),
-});
-
-export type AssignmentInput = z.input<typeof assignmentSchema>;
-export type AssignmentSchema = z.output<typeof assignmentSchema>;
-
-export const resultSchema = z.object({
-  id: z.coerce.number().optional(),
-  score: z.coerce.number().min(0, { message: "forms.required" }),
-  studentId: z.coerce.string().min(1, { message: "forms.required" }),
-  examId: z.coerce.number().optional(),
-  assignmentId: z.coerce.number().optional(),
-});
-
-export type ResultInput = z.input<typeof resultSchema>;
-export type ResultSchema = z.output<typeof resultSchema>;
 
 export const attendanceSchema = z.object({
   id: z.coerce.number().optional(),

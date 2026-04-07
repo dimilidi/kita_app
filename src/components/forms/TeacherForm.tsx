@@ -214,7 +214,7 @@ const TeacherForm = ({
         </div>
         <div className="flex flex-col gap-2 w-full md:w-1/4">
           <label className="text-xs text-gray-500">
-            {dict.forms.playArea ?? dict.forms.subject ?? "Play Areas"}
+            {dict.forms.playArea ??  "Play Areas"}
           </label>
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
