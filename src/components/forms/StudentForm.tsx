@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import InputField from "../InputField";
 import Image from "next/image";
-import { Dispatch, SetStateAction, useEffect, useState } from "react";
+import { Dispatch, SetStateAction, useEffect, useMemo, useState } from "react";
 import { StudentInput, studentSchema, StudentSchema } from "@/lib/formValidationSchemas";
 import { useFormState } from "react-dom";
 import { createStudent, updateStudent } from "@/lib/actions";
@@ -43,14 +43,43 @@ const StudentForm = ({
     surname: string;
   }[];
 
+  const defaultValues = useMemo(() => {
+    const birthday =
+      data?.birthday && typeof data.birthday?.toISOString === "function"
+        ? data.birthday.toISOString().split("T")[0]
+        : typeof data?.birthday === "string"
+          ? data.birthday.split("T")[0]
+          : undefined;
+
+    return {
+      id: data?.id ?? undefined,
+      username: data?.username ?? "",
+      password: "",
+      name: data?.name ?? "",
+      surname: data?.surname ?? "",
+      email: data?.email ?? "",
+      address: data?.address ?? "",
+      bloodType: data?.bloodType ?? "",
+      birthday,
+      sex: data?.sex ?? "MALE",
+      gradeId: data?.gradeId ?? undefined,
+      classId: data?.classId ?? undefined,
+      parentId: data?.parentId ?? "",
+      bringTime: data?.bringTime ?? "",
+      pickupTime: data?.pickupTime ?? "",
+    } as Partial<StudentInput>;
+  }, [data?.id]);
+
   const {
     register,
     handleSubmit,
     watch,
     setValue,
+    setError,
     formState: { errors },
   } = useForm<StudentInput, any, StudentSchema>({
     resolver: zodResolver(studentSchema),
+    defaultValues,
   });
 
   const [img, setImg] = useState<any>();
@@ -60,6 +89,7 @@ const StudentForm = ({
     {
       success: false,
       error: false,
+      message: "",
     }
   );
 
@@ -77,7 +107,16 @@ const StudentForm = ({
       setOpen(false);
       router.refresh();
     }
-  }, [state, router, type, setOpen, dict, label]);
+    if (state.error) {
+      const msg = (state as any).message || dict.forms.somethingWentWrong;
+      toast.error(msg);
+      const lower = String(msg).toLowerCase();
+      if (lower.includes("username")) {
+        setError("username", { type: "server", message: String(msg) });
+      }
+      // (student form currently has no email field; keep toast for email-related errors)
+    }
+  }, [state, router, type, setOpen, dict, label, setError]);
 
   const calcAge = (birthday: Date) => {
     const now = new Date();
@@ -136,21 +175,28 @@ const StudentForm = ({
     const stillValid =
       allowedGradeLevel !== null && selectedGrade?.level === allowedGradeLevel;
 
-    if (!stillValid) {
+    // In update mode, keep the existing class selection unless the user actually changes it.
+    const isExistingUpdateSelection =
+      type === "update" &&
+      data?.classId != null &&
+      String(selectedClassId ?? "") === String(data.classId);
+
+    if (!stillValid && !isExistingUpdateSelection) {
       setValue("classId", "" as any, { shouldValidate: true });
       setValue("gradeId", "" as any, { shouldValidate: true });
     }
-  }, [allowedGradeLevel, classes, grades, selectedClassId, setValue]);
+  }, [allowedGradeLevel, classes, grades, selectedClassId, setValue, type, data?.classId]);
 
   if (!relatedData) return <p>{dict.common.loading}</p>;
 
-  const birthdayDefault = data?.birthday
-    ? new Date(data.birthday).toISOString().split("T")[0]
-    : undefined;
-
-console.log("CLOUDINARY NAME:", process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME);
-console.log("ALL ENV:", process.env);
-
+  const classOptions = useMemo(() => {
+    const currentId = data?.classId;
+    const current =
+      currentId != null ? classes.find((c) => c.id === Number(currentId)) : undefined;
+    const inFiltered =
+      current && filteredClasses.some((c) => c.id === current.id);
+    return current && !inFiltered ? [current, ...filteredClasses] : filteredClasses;
+  }, [classes, data?.classId, filteredClasses]);
 
   return (
     <form className="flex flex-col gap-8" onSubmit={onSubmit}>
@@ -172,7 +218,6 @@ console.log("ALL ENV:", process.env);
             type="text"
             {...register("username")}
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
-            defaultValue={data?.username}
           />
           {errors?.username?.message && (
             <p className="text-xs text-red-400">
@@ -190,7 +235,8 @@ console.log("ALL ENV:", process.env);
             type="password"
             {...register("password")}
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
-            defaultValue={data?.password}
+            placeholder={type === "update" ? "••••••••" : undefined}
+            autoComplete={type === "update" ? "new-password" : undefined}
           />
           {errors?.password?.message && (
             <p className="text-xs text-red-400">
@@ -210,14 +256,12 @@ console.log("ALL ENV:", process.env);
         <InputField
           label={dict.forms.firstName}
           name="name"
-          defaultValue={data?.name}
           register={register}
           error={errors.name}
         />
         <InputField
           label={dict.forms.lastName}
           name="surname"
-          defaultValue={data?.surname}
           register={register}
           error={errors.surname}
         />
@@ -225,7 +269,6 @@ console.log("ALL ENV:", process.env);
         <InputField
           label={dict.forms.address}
           name="address"
-          defaultValue={data?.address ?? ""}
           register={register}
           error={errors.address}
           hidden
@@ -233,7 +276,6 @@ console.log("ALL ENV:", process.env);
         <InputField
           label={dict.forms.bloodGroup}
           name="bloodType"
-          defaultValue={data?.bloodType}
           register={register}
           error={errors.bloodType}
           hidden
@@ -243,7 +285,6 @@ console.log("ALL ENV:", process.env);
           <select
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
             {...register("bloodType")}
-            defaultValue={data?.bloodType ?? ""}
           >
             <option value="">{dict.forms.none}</option>
             {BLOOD_GROUPS.map((g) => (
@@ -261,7 +302,6 @@ console.log("ALL ENV:", process.env);
         <InputField
           label={dict.forms.birthday}
           name="birthday"
-          defaultValue={birthdayDefault}
           register={register}
           error={errors.birthday}
           type="date"
@@ -280,7 +320,6 @@ console.log("ALL ENV:", process.env);
           <select
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
             {...register("parentId")}
-            defaultValue={data?.parentId ?? ""}
           >
             <option value="" disabled>
               {dict.forms.selectParent}
@@ -301,7 +340,6 @@ console.log("ALL ENV:", process.env);
           <InputField
             label="Id"
             name="id"
-            defaultValue={data?.id}
             register={register}
             error={errors?.id}
             hidden
@@ -312,7 +350,6 @@ console.log("ALL ENV:", process.env);
           <select
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
             {...register("sex")}
-            defaultValue={data?.sex}
           >
             <option value="MALE">{dict.forms.male}</option>
             <option value="FEMALE">{dict.forms.female}</option>
@@ -328,7 +365,6 @@ console.log("ALL ENV:", process.env);
           <select
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
             {...register("classId")}
-            defaultValue={data?.classId ?? ""}
             disabled={allowedGradeLevel === null}
           >
             <option value="" disabled>
@@ -336,7 +372,7 @@ console.log("ALL ENV:", process.env);
                 ? "Select birthday first"
                 : dict.forms.selectClass}
             </option>
-            {filteredClasses.map((classItem) => (
+            {classOptions.map((classItem) => (
               <option value={classItem.id} key={classItem.id}>
                 ({classItem.name} -{" "}
                 {classItem._count.students + "/" + classItem.capacity}{" "}
@@ -358,7 +394,6 @@ console.log("ALL ENV:", process.env);
               name="bringTime"
               type="time"
               register={register}
-              defaultValue={data?.bringTime ?? ""}
               error={errors.bringTime}
             />
             <InputField
@@ -366,7 +401,6 @@ console.log("ALL ENV:", process.env);
               name="pickupTime"
               type="time"
               register={register}
-              defaultValue={data?.pickupTime ?? ""}
               error={errors.pickupTime}
             />
           </>

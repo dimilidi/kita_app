@@ -23,7 +23,7 @@ const StudentAttendanceCard = async ({ id }: { id: string }) => {
     totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : null;
   return (
     <div className="">
-      <h1 className="text-xl font-semibold">
+      <h1 className="text-lg font-semibold">
         {percentage !== null ? `${percentage}%` : "—"}
       </h1>
       <span className="text-sm text-gray-400">{dict.dashboard.attendance}</span>

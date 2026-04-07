@@ -4,6 +4,8 @@ import {
   getAttendanceRowsForPdfExport,
   saveAttendanceDayDetail,
   saveDailyAttendance,
+  saveDailyAttendanceForLessonMany,
+  saveDailyAttendanceForAttendancePageFilterAll,
 } from "@/lib/actions";
 import Pagination from "@/components/Pagination";
 import { todayDateStrLocal } from "@/lib/attendanceDate";
@@ -44,6 +46,14 @@ export default function AttendancePageClient({
   const [pickupModalStudentId, setPickupModalStudentId] = useState<string | null>(null);
   const [pickupDraft, setPickupDraft] = useState("");
   const [isSavingPickup, setIsSavingPickup] = useState(false);
+  const [localRows, setLocalRows] = useState<AttendanceRow[]>(rows);
+  const selectAllRef = useRef<HTMLInputElement | null>(null);
+  const [globalPresentOverride, setGlobalPresentOverride] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    setLocalRows(rows);
+    setGlobalPresentOverride(null);
+  }, [rows]);
 
   useEffect(() => {
     if (!pickupModalStudentId) return;
@@ -76,8 +86,40 @@ export default function AttendancePageClient({
 
   const { total, presentCount, absentCount } = summary;
 
+  const editableRows = localRows.filter((r) => !!r.lessonId);
+  const editableCount = editableRows.length;
+  const presentEditableCount = editableRows.reduce((acc, r) => acc + (r.present ? 1 : 0), 0);
+  const allEditablePresent = editableCount > 0 && presentEditableCount === editableCount;
+  const noneEditablePresent = presentEditableCount === 0;
+  const someEditablePresent = presentEditableCount > 0 && !allEditablePresent;
+
+  useEffect(() => {
+    const el = selectAllRef.current;
+    if (!el) return;
+    el.indeterminate = someEditablePresent && !allEditablePresent;
+  }, [someEditablePresent, allEditablePresent]);
+
+  // Keep summary cards responsive to optimistic local changes.
+  // Summary values are for all filtered students (not just the current page),
+  // so we apply a delta from the current page rows.
+  const basePagePresentCount = rows.reduce((acc, r) => acc + (r.present ? 1 : 0), 0);
+  const localPagePresentCount = localRows.reduce((acc, r) => acc + (r.present ? 1 : 0), 0);
+  const presentCountDisplayUnclamped =
+    globalPresentOverride === null
+      ? presentCount + (localPagePresentCount - basePagePresentCount)
+      : globalPresentOverride
+        ? total
+        : 0;
+  const presentCountDisplay = Math.max(0, Math.min(total, presentCountDisplayUnclamped));
+  const absentCountDisplay = total - presentCountDisplay;
+
   const onToggle = async (studentId: string, nextPresent: boolean) => {
     if (!canEdit) return;
+    setGlobalPresentOverride(null);
+    // optimistic update
+    setLocalRows((prev) =>
+      prev.map((r) => (r.id === studentId ? { ...r, present: nextPresent } : r))
+    );
     const res = await saveDailyAttendance({
       studentId,
       dateStr,
@@ -89,6 +131,32 @@ export default function AttendancePageClient({
       } else {
         toast(dict.attendancePage.saveFailed);
       }
+      // revert on failure
+      setLocalRows(rows);
+      return;
+    }
+    startTransition(() => router.refresh());
+  };
+
+  const onToggleAll = async (nextPresent: boolean) => {
+    if (!canEdit) return;
+    setGlobalPresentOverride(nextPresent);
+    // optimistic update for rows that have a lesson
+    setLocalRows((prev) =>
+      prev.map((r) => (r.lessonId ? { ...r, present: nextPresent } : r))
+    );
+
+    // Persist: on page 1, this checkbox should update *all* matching students.
+    // On other pages the checkbox is hidden, but keep this logic robust.
+    const resGlobal = await saveDailyAttendanceForAttendancePageFilterAll({
+      dateStr,
+      classIdParam: classId,
+      present: nextPresent,
+    });
+    if (!resGlobal.success) {
+      toast(dict.attendancePage.saveFailed);
+      setLocalRows(rows);
+      setGlobalPresentOverride(null);
       return;
     }
     startTransition(() => router.refresh());
@@ -502,11 +570,11 @@ export default function AttendancePageClient({
         </div>
         <div className="bg-white rounded-lg border border-emerald-100 p-4 shadow-sm">
           <p className="text-sm text-gray-500">{dict.dashboard.present}</p>
-          <p className="text-2xl font-semibold text-emerald-700">{presentCount}</p>
+          <p className="text-2xl font-semibold text-emerald-700">{presentCountDisplay}</p>
         </div>
         <div className="bg-white rounded-lg border border-rose-100 p-4 shadow-sm">
           <p className="text-sm text-gray-500">{dict.dashboard.absent}</p>
-          <p className="text-2xl font-semibold text-rose-700">{absentCount}</p>
+          <p className="text-2xl font-semibold text-rose-700">{absentCountDisplay}</p>
         </div>
       </div>
 
@@ -515,32 +583,51 @@ export default function AttendancePageClient({
           <table className="w-full min-w-[44rem] text-sm">
             <thead>
               <tr className="bg-slate-50 border-b border-gray-200 text-left">
-                <th className="p-3 sm:p-4 font-medium text-gray-700 min-w-[9rem]">
+                <th className="p-3 sm:p-4 font-medium text-gray-700 min-w-[9rem] align-top">
                   {dict.attendancePage.childName}
                 </th>
-                <th className="p-3 sm:p-4 font-medium text-gray-700 min-w-[5rem]">
+                <th className="p-3 sm:p-4 font-medium text-gray-700 min-w-[5rem] align-top">
                   {dict.attendancePage.group}
                 </th>
-                <th className="p-3 sm:p-4 font-medium text-gray-700 min-w-[8.5rem]">
-                  {dict.attendancePage.status}
+                <th className="p-3 sm:p-4 font-medium text-gray-700 min-w-[8.5rem] align-top">
+                  <div className="flex flex-col gap-2">
+                    <span>{dict.attendancePage.status}</span>
+                    {canEdit && page === 1 ? (
+                      <label className="inline-flex items-center gap-2 font-normal">
+                        <input
+                          ref={selectAllRef}
+                          type="checkbox"
+                          className="h-4 w-4"
+                          disabled={isPending || editableCount === 0}
+                          checked={editableCount > 0 && allEditablePresent}
+                          onChange={(e) => onToggleAll(e.target.checked)}
+                          aria-label={dict.common.selectAll ?? "Select all"}
+                          title={dict.common.selectAll ?? "Select all"}
+                        />
+                        <span className="text-xs text-gray-700">
+                          {someEditablePresent ? "Mixed" : allEditablePresent ? "All Present" : "All Absent"}
+                        </span>
+                      </label>
+                    ) : null}
+                  </div>
                 </th>
-                <th className="p-3 sm:p-4 font-medium text-gray-700 min-w-[10rem]">
+                <th className="p-3 sm:p-4 font-medium text-gray-700 min-w-[10rem] align-top">
                   {dict.forms.pickupTime}
                 </th>
-                <th className="p-3 sm:p-4 font-medium text-gray-700 min-w-[12rem]">
+                <th className="p-3 sm:p-4 font-medium text-gray-700 min-w-[12rem] align-top">
                   {dict.attendancePage.notes}
                 </th>
               </tr>
             </thead>
             <tbody>
-              {rows.length === 0 ? (
+              {localRows.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="p-8 text-center text-gray-500">
                     {dict.attendancePage.noStudents}
                   </td>
                 </tr>
               ) : (
-                rows.map((row) => {
+                localRows.map((row) => {
                   const disabled = !canEdit || !row.lessonId || isPending;
                   return (
                     <tr
@@ -633,7 +720,7 @@ export default function AttendancePageClient({
       </div>
       {pickupModalStudentId ? (
         (() => {
-          const modalRow = rows.find((r) => r.id === pickupModalStudentId);
+          const modalRow = localRows.find((r) => r.id === pickupModalStudentId);
           if (!modalRow) return null;
           return (
             <div

@@ -4,6 +4,8 @@ import "./globals.css";
 import { cookies } from "next/headers";
 import { DEFAULT_LOCALE, Locale } from "@/i18n/lang";
 import { ClerkProvider } from "@clerk/nextjs";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -23,7 +25,10 @@ export default function RootLayout({
   return (
     <html lang={lang}>
       <body className={inter.className}>
-        <ClerkProvider>{children}</ClerkProvider>
+        <ClerkProvider>
+          {children}
+          <ToastContainer position="top-right" autoClose={3000} />
+        </ClerkProvider>
       </body>
     </html>
   );

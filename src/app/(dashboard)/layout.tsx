@@ -2,8 +2,6 @@ import Menu from "@/components/Menu";
 import NavbarServer from "@/components/NavbarServer";
 import Image from "next/image";
 import Link from "next/link";
-import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 
 export default function DashboardLayout({
   children,
@@ -26,7 +24,7 @@ export default function DashboardLayout({
       {/* RIGHT */}
       <div className="w-[86%] md:w-[92%] lg:w-[84%] xl:w-[86%] bg-[#F7F8FA] overflow-scroll flex flex-col">
          <NavbarServer />
-        {children}  <ToastContainer position="bottom-right" theme="dark" />
+        {children}
       </div>
   
     </div>

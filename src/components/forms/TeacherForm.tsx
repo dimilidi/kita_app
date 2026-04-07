@@ -6,8 +6,7 @@ import InputField from "../InputField";
 import Image from "next/image";
 import { Dispatch, SetStateAction, useEffect, useMemo, useState } from "react";
 import { TeacherInput, teacherSchema, TeacherSchema } from "@/lib/formValidationSchemas";
-import { useFormState } from "react-dom";
-import { createTeacher, updateTeacher } from "@/lib/actions";
+import { createTeacherDirect, updateTeacherDirect } from "@/lib/actions";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { CldImage, CldUploadWidget } from "next-cloudinary";
@@ -28,42 +27,85 @@ const TeacherForm = ({
   const label = dict.entities?.teacher || "teacher";
   const BLOOD_TYPES = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] as const;
 
+  const defaultValues = useMemo(() => {
+    const birthday =
+      data?.birthday && typeof data.birthday?.toISOString === "function"
+        ? data.birthday.toISOString().split("T")[0]
+        : typeof data?.birthday === "string"
+          ? data.birthday.split("T")[0]
+          : undefined;
+
+    const zoneIds = Array.isArray(data?.zones)
+      ? (data.zones.map((z: any) => z.zoneId).filter(Boolean) as string[])
+      : [];
+
+    return {
+      username: data?.username ?? "",
+      email: data?.email ?? "",
+      password: data?.password ?? "",
+      name: data?.name ?? "",
+      surname: data?.surname ?? "",
+      phone: data?.phone ?? "",
+      address: data?.address ?? "",
+      bloodType: data?.bloodType ?? "",
+      birthday,
+      sex: data?.sex ?? "MALE",
+      id: data?.id ?? undefined,
+      zoneIds,
+    } as Partial<TeacherInput>;
+    // Only re-create defaults when switching the edited teacher.
+  }, [data?.id]);
+
   const {
     register,
     handleSubmit,
     setValue,
+    setError,
     watch,
     formState: { errors },
   } = useForm<TeacherInput, any, TeacherSchema>({
     resolver: zodResolver(teacherSchema),
+    defaultValues,
   });
 
   const [img, setImg] = useState<any>();
-
-  const [state, formAction] = useFormState(
-    type === "create" ? createTeacher : updateTeacher,
-    {
-      success: false,
-      error: false,
-    }
-  );
-
-  const onSubmit = handleSubmit((data) => {
-    console.log(data);
-    formAction({ ...data, img: img?.secure_url });
-  });
+  const [loading, setLoading] = useState(false);
 
   const router = useRouter();
 
-  useEffect(() => {
-    if (state.success) {
-      const template =
-        type === "create" ? dict.common.created : dict.common.updated;
-      toast(template.replace("{label}", label));
-      setOpen(false);
-      router.refresh();
+  const onSubmit = handleSubmit(async (data) => {
+    const payload = { ...data, img: img?.secure_url } as any;
+    try {
+      setLoading(true);
+      const res =
+        type === "create"
+          ? await createTeacherDirect(payload)
+          : await updateTeacherDirect(payload);
+
+      if (res.success) {
+        const template = type === "create" ? dict.common.created : dict.common.updated;
+        toast.success(template.replace("{label}", label));
+        setOpen(false);
+        router.refresh();
+        return;
+      }
+
+      const msg = res.message || "Something went wrong";
+      toast.error(msg);
+      const lower = msg.toLowerCase();
+      if (lower.includes("username")) {
+        setError("username", { type: "server", message: msg });
+      } else if (lower.includes("email")) {
+        setError("email", { type: "server", message: msg });
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(err);
+      toast.error("Unexpected error");
+    } finally {
+      setLoading(false);
     }
-  }, [state, router, type, setOpen, dict, label]);
+  });
 
   const { zones } = relatedData as {
     zones: { id: string; name: string }[];
@@ -71,14 +113,6 @@ const TeacherForm = ({
 
   const selectedZoneIds = watch("zoneIds") ?? [];
   const [zoneToAdd, setZoneToAdd] = useState<string>("");
-
-  // Initialize zoneIds in update mode from included TeacherZone rows.
-  useEffect(() => {
-    const existing = (data?.zones ?? []).map((z: any) => z.zoneId) as string[];
-    if (type === "update" && existing.length > 0) {
-      setValue("zoneIds", existing, { shouldValidate: false });
-    }
-  }, [data, setValue, type]);
 
   const zoneNameById = useMemo(() => {
     return new Map(zones.map((z) => [z.id, z.name]));
@@ -98,14 +132,12 @@ const TeacherForm = ({
         <InputField
           label={dict.forms.username}
           name="username"
-          defaultValue={data?.username}
           register={register}
           error={errors?.username}
         />
         <InputField
           label={dict.forms.email}
           name="email"
-          defaultValue={data?.email}
           register={register}
           error={errors?.email}
         />
@@ -113,7 +145,6 @@ const TeacherForm = ({
           label={dict.forms.password}
           name="password"
           type="password"
-          defaultValue={data?.password}
           register={register}
           error={errors?.password}
         />
@@ -125,35 +156,30 @@ const TeacherForm = ({
         <InputField
           label={dict.forms.firstName}
           name="name"
-          defaultValue={data?.name}
           register={register}
           error={errors.name}
         />
         <InputField
           label={dict.forms.lastName}
           name="surname"
-          defaultValue={data?.surname}
           register={register}
           error={errors.surname}
         />
         <InputField
           label={dict.forms.phone}
           name="phone"
-          defaultValue={data?.phone}
           register={register}
           error={errors.phone}
         />
         <InputField
           label={dict.forms.address}
           name="address"
-          defaultValue={data?.address}
           register={register}
           error={errors.address}
         />
         <InputField
           label={dict.forms.bloodGroup}
           name="bloodType"
-          defaultValue={data?.bloodType}
           register={register}
           error={errors.bloodType}
           hidden
@@ -163,7 +189,6 @@ const TeacherForm = ({
           <select
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
             {...register("bloodType")}
-            defaultValue={data?.bloodType ?? ""}
           >
             <option value="">{dict.forms.none}</option>
             {BLOOD_TYPES.map((t) => (
@@ -181,7 +206,6 @@ const TeacherForm = ({
         <InputField
           label={dict.forms.birthday}
           name="birthday"
-          defaultValue={data?.birthday.toISOString().split("T")[0]}
           register={register}
           error={errors.birthday}
           type="date"
@@ -190,7 +214,6 @@ const TeacherForm = ({
           <InputField
             label="Id"
             name="id"
-            defaultValue={data?.id}
             register={register}
             error={errors?.id}
             hidden
@@ -201,7 +224,6 @@ const TeacherForm = ({
           <select
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
             {...register("sex")}
-            defaultValue={data?.sex}
           >
             <option value="MALE">{dict.forms.male}</option>
             <option value="FEMALE">{dict.forms.female}</option>
@@ -309,12 +331,12 @@ const TeacherForm = ({
         )}
       </div>
       
-      {state.error && (
-        <span className="text-red-500">{dict.forms.somethingWentWrong}</span>
-      )}
-      
-      <button className="bg-blue-400 text-white p-2 rounded-md">
-        {type === "create" ? dict.common.create : dict.common.update}
+      <button disabled={loading} className="bg-blue-400 text-white p-2 rounded-md disabled:opacity-60 disabled:cursor-not-allowed">
+        {loading
+          ? "Saving..."
+          : type === "create"
+          ? dict.common.create
+          : dict.common.update}
       </button>
     </form>
     

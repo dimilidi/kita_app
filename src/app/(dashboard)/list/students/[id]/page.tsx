@@ -135,7 +135,7 @@ const SingleStudentPage = async ({
         {/* TOP */}
         <div className="flex flex-col lg:flex-row gap-4">
           {/* USER INFO CARD */}
-          <div className="bg-kitaSky py-6 px-4 rounded-md flex-[2] flex gap-4">
+          <div className="bg-kitaSky py-6 px-4 rounded-md flex-1 flex gap-4">
             <div className="w-1/3">
               <Image
                 src={student.img || "/noAvatar.png"}
@@ -145,7 +145,7 @@ const SingleStudentPage = async ({
                 className="w-36 h-36 rounded-full object-cover"
               />
             </div>
-            <div className="w-2/3 flex flex-col justify-between gap-4 min-w-0">
+            <div className="w-2/3 flex flex-col justify-start gap-2 min-w-0">
               <div className="flex items-center gap-4 min-w-0 flex-wrap">
                 <h1 className="text-xl font-semibold break-words">
                   {student.name + " " + student.surname}
@@ -154,18 +154,20 @@ const SingleStudentPage = async ({
                   <FormContainer table="student" type="update" data={student} />
                 )}
               </div>
-              <div className="flex items-center  gap-2 flex-wrap text-xs font-medium">
-                <div className="w-full md:w-1/3 lg:w-full 2xl:w-1/3 flex items-center gap-2">
+              <div className="flex items-left gap-2 flex-col text-xs font-medium">
+                <div className="w-full flex items-center gap-2">
                   <Image src="/blood.png" alt="" width={14} height={14} />
                   <span className="break-words">{student.bloodType}</span>
                 </div>
-                <div className="w-full md:w-1/3 lg:w-full 2xl:w-1/3 flex items-center gap-2">
+
+                <div className="w-full flex items-center gap-2">
                   <Image src="/date.png" alt="" width={14} height={14} />
                   <span>
                     {new Intl.DateTimeFormat(dateLocale).format(student.birthday)}
                   </span>
                 </div>
-                <div className="w-full md:w-1/3 lg:w-full 2xl:w-1/3 flex items-center gap-2">
+
+                <div className="w-full flex items-center gap-2">
                   <Image src="/parent.png" alt="" width={14} height={14} />
                   {role === "admin" || role === "teacher" ? (
                     <Link
@@ -175,83 +177,88 @@ const SingleStudentPage = async ({
                       {student.parent.name} {student.parent.surname}
                     </Link>
                   ) : (
-                    <span className="flex" >
+                    <span className="break-words">
                       {student.parent.name} {student.parent.surname}
                     </span>
                   )}
                 </div>
-                <div className="w-full md:w-1/3 lg:w-full 2xl:w-1/3 flex items-center gap-2">
+
+                <div className="w-full flex items-center gap-2">
                   <Image src="/mail.png" alt="" width={14} height={14} />
                   <span className="break-words">{student.parent.email || "—"}</span>
                 </div>
-                <div className="w-full md:w-1/3 lg:w-full 2xl:w-1/3 flex items-center gap-2">
+
+                <div className="w-full flex items-center gap-2">
                   <Image src="/phone.png" alt="" width={14} height={14} />
                   <span className="break-words">{student.parent.phone || "—"}</span>
                 </div>
               </div>
             </div>
           </div>
-          {/* SMALL CARDS */}
+          {/* SMALL CARDS — same hierarchy as teacher single page: value (h1) then label */}
           <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 content-start">
-            {/* CARD */}
-            <div className="bg-white p-3 rounded-md flex gap-3 items-start justify-start">
+            <div className="bg-white p-3 rounded-md border border-gray-100 shadow-sm flex gap-3 items-start justify-start">
               <Image
                 src="/singleAttendance.png"
                 alt=""
                 width={24}
                 height={24}
-                className="w-6 h-6"
+                className="w-6 h-6 shrink-0"
               />
-              <div className="flex flex-col items-start justify-start gap-1 min-w-0">
-                <Suspense fallback={dict.common.loading}>
+              <div className="min-w-0">
+                <Suspense fallback={<div className="text-sm text-gray-400">{dict.common.loading}</div>}>
                   <StudentAttendanceCard id={student.id} />
                 </Suspense>
               </div>
             </div>
-            {/* CARD */}
-            <div className="bg-white p-3 rounded-md flex gap-3 items-start justify-start">
+
+            <div className="bg-white p-3 rounded-md border border-gray-100 shadow-sm flex gap-3 items-start justify-start">
               <Image
                 src="/singleBranch.png"
                 alt=""
                 width={24}
                 height={24}
-                className="w-6 h-6"
+                className="w-6 h-6 shrink-0"
               />
-              <div className="flex flex-col items-start justify-start gap-1 min-w-0">
-                <span className="text-sm text-gray-400 break-words">
+              <div className="min-w-0">
+                <h1 className="text-lg  font-semibold text-gray-900 leading-tight break-words">
+                  {ageGroupLabel}
+                </h1>
+                <span className="text-xs sm:text-sm text-gray-400 break-words">
                   {dict.students.ageGroup}
                 </span>
-                <span className="text-base font-medium break-words">{ageGroupLabel}</span>
               </div>
             </div>
-            {/* CARD */}
-            <div className="bg-white p-3 rounded-md flex gap-3 items-start justify-start">
+
+            <div className="bg-white p-3 rounded-md border border-gray-100 shadow-sm flex gap-3 items-start justify-start">
               <Image
                 src="/singleLesson.png"
                 alt=""
                 width={24}
                 height={24}
-                className="w-6 h-6"
+                className="w-6 h-6 shrink-0"
               />
-              <div className="flex flex-col items-start justify-start gap-1 min-w-0">
-                <span className="text-sm text-gray-400 break-words">{dict.menu.lessons}</span>
-                <span className="text-base font-medium break-words">
+              <div className="min-w-0">
+                <h1 className="text-lg  font-semibold text-gray-900 leading-tight">
                   {student.class._count.lessons}
-                </span>
+                </h1>
+                <span className="text-xs sm:text-sm text-gray-400">{dict.menu.lessons}</span>
               </div>
             </div>
-            {/* CARD */}
-            <div className="bg-white p-3 rounded-md flex gap-3 items-start justify-start">
+
+            <div className="bg-white p-3 rounded-md border border-gray-100 shadow-sm flex gap-3 items-start justify-start">
               <Image
                 src="/singleClass.png"
                 alt=""
                 width={24}
                 height={24}
-                className="w-6 h-6"
+                className="w-6 h-6 shrink-0"
               />
-              <div className="flex flex-col items-start justify-start gap-1 min-w-0">
-                <span className="text-sm text-gray-400 break-words">{dict.menu.classes}</span>
-                <span className="text-base font-medium break-words">{student.class.name}</span>
+              <div className="min-w-0">
+                <h1 className="text-lg  font-semibold text-gray-900 leading-tight truncate">
+                  {student.class.name}
+                </h1>
+                <span className="text-xs sm:text-sm text-gray-400">{dict.menu.classes}</span>
               </div>
             </div>
           </div>

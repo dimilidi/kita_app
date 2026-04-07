@@ -154,7 +154,10 @@ const FormModal = ({
 
   const [open, setOpen] = useState(false);
 
-  const Form = () => {
+  // NOTE: Avoid defining an inline component for the form.
+  // Inline component identities change between renders and can cause remounts
+  // (which resets react-hook-form state).
+  const DeleteForm = () => {
     const [state, formAction] = useFormState(deleteActionMap[table], {
       success: false,
       error: false,
@@ -183,7 +186,11 @@ const FormModal = ({
       }
     }, [state, type, table, dict]);
 
-    return type === "delete" && id ? (
+    if (type !== "delete" || !id) {
+      return dict.common.formNotFound ?? "Form not found!";
+    }
+
+    return (
       <form action={formAction} className="p-4 flex flex-col gap-4">
         <input type="text | number" name="id" value={id} hidden />
         <span className="text-center font-medium">
@@ -194,10 +201,6 @@ const FormModal = ({
           {dict.common.delete}
         </button>
       </form>
-    ) : type === "create" || type === "update" ? (
-      forms[table](setOpen, type, data, relatedData)
-    ) : (
-      dict.common.formNotFound ?? "Form not found!"
     );
   };
 
@@ -212,7 +215,13 @@ const FormModal = ({
       {open && (
         <div className="w-screen h-screen absolute left-0 top-0 bg-black bg-opacity-60 z-50 flex items-center justify-center">
           <div className="bg-white p-4 rounded-md relative w-[90%] md:w-[70%] lg:w-[60%] xl:w-[50%] 2xl:w-[40%]">
-            <Form />
+            {type === "delete" ? (
+              <DeleteForm />
+            ) : type === "create" || type === "update" ? (
+              forms[table](setOpen, type, data, relatedData)
+            ) : (
+              dict.common.formNotFound ?? "Form not found!"
+            )}
             <div
               className="absolute top-4 right-4 cursor-pointer"
               onClick={() => setOpen(false)}

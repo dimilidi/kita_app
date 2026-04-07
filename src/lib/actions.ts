@@ -22,7 +22,12 @@ import { getAuthData } from "./utils";
 import { randomUUID } from "crypto";
 import type { AttendanceRow } from "@/app/(dashboard)/list/attendance/types";
 
-type CurrentState = { success: boolean; error: boolean; inUse?: boolean };
+type CurrentState = {
+  success: boolean;
+  error: boolean;
+  message?: string;
+  inUse?: boolean;
+};
 
 export const createClass = async (
   currentState: CurrentState,
@@ -117,19 +122,38 @@ export const createTeacher = async (
     });
 
     // revalidatePath("/list/teachers");
-    return { success: true, error: false };
-  } catch (err) {
-    console.log(err);
-    return { success: false, error: true };
+    return { success: true, error: false, message: "" };
+  } catch (err: any) {
+    console.error("TEACHER ACTION ERROR:", err);
+
+    let message = "Something went wrong";
+
+    // ✅ Handle Clerk validation errors
+    if (err?.errors && Array.isArray(err.errors) && err.errors.length > 0) {
+      message = err.errors[0].longMessage || err.errors[0].message || message;
+    }
+    // fallback
+    else if (err?.message) {
+      message = err.message;
+    }
+
+    return { success: false, error: true, message };
   }
 };
+
+// Direct-call variant for client-side manual submits (no useFormState).
+export async function createTeacherDirect(
+  data: TeacherSchema
+): Promise<{ success: boolean; error: boolean; message?: string }> {
+  return createTeacher({ success: false, error: false }, data);
+}
 
 export const updateTeacher = async (
   currentState: CurrentState,
   data: TeacherSchema
 ) => {
   if (!data.id) {
-    return { success: false, error: true };
+    return { success: false, error: true, message: "Missing teacher id" };
   }
   try {
     const user = await clerkClient.users.updateUser(data.id, {
@@ -165,12 +189,31 @@ export const updateTeacher = async (
       },
     });
     // revalidatePath("/list/teachers");
-    return { success: true, error: false };
-  } catch (err) {
-    console.log(err);
-    return { success: false, error: true };
+    return { success: true, error: false, message: "" };
+  } catch (err: any) {
+    console.error("TEACHER ACTION ERROR:", err);
+
+    let message = "Something went wrong";
+
+    // ✅ Handle Clerk validation errors
+    if (err?.errors && Array.isArray(err.errors) && err.errors.length > 0) {
+      message = err.errors[0].longMessage || err.errors[0].message || message;
+    }
+    // fallback
+    else if (err?.message) {
+      message = err.message;
+    }
+
+    return { success: false, error: true, message };
   }
 };
+
+// Direct-call variant for client-side manual submits (no useFormState).
+export async function updateTeacherDirect(
+  data: TeacherSchema
+): Promise<{ success: boolean; error: boolean; message?: string }> {
+  return updateTeacher({ success: false, error: false }, data);
+}
 
 export const deleteTeacher = async (
   currentState: CurrentState,
@@ -239,10 +282,18 @@ export const createStudent = async (
     });
 
     // revalidatePath("/list/students");
-    return { success: true, error: false };
-  } catch (err) {
-    console.log(err);
-    return { success: false, error: true };
+    return { success: true, error: false, message: "" };
+  } catch (err: any) {
+    console.error("STUDENT ACTION ERROR:", err);
+
+    let message = "Something went wrong";
+    if (err?.errors && Array.isArray(err.errors) && err.errors.length > 0) {
+      message = err.errors[0].longMessage || err.errors[0].message || message;
+    } else if (err?.message) {
+      message = err.message;
+    }
+
+    return { success: false, error: true, message };
   }
 };
 
@@ -251,7 +302,7 @@ export const updateStudent = async (
   data: StudentSchema
 ) => {
   if (!data.id) {
-    return { success: false, error: true };
+    return { success: false, error: true, message: "Missing student id" };
   }
   try {
     const user = await clerkClient.users.updateUser(data.id, {
@@ -285,10 +336,18 @@ export const updateStudent = async (
       },
     });
     // revalidatePath("/list/students");
-    return { success: true, error: false };
-  } catch (err) {
-    console.log(err);
-    return { success: false, error: true };
+    return { success: true, error: false, message: "" };
+  } catch (err: any) {
+    console.error("STUDENT ACTION ERROR:", err);
+
+    let message = "Something went wrong";
+    if (err?.errors && Array.isArray(err.errors) && err.errors.length > 0) {
+      message = err.errors[0].longMessage || err.errors[0].message || message;
+    } else if (err?.message) {
+      message = err.message;
+    }
+
+    return { success: false, error: true, message };
   }
 };
 
@@ -610,6 +669,187 @@ export async function saveDailyAttendance({
     }
 
     return { success: true };
+  } catch (err) {
+    console.log(err);
+    return { success: false, error: "server" };
+  }
+}
+
+/**
+ * Bulk set attendance for many students for a specific lesson on a given day.
+ * Uses `updateMany` for existing rows and `createMany` for missing rows.
+ */
+export async function saveDailyAttendanceForLessonMany({
+  lessonId,
+  studentIds,
+  dateStr,
+  present,
+}: {
+  lessonId: number;
+  studentIds: string[];
+  dateStr: string;
+  present: boolean;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { userId, role } = getAuthData();
+    if (role !== "admin" && role !== "teacher") {
+      return { success: false, error: "forbidden" };
+    }
+
+    const range = parseDateStrToUtcRange(dateStr);
+    if (!range) {
+      return { success: false, error: "invalidDate" };
+    }
+    const { start, end } = range;
+
+    const ids = Array.from(new Set(studentIds.map((s) => String(s).trim()).filter(Boolean)));
+    if (ids.length === 0) {
+      return { success: true };
+    }
+
+    const lesson = await prisma.lesson.findUnique({
+      where: { id: lessonId },
+      select: { id: true, teacherId: true },
+    });
+    if (!lesson) {
+      return { success: false, error: "noLesson" };
+    }
+    if (role === "teacher" && lesson.teacherId !== userId) {
+      return { success: false, error: "forbidden" };
+    }
+
+    const existing = await prisma.attendance.findMany({
+      where: {
+        lessonId,
+        studentId: { in: ids },
+        date: { gte: start, lt: end },
+      },
+      select: { studentId: true },
+    });
+    const existingIds = new Set(existing.map((e) => e.studentId));
+    const missingIds = ids.filter((id) => !existingIds.has(id));
+
+    await prisma.$transaction([
+      prisma.attendance.updateMany({
+        where: {
+          lessonId,
+          studentId: { in: ids },
+          date: { gte: start, lt: end },
+        },
+        data: { present },
+      }),
+      ...(missingIds.length > 0
+        ? [
+            prisma.attendance.createMany({
+              data: missingIds.map((studentId) => ({
+                studentId,
+                lessonId,
+                date: start,
+                present,
+              })),
+            }),
+          ]
+        : []),
+    ]);
+
+    return { success: true };
+  } catch (err) {
+    console.log(err);
+    return { success: false, error: "server" };
+  }
+}
+
+/**
+ * Bulk set attendance for *all* students matching the current attendance page filters.
+ * This is used by the "select all" checkbox on page 1.
+ */
+export async function saveDailyAttendanceForAttendancePageFilterAll({
+  dateStr,
+  classIdParam,
+  present,
+}: {
+  dateStr: string;
+  classIdParam: string;
+  present: boolean;
+}): Promise<{ success: boolean; error?: string; updated?: number }> {
+  try {
+    const { role } = getAuthData();
+    if (role !== "admin" && role !== "teacher") {
+      return { success: false, error: "forbidden" };
+    }
+
+    const range = parseDateStrToUtcRange(dateStr);
+    if (!range) {
+      return { success: false, error: "invalidDate" };
+    }
+    const { start, end } = range;
+
+    const { rows } = (await loadAttendancePageData({
+      dateStr,
+      classIdParam,
+      page: 1,
+      fetchAllRows: true,
+    })) as { rows: AttendanceRow[] };
+
+    const rowsWithLesson = rows.filter((r) => !!r.lessonId);
+    if (rowsWithLesson.length === 0) {
+      return { success: true, updated: 0 };
+    }
+
+    const byLesson = new Map<number, string[]>();
+    for (const r of rowsWithLesson) {
+      const lid = r.lessonId!;
+      const studentId = String(r.id);
+      const arr = byLesson.get(lid);
+      if (arr) arr.push(studentId);
+      else byLesson.set(lid, [studentId]);
+    }
+
+    // For each lesson group, update existing rows and create missing ones.
+    // We chunk student ids a bit to avoid overly large queries.
+    const CHUNK = 500;
+    for (const [lessonId, allStudentIds] of Array.from(byLesson.entries())) {
+      const ids = Array.from(new Set<string>(allStudentIds.map((s) => String(s))));
+      for (let i = 0; i < ids.length; i += CHUNK) {
+        const chunkIds: string[] = ids.slice(i, i + CHUNK);
+
+        const existing = await prisma.attendance.findMany({
+          where: {
+            lessonId,
+            studentId: { in: chunkIds },
+            date: { gte: start, lt: end },
+          },
+          select: { studentId: true },
+        });
+        const existingIds = new Set(existing.map((e) => e.studentId));
+        const missingIds: string[] = chunkIds.filter((id) => !existingIds.has(id));
+
+        await prisma.$transaction([
+          prisma.attendance.updateMany({
+            where: {
+              lessonId,
+              studentId: { in: chunkIds },
+              date: { gte: start, lt: end },
+            },
+            data: { present },
+          }),
+          ...(missingIds.length > 0
+            ? [
+                prisma.attendance.createMany({
+                  data: missingIds.map((studentId) => ({
+                    studentId,
+                    lessonId,
+                    date: start,
+                    present,
+                  })),
+                }),
+              ]
+            : []),
+        ]);
+      }
+    }
+
+    return { success: true, updated: rowsWithLesson.length };
   } catch (err) {
     console.log(err);
     return { success: false, error: "server" };
