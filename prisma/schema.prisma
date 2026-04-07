@@ -17,7 +17,8 @@ model Student {
   username    String             @unique
   name        String
   surname     String
-  email       String?            @unique
+  /// Mirrors Parent.email (siblings can share), so must NOT be unique.
+  email       String?
   phone       String?            @unique
   address     String
   img         String?

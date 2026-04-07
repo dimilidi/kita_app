@@ -11,6 +11,8 @@ type ClassList = {
   id: number | string;
   name: string;
   capacity: number;
+  gradeId?: number | null;
+  supervisorId?: string | null;
   grade?: { id: number; level: number } | null;
   supervisor: { name: string; surname: string } | null;
 };

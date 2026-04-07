@@ -43,8 +43,11 @@ const SingleTeacherPage = async ({
     where: { teacherId: teacher.id },
     select: {
       zoneId: true,
+      classId: true,
     },
-  }) as { zoneId: string }[];
+  }) as { zoneId: string; classId: number }[];
+
+  const groupCount = Array.from(new Set(lessons.map((l) => l.classId))).length;
 
   const zoneIds = Array.from(new Set(lessons.map((l) => l.zoneId)));
   const zones = await prisma.zone.findMany({
@@ -68,6 +71,11 @@ const SingleTeacherPage = async ({
       value,
     }))
     .sort((a, b) => b.value - a.value);
+
+  const teacherClassIds = Array.from(new Set(lessons.map((l) => l.classId))).sort(
+    (a, b) => a - b
+  );
+  const teacherClassIdsParam = teacherClassIds.join(",");
 
   return (
     <div className="flex-1 p-4 flex flex-col gap-4 xl:flex-row">
@@ -146,8 +154,7 @@ const SingleTeacherPage = async ({
               <Image src="/singleBranch.png" alt="" width={24} height={24} className="w-6 h-6" />
               <div>
                 <h1 className="text-xl font-semibold">
-                  {/* {teacher._count.subjects} */}
-                  teacher[id]
+                  {activities.length}
                 </h1>
                 <span className="text-sm text-gray-400">
                   {dict.menu.areas}
@@ -171,7 +178,7 @@ const SingleTeacherPage = async ({
               <Image src="/singleClass.png" alt="" width={24} height={24} className="w-6 h-6" />
               <div>
                 <h1 className="text-xl font-semibold">
-                  {teacher._count.classes}
+                  {groupCount}
                 </h1>
                 <span className="text-sm text-gray-400">
                   {dict.menu.classes}
@@ -206,7 +213,7 @@ const SingleTeacherPage = async ({
 
             <Link
               className="p-3 rounded-md bg-kitaPurpleLight"
-              href={`/list/students?teacherId=${teacher.id}`}
+              href={`/list/students?classIds=${teacherClassIdsParam}`}
             >
               {dict.dashboard.children}
             </Link>

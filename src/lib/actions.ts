@@ -243,6 +243,12 @@ export const createStudent = async (
 ) => {
   console.log(data);
   try {
+    const parent = await prisma.parent.findUnique({
+      where: { id: data.parentId },
+      select: { email: true },
+    });
+    const emailNorm = parent?.email?.trim() ? parent.email.trim() : null;
+
     const classItem = await prisma.class.findUnique({
       where: { id: data.classId },
       include: { _count: { select: { students: true } } },
@@ -266,7 +272,7 @@ export const createStudent = async (
         username: data.username,
         name: data.name,
         surname: data.surname,
-        email: data.email,
+        email: emailNorm,
         phone: null,
         address: data.address,
         img: data.img,
@@ -305,6 +311,12 @@ export const updateStudent = async (
     return { success: false, error: true, message: "Missing student id" };
   }
   try {
+    const parent = await prisma.parent.findUnique({
+      where: { id: data.parentId },
+      select: { email: true },
+    });
+    const emailNorm = parent?.email?.trim() ? parent.email.trim() : null;
+
     const user = await clerkClient.users.updateUser(data.id, {
       username: data.username,
       ...(data.password !== "" && { password: data.password }),
@@ -321,7 +333,7 @@ export const updateStudent = async (
         username: data.username,
         name: data.name,
         surname: data.surname,
-        email: data.email || null,
+        email: emailNorm,
         phone: null,
         address: data.address,
         ...(data.img !== undefined && { img: data.img }),

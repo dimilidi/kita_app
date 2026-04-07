@@ -187,8 +187,6 @@ const StudentForm = ({
     }
   }, [allowedGradeLevel, classes, grades, selectedClassId, setValue, type, data?.classId]);
 
-  if (!relatedData) return <p>{dict.common.loading}</p>;
-
   const classOptions = useMemo(() => {
     const currentId = data?.classId;
     const current =
@@ -197,6 +195,8 @@ const StudentForm = ({
       current && filteredClasses.some((c) => c.id === current.id);
     return current && !inFiltered ? [current, ...filteredClasses] : filteredClasses;
   }, [classes, data?.classId, filteredClasses]);
+
+  if (!relatedData) return <p>{dict.common.loading}</p>;
 
   return (
     <form className="flex flex-col gap-8" onSubmit={onSubmit}>

@@ -13,7 +13,7 @@ import {
   updateClass,
 } from "@/lib/actions";
 import { useFormState } from "react-dom";
-import { Dispatch, SetStateAction, useEffect } from "react";
+import { Dispatch, SetStateAction, useEffect, useMemo } from "react";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "@/i18n/TranslationsProvider";
@@ -32,12 +32,25 @@ const ClassForm = ({
   const dict = useTranslations();
   const label = dict.entities?.class || "class";
 
+  const defaultValues = useMemo(
+    () =>
+      ({
+        id: data?.id,
+        name: data?.name ?? "",
+        capacity: data?.capacity ?? "",
+        gradeId: data?.gradeId ?? "",
+        supervisorId: data?.supervisorId ?? "",
+      }) as Partial<ClassInput>,
+    [data?.id]
+  );
+
   const {
     register,
     handleSubmit,
     formState: { errors },
   } = useForm<ClassInput>({
     resolver: zodResolver(classSchema),
+    defaultValues,
   });
 
   // AFTER REACT 19 IT'LL BE USEACTIONSTATE
@@ -85,14 +98,12 @@ const ClassForm = ({
         <InputField
           label={dict.forms.groupName}
           name="name"
-          defaultValue={data?.name}
           register={register}
           error={errors?.name}
         />
         <InputField
           label={dict.forms.capacity}
           name="capacity"
-          defaultValue={data?.capacity}
           register={register}
           error={errors?.capacity}
         />
@@ -100,7 +111,6 @@ const ClassForm = ({
           <InputField
             label="Id"
             name="id"
-            defaultValue={data?.id}
             register={register}
             error={errors?.id}
             hidden
@@ -111,15 +121,11 @@ const ClassForm = ({
           <select
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
             {...register("supervisorId")}
-            defaultValue={data?.teachers}
           >
+            <option value="">{dict.forms.none}</option>
             {teachers.map(
               (teacher: { id: string; name: string; surname: string }) => (
-                <option
-                  value={teacher.id}
-                  key={teacher.id}
-                  selected={data && teacher.id === data.supervisorId}
-                >
+                <option value={teacher.id} key={teacher.id}>
                   {teacher.name + " " + teacher.surname}
                 </option>
               )
@@ -136,14 +142,9 @@ const ClassForm = ({
           <select
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
             {...register("gradeId")}
-            defaultValue={data?.gradeId}
           >
             {kindergartenGrades.map((grade: { id: number; level: number }) => (
-              <option
-                value={grade.id}
-                key={grade.id}
-                selected={data && grade.id === data.gradeId}
-              >
+              <option value={grade.id} key={grade.id}>
                 {grade.level === 1
                   ? `${dict.students.groups?.nursery ?? "Krippe"} (0-3)`
                   : `${dict.students.groups?.kindergarten ?? "Kindergarten"} (3-6)`}

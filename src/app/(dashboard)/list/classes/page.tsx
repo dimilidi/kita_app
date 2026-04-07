@@ -54,6 +54,8 @@ const ClassListPage = async ({
     id: c.id,
     name: c.name,
     capacity: c.capacity,
+    gradeId: c.gradeId,
+    supervisorId: c.supervisorId,
     grade: c.grade ? { id: c.grade.id, level: c.grade.level } : null,
     supervisor: c.supervisor ? { name: c.supervisor.name, surname: c.supervisor.surname } : null,
   }));

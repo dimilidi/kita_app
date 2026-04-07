@@ -4,6 +4,25 @@ import { getAuthData } from "@/lib/utils";
 import { Prisma } from "@prisma/client";
 import StudentListClient from "./StudentListClient";
 
+/** Classes this teacher is responsible for: supervised + any class where they have a lesson. */
+async function classIdsForTeacher(teacherId: string): Promise<number[]> {
+  const [supervised, lessonRows] = await Promise.all([
+    prisma.class.findMany({
+      where: { supervisorId: teacherId },
+      select: { id: true },
+    }),
+    prisma.lesson.findMany({
+      where: { teacherId },
+      select: { classId: true },
+    }),
+  ]);
+  const merged = [
+    ...supervised.map((c) => c.id),
+    ...lessonRows.map((l) => l.classId),
+  ];
+  return Array.from(new Set(merged));
+}
+
 const StudentListPage = async ({
   searchParams,
 }: {
@@ -16,31 +35,30 @@ const StudentListPage = async ({
 
   const p = page ? parseInt(page) : 1;
 
-  // URL PARAMS CONDITION
-
   const query: Prisma.StudentWhereInput = {};
 
-  if (queryParams) {
-    for (const [key, value] of Object.entries(queryParams)) {
-      if (value !== undefined) {
-        switch (key) {
-          case "teacherId":
-            query.class = {
-              lessons: {
-                some: {
-                  teacherId: value,
-                },
-              },
-            };
-            break;
-          case "search":
-            query.name = { contains: value, mode: "insensitive" };
-            break;
-          default:
-            break;
-        }
-      }
+  if (queryParams.teacherId) {
+    const classIds = await classIdsForTeacher(queryParams.teacherId);
+    if (classIds.length > 0) {
+      query.classId = { in: classIds };
+    } else {
+      query.id = { in: [] };
     }
+  } else if (queryParams.classIds) {
+    const ids = queryParams.classIds
+      .split(",")
+      .map((s) => parseInt(s.trim(), 10))
+      .filter((n) => Number.isFinite(n) && n > 0);
+    if (ids.length > 0) {
+      query.classId = { in: ids };
+    } else {
+      // Explicitly requested classIds but none are valid -> show no students.
+      query.id = { in: [] };
+    }
+  }
+
+  if (queryParams.search) {
+    query.name = { contains: queryParams.search, mode: "insensitive" };
   }
 
   const [data, count] = await prisma.$transaction([
