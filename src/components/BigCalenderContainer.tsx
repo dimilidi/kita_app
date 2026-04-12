@@ -1,6 +1,5 @@
 import prisma from "@/lib/prisma";
 import BigCalendar from "./BigCalendar";
-import { adjustScheduleToCurrentWeek } from "@/lib/utils";
 
 const BigCalendarContainer = async ({
   type,
@@ -19,6 +18,8 @@ const BigCalendarContainer = async ({
     },
   });
 
+  // Raw lesson times — `adjustScheduleToCurrentWeek` runs on the client so the
+  // week matches the user’s local timezone and Monday-based week layout.
   const data = dataRes.map((lesson) => {
     const zoneName = lesson.zone?.name;
     return {
@@ -28,9 +29,7 @@ const BigCalendarContainer = async ({
     };
   });
 
-  const schedule = adjustScheduleToCurrentWeek(data);
-
-  return <BigCalendar data={schedule} />;
+  return <BigCalendar data={data} />;
 };
 
 export default BigCalendarContainer;
