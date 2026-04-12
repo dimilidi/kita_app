@@ -46,48 +46,36 @@ const Navbar = ({
   const announcementsHref = `/${lang}/list/announcements`;
 
   return (
-    <div className="flex items-center justify-between p-4">
-      {/* SEARCH BAR */}
-      <div className="hidden md:flex items-center gap-2 text-xs rounded-full ring-[1.5px] ring-gray-300 px-2">
-        <Image src="/search.png" alt="" width={14} height={14} />
-        <input
-          type="text"
-          placeholder={dict.common.search}
-          className="w-[200px] p-2 bg-transparent outline-none"
-        />
+    <div className="flex items-center justify-end gap-6 p-4">
+      <div className="hidden lg:block">
+        <LanguageSwitcher />
       </div>
-      {/* ICONS AND USER */}
-      <div className="flex items-center gap-6 justify-end w-full">
-        <div className="hidden lg:block">
-          <LanguageSwitcher />
-        </div>
-        <div className="bg-white rounded-full w-7 h-7 flex items-center justify-center cursor-pointer">
-          <Image src="/message.png" alt="" width={20} height={20} />
-        </div>
-        <Link
-          href={announcementsHref}
-          className="bg-white rounded-full w-7 h-7 flex items-center justify-center cursor-pointer relative"
-          title={dict.menu.announcements}
-          aria-label={dict.menu.announcements}
-        >
-          <Image src="/announcement.png" alt="" width={20} height={20} />
-          {unread > 0 ? (
-            <div className="absolute -top-3 -right-3 min-w-[1.25rem] h-5 px-1 flex items-center justify-center bg-purple-500 text-white rounded-full text-[10px] font-semibold leading-none">
-              {unread > 99 ? "99+" : unread}
-            </div>
-          ) : null}
-        </Link>
-        <div className="flex flex-col">
-          <span className="text-xs leading-3 font-medium">
-            {user?.firstName ?? user?.username ?? ""}
-          </span>
-          <span className="text-[10px] text-gray-500 text-right">
-            {user?.publicMetadata?.role as string}
-          </span>
-        </div>
-        {/* <Image src="/avatar.png" alt="" width={36} height={36} className="rounded-full"/> */}
-        <UserButton />
+      <div className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-white">
+        <Image src="/message.png" alt="" width={20} height={20} />
       </div>
+      <Link
+        href={announcementsHref}
+        className="relative flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-white"
+        title={dict.menu.announcements}
+        aria-label={dict.menu.announcements}
+      >
+        <Image src="/announcement.png" alt="" width={20} height={20} />
+        {unread > 0 ? (
+          <div className="absolute -top-3 -right-3 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-purple-500 px-1 text-[10px] font-semibold leading-none text-white">
+            {unread > 99 ? "99+" : unread}
+          </div>
+        ) : null}
+      </Link>
+      <div className="flex flex-col">
+        <span className="text-xs leading-3 font-medium">
+          {user?.firstName ?? user?.username ?? ""}
+        </span>
+        <span className="text-right text-[10px] text-gray-500">
+          {user?.publicMetadata?.role as string}
+        </span>
+      </div>
+      {/* <Image src="/avatar.png" alt="" width={36} height={36} className="rounded-full"/> */}
+      <UserButton />
     </div>
   );
 };
