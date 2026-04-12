@@ -77,6 +77,23 @@
   width: 99% !important;
 }
 
+/* Week/day time grid: show lesson title — default stacks time in .rbc-event-label first,
+   which with tight slot height + padding hides the title; time stays in native tooltip. */
+.rbc-day-slot .rbc-event {
+  padding: 4px 6px !important;
+  margin: 2px !important;
+}
+
+.rbc-day-slot .rbc-event-label {
+  display: none !important;
+}
+
+.rbc-day-slot .rbc-event-content {
+  white-space: normal !important;
+  overflow: visible !important;
+  line-height: 1.2 !important;
+}
+
 .rbc-event:nth-child(1) {
   background-color: #e2f8ff !important;
 }
