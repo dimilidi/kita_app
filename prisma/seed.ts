@@ -244,6 +244,15 @@ import { Day, PrismaClient, UserSex } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
+  const existing = await prisma.admin.findFirst();
+
+  if (existing) {
+    console.log("⏭️ Database already seeded, skipping...");
+    return;
+  }
+
+  console.log("🌱 Seeding database...");
+
   // ADMIN
   await prisma.admin.createMany({
     data: [
@@ -322,26 +331,29 @@ async function main() {
  const classes = await prisma.class.findMany();
 
   for (let i = 1; i <= 6; i++) {
-    await prisma.teacher.create({
-      data: {
-        id: `teacher${i}`,
-        username: `teacher${i}`,
-        name: `Erzieher${i}`,
-        surname: `Test`,
-        email: `teacher${i}@kita.com`,
-        phone: `12345678${i}`,
-        address: `Street ${i}`,
-        bloodType: "A+",
-        sex: i % 2 === 0 ? UserSex.MALE : UserSex.FEMALE,
-        birthday: new Date(
-          new Date().setFullYear(new Date().getFullYear() - 30)
-        ),
-        classes: {
-          connect: [{ id: classes[i % classes.length].id }],
+    if (classes.length > 0) {
+      await prisma.teacher.create({
+        data: {
+          id: `teacher${i}`,
+          username: `teacher${i}`,
+          name: `Erzieher${i}`,
+          surname: `Test`,
+          email: `teacher${i}@kita.com`,
+          phone: `12345678${i}`,
+          address: `Street ${i}`,
+          bloodType: "A+",
+          sex: i % 2 === 0 ? UserSex.MALE : UserSex.FEMALE,
+          birthday: new Date(
+            new Date().setFullYear(new Date().getFullYear() - 30)
+          ),
+          classes: {
+            connect: [{ id: classes[i % classes.length].id }],
+          },
         },
-      },
-    });
-  }
+      })
+    }
+  };
+  
 
 
 // LESSON
