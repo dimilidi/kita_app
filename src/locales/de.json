@@ -356,6 +356,15 @@
       "thisMonth": "Dieser Monat",
       "thisYear": "Dieses Jahr",
       "rangeToggle": "Zeitraum"
+    },
+    "chartMenu": {
+      "overflowAria": "Diagrammoptionen",
+      "overflowAriaAttendance": "Optionen Anwesenheitsdiagramm",
+      "showChildren": "Anzeige: Kinder",
+      "showEducators": "Anzeige: Erzieher",
+      "childrenAttendance": "Kinder-Anwesenheit",
+      "educatorAttendance": "Erzieher-Anwesenheit",
+      "noEducatorsInDirectory": "Noch keine Erzieher angelegt."
     }
   },
   "playBoard": {

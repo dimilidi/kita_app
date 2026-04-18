@@ -356,6 +356,15 @@
       "thisMonth": "This month",
       "thisYear": "This year",
       "rangeToggle": "Attendance period"
+    },
+    "chartMenu": {
+      "overflowAria": "Chart options",
+      "overflowAriaAttendance": "Attendance chart options",
+      "showChildren": "Show: Children",
+      "showEducators": "Show: Educators",
+      "childrenAttendance": "Children attendance",
+      "educatorAttendance": "Educator attendance",
+      "noEducatorsInDirectory": "No educators are registered yet."
     }
   },
   "playBoard": {

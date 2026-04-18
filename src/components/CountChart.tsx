@@ -1,31 +1,41 @@
 "use client";
+
 import Image from "next/image";
 import {
   RadialBarChart,
   RadialBar,
-  Legend,
   ResponsiveContainer,
 } from "recharts";
 
-
-const CountChart = ({ boys, girls }: { boys: number; girls: number }) => {
+/**
+ * Donut: yellow segment (#FAE27C), blue segment (#C3EBFA) — girls/female vs boys/male.
+ */
+export default function CountChart({
+  yellowCount,
+  blueCount,
+}: {
+  yellowCount: number;
+  blueCount: number;
+}) {
+  const sum = yellowCount + blueCount;
   const data = [
     {
       name: "Total",
-      count: boys+girls,
+      count: sum,
       fill: "white",
     },
     {
-      name: "Girls",
-      count: girls,
+      name: "Yellow",
+      count: yellowCount,
       fill: "#FAE27C",
     },
     {
-      name: "Boys",
-      count: boys,
+      name: "Blue",
+      count: blueCount,
       fill: "#C3EBFA",
     },
   ];
+
   return (
     <div className="relative w-full h-[75%]">
       <ResponsiveContainer>
@@ -49,6 +59,4 @@ const CountChart = ({ boys, girls }: { boys: number; girls: number }) => {
       />
     </div>
   );
-};
-
-export default CountChart;
+}
