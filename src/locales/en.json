@@ -164,7 +164,8 @@
     "teacherAttendanceBoardNote": "Lunch and play boards use educator attendance: when records exist for this day, only staff marked present are listed as available."
   },
   "events": {
-    "title": "Events"
+    "title": "Events",
+    "viewAll": "View all"
   },
   "announcements": {
     "title": "Announcements",
@@ -365,7 +366,14 @@
       "childrenAttendance": "Children attendance",
       "educatorAttendance": "Educator attendance",
       "noEducatorsInDirectory": "No educators are registered yet."
+    },
+    "statCards": {
+      "viewAll": "View all",
+      "overflowMenuAria": "More options"
     }
+  },
+  "adminsList": {
+    "title": "Admins"
   },
   "playBoard": {
     "boardTitle": "Play board",

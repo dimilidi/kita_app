@@ -164,7 +164,8 @@
     "teacherAttendanceBoardNote": "Mittags- und Spieltafel nutzen die Erzieher-Anwesenheit: gibt es Einträge für diesen Tag, erscheinen nur als anwesend markierte Kolleginnen und Kollegen."
   },
   "events": {
-    "title": "Ereignisse"
+    "title": "Ereignisse",
+    "viewAll": "Alle anzeigen"
   },
   "announcements": {
     "title": "Ankündigungen",
@@ -365,7 +366,14 @@
       "childrenAttendance": "Kinder-Anwesenheit",
       "educatorAttendance": "Erzieher-Anwesenheit",
       "noEducatorsInDirectory": "Noch keine Erzieher angelegt."
+    },
+    "statCards": {
+      "viewAll": "Alle anzeigen",
+      "overflowMenuAria": "Weitere Optionen"
     }
+  },
+  "adminsList": {
+    "title": "Admins"
   },
   "playBoard": {
     "boardTitle": "Spieltafel",

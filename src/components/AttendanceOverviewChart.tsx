@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CartesianGrid,
   Legend,
@@ -58,40 +58,73 @@ export default function AttendanceOverviewChart({
   const localeSeg = pathname.split("/").filter(Boolean)[0];
   const tooltipLocale = localeSeg === "de" ? "de-DE" : "en-GB";
 
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      const el = menuRef.current;
+      if (!el) return;
+      if (e.target instanceof Node && !el.contains(e.target)) setMenuOpen(false);
+    };
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, [menuOpen]);
+
+  const rangeItems: { key: RangeMode; label: string }[] = [
+    { key: "month", label: ao.thisMonth },
+    { key: "year", label: ao.thisYear },
+  ];
+
   return (
     <div className="bg-white rounded-xl w-full h-full p-4">
       <div className="flex justify-between items-center gap-3 flex-wrap">
         <h1 className="text-lg font-semibold">{ao.title}</h1>
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <div
-            className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5"
-            role="group"
+        <div className="relative shrink-0" ref={menuRef}>
+          <button
+            type="button"
+            className="rounded-md p-0.5 text-gray-600 hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-kitaPurple/40"
+            aria-expanded={menuOpen}
+            aria-haspopup="menu"
             aria-label={ao.rangeToggle}
+            onClick={() => setMenuOpen((o) => !o)}
           >
-            <button
-              type="button"
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                mode === "month"
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-              onClick={() => setMode("month")}
+            <Image src="/moreDark.png" alt="" width={20} height={20} />
+          </button>
+          {menuOpen ? (
+            <div
+              className="absolute right-0 top-full z-40 mt-1.5 min-w-[12rem] rounded-md border border-gray-200 bg-white py-1 shadow-lg"
+              role="menu"
             >
-              {ao.thisMonth}
-            </button>
-            <button
-              type="button"
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                mode === "year"
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-              onClick={() => setMode("year")}
-            >
-              {ao.thisYear}
-            </button>
-          </div>
-          <Image src="/moreDark.png" alt="" width={20} height={20} />
+              {rangeItems.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={mode === item.key}
+                  className={`flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm transition-colors ${
+                    mode === item.key
+                      ? "bg-kitaPurpleLight/50 font-medium text-gray-900"
+                      : "text-gray-700 hover:bg-gray-50"
+                  }`}
+                  onClick={() => {
+                    setMode(item.key);
+                    setMenuOpen(false);
+                  }}
+                >
+                  <span>{item.label}</span>
+                  {mode === item.key ? (
+                    <span className="text-kitaPurple shrink-0" aria-hidden>
+                      ✓
+                    </span>
+                  ) : (
+                    <span className="w-4 shrink-0" aria-hidden />
+                  )}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
 

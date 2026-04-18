@@ -1,28 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import EventCalendar from "./EventCalendar";
 import { DEFAULT_LOCALE } from "@/i18n/lang";
 import { useTranslations } from "@/i18n/TranslationsProvider";
+import { usePathname } from "next/navigation";
 
-type AnnouncementCard = {
+type DashboardEventCard = {
+  id: number;
   title: string;
   description: string;
-  dateISO: string; // serialize-friendly
+  dateISO: string;
   variantIndex: 0 | 1 | 2;
 };
 
-export default function AnnouncementsClient({
+export default function DashboardEventsClient({
   cards,
 }: {
-  cards: AnnouncementCard[];
+  cards: DashboardEventCard[];
 }) {
   const dict = useTranslations();
   const pathname = usePathname();
   const langSeg = pathname.split("/").filter(Boolean)[0];
   const lang =
     langSeg === "en" || langSeg === "de" ? langSeg : DEFAULT_LOCALE;
-  const announcementsHref = `/${lang}/list/announcements`;
+  const eventsHref = `/${lang}/list/events`;
 
   const getVariantClass = (variantIndex: number) => {
     switch (variantIndex) {
@@ -39,19 +41,21 @@ export default function AnnouncementsClient({
 
   return (
     <div className="bg-white p-4 rounded-md">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">{dict.announcements.title}</h1>
+      <EventCalendar />
+
+      <div className="flex items-center justify-between mt-4">
+        <h1 className="text-xl font-semibold">{dict.events.title}</h1>
         <Link
-          href={announcementsHref}
+          href={eventsHref}
           className="text-xs font-medium text-gray-500 hover:text-gray-800 hover:underline"
         >
-          {dict.announcements.viewAll}
+          {dict.events.viewAll}
         </Link>
       </div>
       <div className="flex flex-col gap-4 mt-4">
         {cards.map((card) => (
           <div
-            key={card.title + card.dateISO + card.variantIndex}
+            key={card.id}
             className={`${getVariantClass(card.variantIndex)} rounded-md p-4`}
           >
             <div className="flex items-center justify-between">
@@ -69,4 +73,3 @@ export default function AnnouncementsClient({
     </div>
   );
 }
-
