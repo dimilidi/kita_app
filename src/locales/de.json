@@ -350,7 +350,13 @@
     "educators": "Erzieher",
     "groups": "Gruppen",
     "boys": "Jungen",
-    "girls": "Mädchen"
+    "girls": "Mädchen",
+    "attendanceOverview": {
+      "title": "Anwesenheitsüberblick",
+      "thisMonth": "Dieser Monat",
+      "thisYear": "Dieses Jahr",
+      "rangeToggle": "Zeitraum"
+    }
   },
   "playBoard": {
     "boardTitle": "Spieltafel",

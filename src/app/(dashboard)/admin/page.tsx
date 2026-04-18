@@ -1,9 +1,9 @@
 
 import Announcements from "@/components/Announcements";
 import AttendanceChartContainer from "@/components/AttendanceChartContainer";
+import AttendanceOverviewChartContainer from "@/components/AttendanceOverviewChartContainer";
 import CountChartContainer from "@/components/CountChartContainer";
 import EventCalendarContainer from "@/components/EventCalendarContainer";
-import FinanceChart from "@/components/FinanceChart";
 import UserCard from "@/components/UserCard";
 
 const AdminPage = ({
@@ -33,9 +33,9 @@ const AdminPage = ({
             <AttendanceChartContainer />
           </div>
         </div>
-        {/* BOTTOM CHART */}
-        <div className="w-full h-[500px]">
-          <FinanceChart />
+        {/* BOTTOM CHART — attendance trends (children + educators) */}
+        <div className="w-full min-h-[480px] h-[500px]">
+          <AttendanceOverviewChartContainer />
         </div>
       </div>
       {/* RIGHT */}

@@ -350,7 +350,13 @@
     "educators": "Educators",
     "groups": "Groups",
     "boys": "Boys",
-    "girls": "Girls"
+    "girls": "Girls",
+    "attendanceOverview": {
+      "title": "Attendance Overview",
+      "thisMonth": "This month",
+      "thisYear": "This year",
+      "rangeToggle": "Attendance period"
+    }
   },
   "playBoard": {
     "boardTitle": "Play board",
