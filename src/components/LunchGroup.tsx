@@ -138,11 +138,13 @@ export default function LunchGroup({
           onToggle={() => setIsEducatorsOpen((v) => !v)}
           label={dict.lunchGroups.detail.assignedEducators}
           className={clsx(
-            "shrink-0 flex flex-col gap-1 rounded-lg px-3 py-3 min-h-[56px] max-h-[130px] transition-colors",
+            "shrink-0 flex flex-col gap-1 rounded-lg px-3 py-3 transition-colors",
+            /* Cap when expanded so kids/tischspruch keep space; inner area reserves ≥1 card height */
+            isEducatorsOpen && "max-h-[min(320px,44vh)]",
             teacherDrop.isOver && "ring-2 ring-amber-400 ring-inset bg-white/60"
           )}
         >
-          <div className="flex-1 min-h-0 overflow-y-auto py-2 px-2">
+          <div className="min-h-[116px] max-h-[min(220px,34vh)] overflow-y-auto overscroll-contain py-2 px-2">
             <div className="grid grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-4 content-start">
               {educatorIds.map((tid) => {
                 const t = getTeacher(tid);

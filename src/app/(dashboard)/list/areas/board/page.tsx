@@ -16,9 +16,27 @@ export default async function PlayBoardPage() {
     },
   });
 
-  const zones = await prisma.zone.findMany({
+  const zonesFull = await prisma.zone.findMany({
     orderBy: { name: "asc" },
+    include: {
+      activities: { orderBy: { name: "asc" }, select: { name: true } },
+      lessons: { select: { name: true } },
+    },
   });
+
+  const zoneActivityNames: Record<string, string[]> = {};
+  for (const z of zonesFull) {
+    zoneActivityNames[z.id] = Array.from(
+      new Set([
+        ...z.activities.map((a) => a.name),
+        ...z.lessons.map((l) => l.name),
+      ])
+    ).sort((a, b) => a.localeCompare(b));
+  }
+
+  const zones = zonesFull.map(
+    ({ activities: _activities, lessons: _lessons, ...zone }) => zone
+  );
 
   const studentZones = await prisma.studentZone.findMany();
 
@@ -72,13 +90,14 @@ export default async function PlayBoardPage() {
   }
 
   return (
-    <div className="p-4">
+    <div className="p-4 print:p-0 print:overflow-visible print:h-auto print:min-h-0">
       <PlayBoard
         students={students}
         teachers={teachers}
         zones={zones}
         initialZones={initialZones}
         initialTeacherZones={initialTeacherZones}
+        zoneActivityNames={zoneActivityNames}
       />
     </div>
   );

@@ -125,7 +125,7 @@ export default async function LunchPage({
   }
 
   return (
-    <div className="p-4">
+    <div className="p-4 print:p-0 print:overflow-visible print:h-auto print:min-h-0">
       <LunchBoardClient
         students={students.map((student) => ({
           id: student.id,

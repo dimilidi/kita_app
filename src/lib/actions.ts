@@ -1400,6 +1400,20 @@ export async function clearLunchBoard() {
   }
 }
 
+/** Removes all play-area placements (children + educators back to pools). */
+export async function clearPlayBoard() {
+  try {
+    await prisma.$transaction([
+      prisma.studentZone.deleteMany(),
+      prisma.teacherZone.deleteMany(),
+    ]);
+    revalidatePath("/list/areas/board");
+  } catch (error) {
+    console.error("Failed to clear play board:", error);
+    throw error;
+  }
+}
+
 export async function saveLunchVote(params: {
   studentId: string;
   groupId: string;

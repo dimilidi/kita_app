@@ -8,16 +8,19 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
 import PlayAreaCard, { TeacherLite } from "@/components/PlayAreaCard";
 import PlayPoolCard from "@/components/PlayPoolCard";
 import Child from "@/components/Child";
 import EducatorCard from "@/components/EducatorCard";
-import { saveTeacherZones, saveZones } from "@/lib/actions";
+import { clearPlayBoard, saveTeacherZones, saveZones } from "@/lib/actions";
 import ZonePanel from "@/components/ZonePanel";
 import { StudentWithClass } from "@/types/student";
 import { Zone } from "@prisma/client";
 import { useTranslations } from "@/i18n/TranslationsProvider";
+import { toast } from "react-toastify";
 
 type ZoneId = string;
 
@@ -28,6 +31,8 @@ type Props = {
   initialZones: Record<ZoneId, string[]>;
   /** Omitted or partial when not loaded yet — pool keys default to []. */
   initialTeacherZones?: Record<ZoneId, string[]>;
+  /** Catalog + scheduled activity titles per zone (for print/PDF-style export). */
+  zoneActivityNames?: Record<string, string[]>;
 };
 
 function parseDragId(raw: string): { kind: "child" | "teacher"; id: string } | null {
@@ -50,14 +55,56 @@ function parseDropTarget(
   return null;
 }
 
+function buildEmptyPlayZones(
+  zoneIds: string[],
+  studentIds: string[]
+): Record<string, string[]> {
+  const next: Record<string, string[]> = {
+    pool: [...studentIds],
+  };
+  for (const id of zoneIds) {
+    next[id] = [];
+  }
+  return next;
+}
+
+function buildEmptyTeacherZonesForBoard(
+  zoneIds: string[],
+  teacherIds: string[]
+): Record<string, string[]> {
+  const next: Record<string, string[]> = {
+    teacherPool: [...teacherIds],
+  };
+  for (const id of zoneIds) {
+    next[id] = [];
+  }
+  return next;
+}
+
 export default function PlayBoard({
   students,
   teachers,
   zones,
   initialZones,
   initialTeacherZones: initialTeacherZonesProp,
+  zoneActivityNames = {},
 }: Props) {
+  const pathname = usePathname();
+  const localeSegments = pathname.split("/").filter(Boolean);
+  const locale =
+    localeSegments[0] === "en" || localeSegments[0] === "de"
+      ? localeSegments[0]
+      : "de";
+
   const dict = useTranslations();
+  const lgd = dict.lunchGroups.detail ?? {};
+
+  const zoneIds = useMemo(() => zones.map((z) => z.id), [zones]);
+  const studentIds = useMemo(() => students.map((s) => s.id), [students]);
+  const teacherIds = useMemo(() => teachers.map((t) => t.id), [teachers]);
+
+  const [clearingBoard, setClearingBoard] = useState(false);
+
   const [zonesState, setZonesState] = useState<Record<string, string[]>>(() => {
     const z = initialZones ?? {};
     return {
@@ -100,6 +147,58 @@ export default function PlayBoard({
     activeParsed?.kind === "child" ? getStudent(activeParsed.id) : null;
   const activeTeacher =
     activeParsed?.kind === "teacher" ? getTeacher(activeParsed.id) : null;
+
+  const dateLong = useMemo(
+    () =>
+      new Date().toLocaleDateString(
+        locale === "de" ? "de-DE" : "en-GB",
+        { dateStyle: "long" }
+      ),
+    [locale]
+  );
+
+  /** Full-board print: every zone with current placements (matches play areas list/PDF layout). */
+  const playPrintSections = useMemo(() => {
+    return zones.map((zone) => {
+      const educatorNames = (teacherZonesState[zone.id] ?? [])
+        .map((tid) => {
+          const t = getTeacher(tid);
+          return t ? `${t.name} ${t.surname}`.trim() : "";
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b));
+
+      const activityNames = zoneActivityNames[zone.id] ?? [];
+
+      const childrenRaw = (zonesState[zone.id] ?? [])
+        .map((sid) => {
+          const s = getStudent(sid);
+          if (!s) return null;
+          return {
+            name: `${s.name} ${s.surname}`.trim(),
+            className: s.class.name,
+          };
+        })
+        .filter(Boolean) as { name: string; className: string }[];
+
+      childrenRaw.sort((a, b) => a.name.localeCompare(b.name));
+
+      return {
+        areaName: zone.name,
+        capacity: zone.capacity,
+        educatorNames,
+        activityNames,
+        children: childrenRaw,
+      };
+    });
+  }, [
+    zones,
+    zonesState,
+    teacherZonesState,
+    zoneActivityNames,
+    students,
+    teachers,
+  ]);
 
   const onDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -153,48 +252,100 @@ export default function PlayBoard({
     }
   };
 
-  return (
-    <DndContext
-      sensors={sensors}
-      onDragStart={({ active }) => setActiveId(String(active.id))}
-      onDragEnd={onDragEnd}
-    >
-      <div className="max-w-[100vw] mx-auto p-4 md:p-6 space-y-6">
-        <div className="overflow-x-auto pb-2 -mx-1 px-1">
-          <div className="flex flex-nowrap gap-4 items-stretch">
-            {zones.map((zone) => (
-              <PlayAreaCard
-                key={zone.id}
-                zone={zone}
-                childrenIds={zonesState[zone.id] ?? []}
-                educatorIds={teacherZonesState[zone.id] ?? []}
-                getStudent={getStudent}
-                getTeacher={getTeacher}
-                onOpen={setOpenZone}
-              />
-            ))}
-          </div>
-        </div>
+  const handleClearPlayBoard = async () => {
+    if (!window.confirm(dict.playBoard.clearPlayBoardConfirm)) return;
+    setClearingBoard(true);
+    try {
+      await clearPlayBoard();
+      setZonesState(buildEmptyPlayZones(zoneIds, studentIds));
+      setTeacherZonesState(
+        buildEmptyTeacherZonesForBoard(zoneIds, teacherIds)
+      );
+      setOpenZone(null);
+      toast.success(dict.playBoard.clearPlayBoardSuccess);
+    } catch {
+      toast(dict.forms.somethingWentWrong);
+    } finally {
+      setClearingBoard(false);
+    }
+  };
 
-        <div className="flex flex-col lg:flex-row gap-4 border-t border-gray-200 pt-6">
-          <PlayPoolCard
-            droppableId="pool"
-            title={dict.playBoard.kidsPool}
-            variant="kids"
-            ids={zonesState.pool ?? []}
-            getStudent={getStudent}
-            getTeacher={getTeacher}
-          />
-          <PlayPoolCard
-            droppableId="teacherPool"
-            title={dict.playBoard.educatorsPool}
-            variant="teachers"
-            ids={teacherZonesState.teacherPool ?? []}
-            getStudent={getStudent}
-            getTeacher={getTeacher}
-          />
+  return (
+    <>
+      <div className="print:hidden">
+        <div className="flex flex-col gap-6 max-w-[100vw] mx-auto">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+        <div className="min-w-0 flex-1">
+          <h1 className="hidden md:block text-lg font-semibold">
+            {dict.playBoard.boardTitle}
+          </h1>
+        </div>
+        <div className="flex shrink-0 items-center gap-3 flex-wrap justify-end">
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="rounded-full border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-800 hover:bg-gray-50"
+          >
+            {dict.areasList.exportPrint}
+          </button>
+          <Link
+            href={`/${locale}/list/areas`}
+            className="rounded-full bg-kitaYellow px-3 py-2 text-xs font-medium"
+          >
+            {dict.playBoard.playAreasLink}
+          </Link>
+          <button
+            type="button"
+            disabled={clearingBoard}
+            onClick={() => void handleClearPlayBoard()}
+            className="rounded-full border border-amber-600/40 bg-amber-100 px-3 py-2 text-xs font-medium text-amber-950 hover:bg-amber-200/90 disabled:opacity-50"
+          >
+            {dict.playBoard.clearPlayBoard}
+          </button>
         </div>
       </div>
+
+      <DndContext
+        sensors={sensors}
+        onDragStart={({ active }) => setActiveId(String(active.id))}
+        onDragEnd={onDragEnd}
+      >
+        <div className="space-y-6">
+          <div className="overflow-x-auto pb-2 -mx-1 px-1">
+            <div className="flex flex-nowrap gap-4 items-stretch">
+              {zones.map((zone) => (
+                <PlayAreaCard
+                  key={zone.id}
+                  zone={zone}
+                  childrenIds={zonesState[zone.id] ?? []}
+                  educatorIds={teacherZonesState[zone.id] ?? []}
+                  getStudent={getStudent}
+                  getTeacher={getTeacher}
+                  onOpen={setOpenZone}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col lg:flex-row gap-4 border-t border-gray-200 pt-6">
+            <PlayPoolCard
+              droppableId="pool"
+              title={dict.playBoard.kidsPool}
+              variant="kids"
+              ids={zonesState.pool ?? []}
+              getStudent={getStudent}
+              getTeacher={getTeacher}
+            />
+            <PlayPoolCard
+              droppableId="teacherPool"
+              title={dict.playBoard.educatorsPool}
+              variant="teachers"
+              ids={teacherZonesState.teacherPool ?? []}
+              getStudent={getStudent}
+              getTeacher={getTeacher}
+            />
+          </div>
+        </div>
 
       {openZone && (
         <ZonePanel
@@ -225,6 +376,124 @@ export default function PlayBoard({
           />
         ) : null}
       </DragOverlay>
-    </DndContext>
+      </DndContext>
+        </div>
+      </div>
+
+      <div className="hidden print:block print:w-full print:max-w-none print:[overflow:visible]">
+        {playPrintSections.length === 0 ? (
+          <div className="print:p-8">
+            <div className="flex justify-between items-start gap-4 mb-4">
+              <h1 className="text-xl font-bold text-gray-900">
+                {dict.common.noResults}
+              </h1>
+              <p className="text-sm text-gray-600 shrink-0">{dateLong}</p>
+            </div>
+            <div className="mb-6 flex items-center gap-2">
+              <img
+                src="/logo.jpg"
+                alt=""
+                className="h-[18px] w-[18px] object-contain"
+              />
+              <span className="font-bold text-base text-gray-900">
+                {lgd.pdfBrandName}
+              </span>
+            </div>
+          </div>
+        ) : (
+          playPrintSections.map((sec, sectionIdx) => (
+            <div
+              key={sec.areaName + sectionIdx}
+              className="print:p-8 max-w-none"
+              style={
+                sectionIdx > 0 ? { breakBefore: "page" as const } : undefined
+              }
+            >
+              <div className="flex justify-between items-start gap-4 mb-4">
+                <h1 className="text-xl font-bold text-gray-900">
+                  {sec.areaName}
+                </h1>
+                <p className="text-sm text-gray-600 shrink-0">{dateLong}</p>
+              </div>
+              <div className="mb-4 flex items-center gap-2">
+                <img
+                  src="/logo.jpg"
+                  alt=""
+                  className="h-[18px] w-[18px] object-contain"
+                />
+                <span className="font-bold text-base text-gray-900">
+                  {lgd.pdfBrandName}
+                </span>
+              </div>
+
+              <h2 className="text-sm font-semibold text-gray-900 mt-4 mb-1">
+                {dict.areasList.pdfSectionEducators}
+              </h2>
+              <p className="text-sm text-gray-800 mb-4">
+                {sec.educatorNames.length > 0
+                  ? sec.educatorNames.join(", ")
+                  : "—"}
+              </p>
+
+              <h2 className="text-sm font-semibold text-gray-900 mb-1">
+                {dict.areasList.pdfSectionActivities}
+              </h2>
+              <p className="text-sm text-gray-800 mb-4">
+                {sec.activityNames.length > 0
+                  ? sec.activityNames.join(", ")
+                  : "—"}
+              </p>
+
+              <h2 className="text-sm font-semibold text-gray-900 mb-2">
+                {dict.areasList.pdfSectionChildren}
+              </h2>
+              <table className="w-full text-sm border-collapse border border-gray-400">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border border-gray-400 p-2 w-12 text-center font-semibold">
+                      {lgd.pdfColNum}
+                    </th>
+                    <th className="border border-gray-400 p-2 text-left font-semibold">
+                      {lgd.pdfColChildName}
+                    </th>
+                    <th className="border border-gray-400 p-2 text-left font-semibold">
+                      {lgd.pdfColGroup}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sec.children.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={3}
+                        className="border border-gray-400 p-2 text-gray-500 text-center"
+                      >
+                        —
+                      </td>
+                    </tr>
+                  ) : (
+                    sec.children.map((c, i) => (
+                      <tr key={`${c.name}-${i}`} className="even:bg-gray-50">
+                        <td className="border border-gray-400 p-2 text-center tabular-nums">
+                          {i + 1}
+                        </td>
+                        <td className="border border-gray-400 p-2">{c.name}</td>
+                        <td className="border border-gray-400 p-2">
+                          {c.className}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+              <p className="mt-4 text-base font-semibold">
+                {lgd.pdfTotal}: {sec.children.length} /{" "}
+                {sec.capacity != null ? sec.capacity : "—"}
+              </p>
+            </div>
+          ))
+        )}
+      </div>
+    </>
   );
 }

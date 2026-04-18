@@ -60,6 +60,18 @@ model Teacher {
   lessons   Lesson[]
   zones             TeacherZone[]
   teacherLunchGroups TeacherLunchGroup[]
+  teacherAttendances TeacherAttendance[]
+}
+
+/// Daily present/absent for an educator (calendar day, UTC range); used to filter Lunch/Play boards.
+model TeacherAttendance {
+  id        Int      @id @default(autoincrement())
+  date      DateTime
+  present   Boolean
+  teacherId String
+  teacher   Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, date])
 }
 
 model Parent {

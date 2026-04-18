@@ -1,7 +1,8 @@
-import prisma from "@/lib/prisma";
 import { getAuthData } from "@/lib/utils";
-import AreaListClient from "./AreaListClient";
+import { getPlayAreasExportSections } from "@/lib/playAreasExport";
 import { buildZoneListQuery, parsePaginationParams } from "@/lib/queryBuilder";
+import prisma from "@/lib/prisma";
+import AreaListClient from "./AreaListClient";
 
 export default async function AreasListPage({
   searchParams,
@@ -12,7 +13,7 @@ export default async function AreasListPage({
   const { page, limit, skip } = parsePaginationParams(searchParams);
   const { where, orderBy } = buildZoneListQuery(searchParams);
 
-  const [data, count] = await prisma.$transaction([
+  const [data, count, exportSections] = await Promise.all([
     prisma.zone.findMany({
       where,
       orderBy,
@@ -25,11 +26,13 @@ export default async function AreasListPage({
       skip,
     }),
     prisma.zone.count({ where }),
+    getPlayAreasExportSections(searchParams),
   ]);
 
   return (
     <AreaListClient
       data={data}
+      exportSections={exportSections}
       count={count}
       page={page}
       role={role as string}

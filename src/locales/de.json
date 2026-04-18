@@ -128,6 +128,8 @@
     "events": "Ereignisse",
     "messages": "Nachrichten",
     "announcements": "Ankündigungen",
+    "play": "Spiel",
+    "playBoard": "Spieltafel",
     "areas": "Spielbereiche",
     "lunch": "Mittagessen",
     "lunchBoard": "Mittagstisch",
@@ -253,7 +255,12 @@
       "onlyWithActivities": "Nur Bereiche mit geplanten Aktivitäten",
       "capacityMinAtLeast": "Kapazität mindestens",
       "capacityAny": "Beliebige Kapazität"
-    }
+    },
+    "exportPrint": "Drucken",
+    "exportDownloadPdf": "PDF herunterladen",
+    "pdfSectionEducators": "Erzieher",
+    "pdfSectionActivities": "Aktivitäten",
+    "pdfSectionChildren": "Kinder"
   },
   "lessons": {
     "titleAll": "Alle Aktivitäten",
@@ -327,8 +334,13 @@
     "girls": "Mädchen"
   },
   "playBoard": {
+    "boardTitle": "Spieltafel",
     "kidsPool": "Alle Kinder",
-    "educatorsPool": "Erzieher-Pool"
+    "educatorsPool": "Erzieher-Pool",
+    "playAreasLink": "Spielbereiche",
+    "clearPlayBoard": "Spieltafel leeren",
+    "clearPlayBoardConfirm": "Spieltafel leeren? Alle Kinder und Erzieher werden in die Pools zurückgelegt.",
+    "clearPlayBoardSuccess": "Spieltafel wurde geleert."
   },
   "zones": {
     "educators": "Erzieher",

@@ -67,29 +67,31 @@ export default function PlayAreaCard({
       </button>
 
       <div className="flex flex-1 flex-col min-h-0 gap-2 p-3">
-        {/* Educators first (fixed band + scroll if many) */}
+        {/* Educators: label fixed; grid scrolls only when content exceeds min slot (~1 card) */}
         <div
           ref={teacherDrop.setNodeRef}
-          className={`flex shrink-0 flex-col rounded-lg p-2 max-h-[140px] min-h-[72px] overflow-y-auto transition-colors ${
+          className={`flex shrink-0 flex-col rounded-lg p-2 transition-colors ${
             teacherDrop.isOver ? "ring-2 ring-amber-400 ring-inset bg-white/60" : ""
           }`}
         >
           <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-2 shrink-0">
             Educators
           </p>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-2 content-start">
-            {educatorIds.map((tid) => {
-              const t = getTeacher(tid);
-              if (!t) return null;
-              return (
-                <EducatorCard
-                  key={tid}
-                  id={t.id}
-                  name={`${t.name} ${t.surname}`}
-                  img={t.img}
-                />
-              );
-            })}
+          <div className="min-h-[108px] max-h-[min(220px,38vh)] overflow-y-auto overscroll-contain">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-2 content-start">
+              {educatorIds.map((tid) => {
+                const t = getTeacher(tid);
+                if (!t) return null;
+                return (
+                  <EducatorCard
+                    key={tid}
+                    id={t.id}
+                    name={`${t.name} ${t.surname}`}
+                    img={t.img}
+                  />
+                );
+              })}
+            </div>
           </div>
         </div>
 

@@ -372,128 +372,132 @@ export default function LunchGroupsManager({
   return (
     <>
       <div className="print:hidden">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-lg font-semibold">{dict.lunchGroups.titleAll}</h1>
-            <p className="text-xs text-gray-600 mt-2 max-w-3xl leading-relaxed">
-              {dict.lunchGroups.intro}
-            </p>
+        <div className="flex flex-col gap-4">
+          {/* Row 1: title + lunch board link + search */}
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-lg font-semibold">{dict.lunchGroups.titleAll}</h1>
+              <p className="text-xs text-gray-600 mt-2 max-w-3xl leading-relaxed">
+                {dict.lunchGroups.intro}
+              </p>
+            </div>
+            <div className="flex w-full xl:w-auto xl:shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+              <Link
+                href={boardHref}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-kitaSky text-sm font-medium text-gray-800 hover:opacity-90 whitespace-nowrap shrink-0"
+              >
+                <Image src="/lunch.png" alt="" width={18} height={18} />
+                {dict.lunchGroups.openBoard}
+              </Link>
+              <SearchInput className="w-full sm:w-auto flex items-center gap-2 text-xs rounded-full ring-[1.5px] ring-gray-300 px-2 min-w-0 sm:max-w-[min(100%,280px)]" />
+            </div>
           </div>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
-            <Link
-              href={boardHref}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-kitaSky text-sm font-medium text-gray-800 hover:opacity-90 whitespace-nowrap shrink-0"
-            >
-              <Image src="/lunch.png" alt="" width={18} height={18} />
-              {dict.lunchGroups.openBoard}
-            </Link>
-            <div className="flex flex-col md:flex-row items-center gap-3 flex-1 md:flex-initial">
-              <SearchInput />
-              <div className="flex flex-wrap items-center gap-3 sm:gap-4 self-end justify-end">
-                <FilterPanel title={dict.common.filters}>
-                  <FilterDropdown
-                    label={lgd.filterBy ?? dict.common.filters}
-                    paramKey="filter"
-                    options={[
-                      {
-                        label: lgd.filterWithChildren,
-                        value: "with_children",
-                      },
-                      { label: lgd.filterWithSpace, value: "with_space" },
-                    ]}
-                  />
-                </FilterPanel>
 
-                <SortPanel title={dict.common.sortBy}>
-                  <SortDropdown
-                    options={[
-                      { label: dict.lunchGroups.name, value: "name" },
-                      { label: dict.lunchGroups.capacity, value: "capacity" },
-                    ]}
-                    defaultSort="name"
-                    defaultOrder="asc"
-                  />
-                </SortPanel>
+          {/* Row 2: filters / sort / reset / more / create */}
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <FilterPanel title={dict.common.filters}>
+              <FilterDropdown
+                label={lgd.filterBy ?? dict.common.filters}
+                paramKey="filter"
+                options={[
+                  {
+                    label: lgd.filterWithChildren,
+                    value: "with_children",
+                  },
+                  { label: lgd.filterWithSpace, value: "with_space" },
+                ]}
+              />
+            </FilterPanel>
 
-                <ResetFiltersButton label={dict.common.resetFilters} />
+            <SortPanel title={dict.common.sortBy}>
+              <SortDropdown
+                options={[
+                  { label: dict.lunchGroups.name, value: "name" },
+                  { label: dict.lunchGroups.capacity, value: "capacity" },
+                ]}
+                defaultSort="name"
+                defaultOrder="asc"
+              />
+            </SortPanel>
 
-                <div className="relative" ref={actionsRef}>
+            <ResetFiltersButton label={dict.common.resetFilters} />
+
+            <div className="relative flex items-center" ref={actionsRef}>
+              <button
+                type="button"
+                className={`h-9 w-9 rounded-md border border-gray-300 bg-white flex items-center justify-center hover:bg-gray-50 ${
+                  isDownloadingPdf ? "opacity-60 cursor-not-allowed" : ""
+                }`}
+                onClick={() => setActionsOpen((v) => !v)}
+                aria-label={dict.common.actions}
+                aria-expanded={actionsOpen}
+                disabled={isDownloadingPdf}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  className="w-5 h-5 text-gray-700"
+                  aria-hidden
+                >
+                  <circle cx="12" cy="5.5" r="1.6" fill="currentColor" />
+                  <circle cx="12" cy="12" r="1.6" fill="currentColor" />
+                  <circle cx="12" cy="18.5" r="1.6" fill="currentColor" />
+                </svg>
+              </button>
+              {actionsOpen && (
+                <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-md border border-gray-200 bg-white shadow-lg overflow-hidden">
                   <button
                     type="button"
-                    className={`h-9 w-9 rounded-md border border-gray-300 bg-white flex items-center justify-center hover:bg-gray-50 ${
-                      isDownloadingPdf ? "opacity-60 cursor-not-allowed" : ""
-                    }`}
-                    onClick={() => setActionsOpen((v) => !v)}
-                    aria-label={dict.common.actions}
+                    className="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                    onClick={onPrint}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="w-4 h-4 shrink-0"
+                    >
+                      <path d="M6 9V3h12v6" />
+                      <rect x="6" y="14" width="12" height="7" rx="1" />
+                      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                    </svg>
+                    <span>{lgd.printList}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                    onClick={() => void onDownloadPdf()}
                     disabled={isDownloadingPdf}
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       viewBox="0 0 24 24"
-                      className="w-5 h-5 text-gray-700"
-                      aria-hidden
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="w-4 h-4 shrink-0"
                     >
-                      <circle cx="12" cy="5.5" r="1.6" fill="currentColor" />
-                      <circle cx="12" cy="12" r="1.6" fill="currentColor" />
-                      <circle cx="12" cy="18.5" r="1.6" fill="currentColor" />
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <path d="M7 10l5 5 5-5" />
+                      <path d="M12 15V3" />
                     </svg>
+                    <span>{lgd.downloadListPdf}</span>
                   </button>
-                  {actionsOpen && (
-                    <div className="absolute right-0 z-50 mt-2 w-56 rounded-md border border-gray-200 bg-white shadow-lg overflow-hidden">
-                      <button
-                        type="button"
-                        className="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                        onClick={onPrint}
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          className="w-4 h-4 shrink-0"
-                        >
-                          <path d="M6 9V3h12v6" />
-                          <rect x="6" y="14" width="12" height="7" rx="1" />
-                          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-                        </svg>
-                        <span>{lgd.printList}</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                        onClick={() => void onDownloadPdf()}
-                        disabled={isDownloadingPdf}
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          className="w-4 h-4 shrink-0"
-                        >
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                          <path d="M7 10l5 5 5-5" />
-                          <path d="M12 15V3" />
-                        </svg>
-                        <span>{lgd.downloadListPdf}</span>
-                      </button>
-                    </div>
-                  )}
                 </div>
-
-                {canManage && (
-                  <button
-                    type="button"
-                    className="w-8 h-8 flex items-center justify-center rounded-full bg-kitaYellow"
-                    onClick={openCreate}
-                  >
-                    <Image src="/create.png" alt="" width={14} height={14} />
-                  </button>
-                )}
-              </div>
+              )}
             </div>
+
+            {canManage && (
+              <button
+                type="button"
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-kitaYellow"
+                onClick={openCreate}
+              >
+                <Image src="/create.png" alt="" width={14} height={14} />
+              </button>
+            )}
           </div>
         </div>
 
@@ -509,15 +513,13 @@ export default function LunchGroupsManager({
       </div>
 
       {/* Print-only: one section per page (same structure as PDF) */}
-      <div className="hidden print:block">
+      <div className="hidden print:block print:w-full print:max-w-none print:[overflow:visible]">
         {exportSections.map((sec, sectionIdx) => (
           <div
             key={sec.groupName + sectionIdx}
-            className="print:p-8 print:min-h-[90vh]"
+            className="print:p-8 max-w-none"
             style={
-              sectionIdx > 0
-                ? { pageBreakBefore: "always" as const }
-                : undefined
+              sectionIdx > 0 ? { breakBefore: "page" as const } : undefined
             }
           >
             <div className="flex justify-between items-start gap-4 mb-4">

@@ -128,6 +128,8 @@
     "events": "Events",
     "messages": "Messages",
     "announcements": "Announcements",
+    "play": "Play",
+    "playBoard": "Play board",
     "areas": "Play Areas",
     "lunch": "Lunch",
     "lunchBoard": "Lunch board",
@@ -253,7 +255,12 @@
       "onlyWithActivities": "Only areas with planned activities",
       "capacityMinAtLeast": "Capacity at least",
       "capacityAny": "Any capacity"
-    }
+    },
+    "exportPrint": "Print",
+    "exportDownloadPdf": "Download PDF",
+    "pdfSectionEducators": "Educators",
+    "pdfSectionActivities": "Activities",
+    "pdfSectionChildren": "Children"
   },
   "lessons": {
     "titleAll": "All Activities",
@@ -327,8 +334,13 @@
     "girls": "Girls"
   },
   "playBoard": {
+    "boardTitle": "Play board",
     "kidsPool": "All children",
-    "educatorsPool": "Educators pool"
+    "educatorsPool": "Educators pool",
+    "playAreasLink": "Play areas",
+    "clearPlayBoard": "Clear Play Board",
+    "clearPlayBoardConfirm": "Clear the play board? All children and educators will be moved back to the pools.",
+    "clearPlayBoardSuccess": "Play board cleared."
   },
   "zones": {
     "educators": "Educators",
@@ -343,7 +355,7 @@
   "lunchGroups": {
     "titleAll": "All Lunch Groups",
     "intro": "Create and edit lunch groups here, then open the lunch board to assign children to groups and manage table sayings.",
-    "openBoard": "Open lunch groups",
+    "openBoard": "Open lunch board",
     "add": "Add Lunch Group",
     "edit": "Edit Lunch Group",
     "name": "Name",

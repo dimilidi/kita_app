@@ -2,6 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Multi-page print: undo viewport / scroll clipping from app shell */
+@media print {
+  html,
+  body {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .Toastify,
+  [class^="Toastify"] {
+    display: none !important;
+  }
+}
+
 .react-calendar {
   width: 100% !important;
   border: none !important;

@@ -657,8 +657,77 @@ export default function LunchBoardClient({
   const activeTeacher =
     activeParsed?.kind === "teacher" ? getTeacher(activeParsed.id) : null;
 
+  const lgd = dict.lunchGroups.detail ?? {};
+
+  const boardDateLong = useMemo(() => {
+    const ok = /^\d{4}-\d{2}-\d{2}$/.test(attendanceDateStr);
+    const d = ok ? new Date(`${attendanceDateStr}T12:00:00`) : new Date();
+    return d.toLocaleDateString(locale === "de" ? "de-DE" : "en-GB", {
+      dateStyle: "long",
+    });
+  }, [attendanceDateStr, locale]);
+
+  /** Full-board print: every meal group with current placements (same structure as PDF export). */
+  const lunchPrintSections = useMemo(() => {
+    return lunchGroups.map((group) => {
+      const educatorNames = (teacherLunchState[group.id] ?? [])
+        .map((tid) => {
+          const t = teacherMap[tid];
+          return t ? `${t.name} ${t.surname}`.trim() : "";
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b));
+
+      const childrenRaw = (groups[group.id] ?? [])
+        .map((sid) => {
+          const s = studentMap[sid];
+          if (!s) return null;
+          return {
+            name: `${s.name} ${s.surname}`.trim(),
+            className: s.className,
+          };
+        })
+        .filter(Boolean) as { name: string; className: string }[];
+
+      childrenRaw.sort((a, b) => a.name.localeCompare(b.name));
+
+      let tischspruchTitle: string | null = null;
+      if (tischsprueche.length > 0) {
+        const counts = new Map<number, number>();
+        for (const cid of groups[group.id] ?? []) {
+          const vid = childVotes[cid];
+          if (vid != null) counts.set(vid, (counts.get(vid) ?? 0) + 1);
+        }
+        const winner = tischsprueche.reduce((best, opt) => {
+          const cv = counts.get(opt.id) ?? 0;
+          const bv = counts.get(best.id) ?? 0;
+          return cv > bv ? opt : best;
+        }, tischsprueche[0]);
+        tischspruchTitle = winner.title;
+      }
+
+      return {
+        groupName: group.name,
+        capacity: group.capacity,
+        educatorNames,
+        children: childrenRaw,
+        tischspruchTitle,
+      };
+    });
+  }, [
+    lunchGroups,
+    groups,
+    teacherLunchState,
+    childVotes,
+    tischsprueche,
+    studentMap,
+    teacherMap,
+  ]);
+
   return (
-    <div className="flex flex-col gap-6 max-w-[100vw] mx-auto">
+    <>
+      <div className="print:hidden">
+        <div className="flex flex-col gap-6 max-w-[100vw] mx-auto">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
         <div className="min-w-0 flex-1">
           <h1 className="hidden md:block text-lg font-semibold">
@@ -677,7 +746,14 @@ export default function LunchBoardClient({
               : dict.lunch.noAttendanceForDayShowingAll}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="flex shrink-0 items-center gap-3 flex-wrap justify-end">
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="rounded-full border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-800 hover:bg-gray-50"
+          >
+            {lgd.printList ?? "Print"}
+          </button>
           <Link
             href={`/${locale}/list/lunch-groups`}
             className="rounded-full bg-kitaYellow px-3 py-2 text-xs font-medium"
@@ -859,6 +935,110 @@ export default function LunchBoardClient({
           ) : null}
         </DragOverlay>
       </DndContext>
-    </div>
+        </div>
+      </div>
+
+      <div className="hidden print:block print:w-full print:max-w-none print:[overflow:visible]">
+        {lunchPrintSections.length === 0 ? (
+          <div className="print:p-8">
+            <div className="flex justify-between items-start gap-4 mb-4">
+              <h1 className="text-xl font-bold text-gray-900">
+                {dict.common.noResults}
+              </h1>
+              <p className="text-sm text-gray-600 shrink-0">{boardDateLong}</p>
+            </div>
+            <div className="mb-6 flex items-center gap-2">
+              <img
+                src="/logo.jpg"
+                alt=""
+                className="h-[18px] w-[18px] object-contain"
+              />
+              <span className="font-bold text-base text-gray-900">
+                {lgd.pdfBrandName}
+              </span>
+            </div>
+          </div>
+        ) : (
+          lunchPrintSections.map((sec, sectionIdx) => (
+            <div
+              key={sec.groupName + sectionIdx}
+              className="print:p-8 max-w-none"
+              style={
+                sectionIdx > 0 ? { breakBefore: "page" as const } : undefined
+              }
+            >
+              <div className="flex justify-between items-start gap-4 mb-4">
+                <h1 className="text-xl font-bold text-gray-900">
+                  {sec.groupName}
+                </h1>
+                <p className="text-sm text-gray-600 shrink-0">
+                  {boardDateLong}
+                </p>
+              </div>
+              <div className="mb-3 flex items-center gap-2">
+                <img
+                  src="/logo.jpg"
+                  alt=""
+                  className="h-[18px] w-[18px] object-contain"
+                />
+                <span className="font-bold text-base text-gray-900">
+                  {lgd.pdfBrandName}
+                </span>
+              </div>
+              <p className="text-sm text-gray-800 mb-2">
+                {sec.educatorNames.length > 0
+                  ? `${lgd.pdfEducators}: ${sec.educatorNames.join(", ")}`
+                  : `${lgd.pdfEducators}: —`}
+              </p>
+              <p className="text-sm text-gray-800 mb-3">
+                {`${lgd.pdfTischspruch}: ${sec.tischspruchTitle ?? "—"}`}
+              </p>
+              <table className="w-full text-sm border-collapse border border-gray-400">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border border-gray-400 p-2 w-12 text-center font-semibold">
+                      {lgd.pdfColNum}
+                    </th>
+                    <th className="border border-gray-400 p-2 text-left font-semibold">
+                      {lgd.pdfColChildName}
+                    </th>
+                    <th className="border border-gray-400 p-2 text-left font-semibold">
+                      {lgd.pdfColGroup}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sec.children.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={3}
+                        className="border border-gray-400 p-2 text-gray-500 text-center"
+                      >
+                        —
+                      </td>
+                    </tr>
+                  ) : (
+                    sec.children.map((c, i) => (
+                      <tr key={`${c.name}-${i}`} className="even:bg-gray-50">
+                        <td className="border border-gray-400 p-2 text-center tabular-nums">
+                          {i + 1}
+                        </td>
+                        <td className="border border-gray-400 p-2">{c.name}</td>
+                        <td className="border border-gray-400 p-2">
+                          {c.className}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+              <p className="mt-4 text-base font-semibold">
+                {lgd.pdfTotal}: {sec.children.length} / {sec.capacity ?? 15}
+              </p>
+            </div>
+          ))
+        )}
+      </div>
+    </>
   );
 }
