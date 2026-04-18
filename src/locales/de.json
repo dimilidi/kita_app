@@ -125,6 +125,8 @@
     "assignments": "Aufgaben",
     "results": "Ergebnisse",
     "attendance": "Anwesenheit",
+    "childrenAttendance": "Kinder-Anwesenheit",
+    "educatorAttendance": "Erzieher-Anwesenheit",
     "events": "Ereignisse",
     "messages": "Nachrichten",
     "announcements": "Ankündigungen",
@@ -158,7 +160,8 @@
     "clearLunchboardSuccess": "Mittagstafel wurde geleert.",
     "attendanceDayLabel": "Anwesenheitstag",
     "presentChildrenOnly": "Es werden nur Kinder angezeigt, die an diesem Tag als anwesend eingetragen sind.",
-    "noAttendanceForDayShowingAll": "Für diesen Tag liegt keine Anwesenheit vor — alle Kinder werden angezeigt."
+    "noAttendanceForDayShowingAll": "Für diesen Tag liegt keine Anwesenheit vor — alle Kinder werden angezeigt.",
+    "teacherAttendanceBoardNote": "Mittags- und Spieltafel nutzen die Erzieher-Anwesenheit: gibt es Einträge für diesen Tag, erscheinen nur als anwesend markierte Kolleginnen und Kollegen."
   },
   "events": {
     "title": "Ereignisse"
@@ -191,6 +194,22 @@
     "sort": {
       "lessonCount": "Anzahl geplanter Aktivitäten"
     }
+  },
+  "teacherAttendancePage": {
+    "title": "Erzieher-Anwesenheit",
+    "subtitle": "An diesem Tag anwesend oder abwesend eintragen.",
+    "subtitleEducator": "Trage für den gewählten Tag ein, ob du anwesend oder abwesend bist.",
+    "boardHint": "Liegt für einen Tag Anwesenheit vor, zeigen Mittags- und Spieltafel nur als anwesend markierte Erzieher; alle anderen gelten als abwesend.",
+    "boardHintEducator": "Du siehst und bearbeitest nur deine eigene Anwesenheit. Mittags- und Spieltafel nutzen diese Einträge zur Filterung.",
+    "date": "Datum",
+    "today": "Heute",
+    "totalEducators": "Erzieher",
+    "name": "Name",
+    "status": "Status",
+    "noTeachers": "Keine Erzieher gefunden.",
+    "presentLabel": "Anwesend",
+    "absentLabel": "Abwesend",
+    "saveFailed": "Anwesenheit konnte nicht gespeichert werden."
   },
   "students": {
     "titleAll": "Alle Kinder",
@@ -335,6 +354,10 @@
   },
   "playBoard": {
     "boardTitle": "Spieltafel",
+    "educatorAttendanceDayLabel": "Tag der Erzieher-Anwesenheit",
+    "today": "Heute",
+    "noTeacherAttendanceShowingAllEducators": "Für diesen Tag liegt keine Erzieher-Anwesenheit vor — alle Erzieher werden angezeigt.",
+    "presentEducatorsOnly": "Es werden nur Erzieher angezeigt, die an diesem Tag als anwesend eingetragen sind.",
     "kidsPool": "Alle Kinder",
     "educatorsPool": "Erzieher-Pool",
     "playAreasLink": "Spielbereiche",

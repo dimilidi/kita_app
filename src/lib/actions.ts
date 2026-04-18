@@ -1554,3 +1554,56 @@ export async function deleteTischspruch(id: number) {
     return { success: false, error: true };
   }
 }
+
+export async function upsertTeacherAttendance({
+  teacherId,
+  dateStr,
+  present,
+}: {
+  teacherId: string;
+  dateStr: string;
+  present: boolean;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { userId, role } = getAuthData();
+    if (role !== "admin" && role !== "teacher") {
+      return { success: false, error: "forbidden" };
+    }
+    if (role === "teacher") {
+      if (!userId || teacherId !== userId) {
+        return { success: false, error: "forbidden" };
+      }
+    }
+    const range = parseDateStrToUtcRange(dateStr);
+    if (!range) {
+      return { success: false, error: "invalidDate" };
+    }
+    const exists = await prisma.teacher.findUnique({ where: { id: teacherId } });
+    if (!exists) {
+      return { success: false, error: "notFound" };
+    }
+
+    await prisma.teacherAttendance.upsert({
+      where: {
+        teacherId_date: {
+          teacherId,
+          date: range.start,
+        },
+      },
+      create: {
+        teacherId,
+        date: range.start,
+        present,
+      },
+      update: { present },
+    });
+
+    revalidatePath("/list/teachers-attendance");
+    revalidatePath("/list/lunch");
+    revalidatePath("/list/areas/board");
+    return { success: true };
+  } catch (e) {
+    console.error("upsertTeacherAttendance", e);
+    return { success: false, error: "server" };
+  }
+}

@@ -125,6 +125,8 @@
     "assignments": "Assignments",
     "results": "Results",
     "attendance": "Attendance",
+    "childrenAttendance": "Children attendance",
+    "educatorAttendance": "Educator attendance",
     "events": "Events",
     "messages": "Messages",
     "announcements": "Announcements",
@@ -158,7 +160,8 @@
     "clearLunchboardSuccess": "Lunch board cleared.",
     "attendanceDayLabel": "Attendance day",
     "presentChildrenOnly": "Only children marked present on this day are listed.",
-    "noAttendanceForDayShowingAll": "No attendance recorded for this day — all children are shown."
+    "noAttendanceForDayShowingAll": "No attendance recorded for this day — all children are shown.",
+    "teacherAttendanceBoardNote": "Lunch and play boards use educator attendance: when records exist for this day, only staff marked present are listed as available."
   },
   "events": {
     "title": "Events"
@@ -191,6 +194,22 @@
     "sort": {
       "lessonCount": "Number of scheduled activities"
     }
+  },
+  "teacherAttendancePage": {
+    "title": "Educator attendance",
+    "subtitle": "Mark who is present or absent for the selected day.",
+    "subtitleEducator": "Mark whether you are present or absent on the selected day.",
+    "boardHint": "When attendance exists for a day, Lunch and Play boards only show educators marked present; everyone else is treated as absent.",
+    "boardHintEducator": "You only see and edit your own attendance. Lunch and Play boards use these marks when filtering staff.",
+    "date": "Date",
+    "today": "Today",
+    "totalEducators": "Educators",
+    "name": "Name",
+    "status": "Status",
+    "noTeachers": "No educators found.",
+    "presentLabel": "Present",
+    "absentLabel": "Absent",
+    "saveFailed": "Could not save attendance."
   },
   "students": {
     "titleAll": "All Children",
@@ -335,6 +354,10 @@
   },
   "playBoard": {
     "boardTitle": "Play board",
+    "educatorAttendanceDayLabel": "Educator attendance day",
+    "today": "Today",
+    "noTeacherAttendanceShowingAllEducators": "No educator attendance recorded for this day — all educators are shown.",
+    "presentEducatorsOnly": "Only educators marked present on this day appear on the board.",
     "kidsPool": "All children",
     "educatorsPool": "Educators pool",
     "playAreasLink": "Play areas",

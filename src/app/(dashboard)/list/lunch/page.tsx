@@ -5,6 +5,10 @@ import {
   normalizeAttendanceDateStr,
   parseDateStrToUtcRange,
 } from "@/lib/attendanceDate";
+import {
+  filterTeachersForBoard,
+  getTeacherAttendanceByDate,
+} from "@/lib/teacherAttendance";
 
 export default async function LunchPage({
   searchParams,
@@ -94,10 +98,16 @@ export default async function LunchPage({
       .map((vote) => [vote.studentId, vote.tischspruchId])
   );
 
-  const teachers = await prisma.teacher.findMany({
+  const teachersAll = await prisma.teacher.findMany({
     select: { id: true, name: true, surname: true, img: true },
     orderBy: { name: "asc" },
   });
+
+  const teacherAttendanceRows =
+    dayRange != null ? await getTeacherAttendanceByDate(dateStr) : [];
+
+  const teachers = filterTeachersForBoard(teachersAll, teacherAttendanceRows);
+  const teacherAttendanceFilterActive = teacherAttendanceRows.length > 0;
 
   const teacherLunchRows = await prisma.teacherLunchGroup.findMany();
 
@@ -147,6 +157,7 @@ export default async function LunchPage({
         initialTischsprueche={tischsprueche}
         attendanceDateStr={dateStr}
         attendanceFilterActive={useAttendanceFilter}
+        teacherAttendanceFilterActive={teacherAttendanceFilterActive}
       />
     </div>
   );

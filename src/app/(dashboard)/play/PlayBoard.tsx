@@ -9,8 +9,8 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useMemo, useState, useTransition } from "react";
 import PlayAreaCard, { TeacherLite } from "@/components/PlayAreaCard";
 import PlayPoolCard from "@/components/PlayPoolCard";
 import Child from "@/components/Child";
@@ -21,6 +21,7 @@ import { StudentWithClass } from "@/types/student";
 import { Zone } from "@prisma/client";
 import { useTranslations } from "@/i18n/TranslationsProvider";
 import { toast } from "react-toastify";
+import { todayDateStrLocal } from "@/lib/attendanceDate";
 
 type ZoneId = string;
 
@@ -33,6 +34,10 @@ type Props = {
   initialTeacherZones?: Record<ZoneId, string[]>;
   /** Catalog + scheduled activity titles per zone (for print/PDF-style export). */
   zoneActivityNames?: Record<string, string[]>;
+  /** YYYY-MM-DD; same query as educator attendance (`?date=`). */
+  boardDateStr?: string;
+  /** True when any educator-attendance row exists for that day — list is present-only. */
+  teacherAttendanceFilterActive?: boolean;
 };
 
 function parseDragId(raw: string): { kind: "child" | "teacher"; id: string } | null {
@@ -88,8 +93,13 @@ export default function PlayBoard({
   initialZones,
   initialTeacherZones: initialTeacherZonesProp,
   zoneActivityNames = {},
+  boardDateStr: boardDateStrProp,
+  teacherAttendanceFilterActive = false,
 }: Props) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [dateNavPending, startDateNavTransition] = useTransition();
+  const boardDateStr = boardDateStrProp ?? todayDateStrLocal();
   const localeSegments = pathname.split("/").filter(Boolean);
   const locale =
     localeSegments[0] === "en" || localeSegments[0] === "de"
@@ -150,11 +160,11 @@ export default function PlayBoard({
 
   const dateLong = useMemo(
     () =>
-      new Date().toLocaleDateString(
+      new Date(`${boardDateStr}T12:00:00`).toLocaleDateString(
         locale === "de" ? "de-DE" : "en-GB",
         { dateStyle: "long" }
       ),
-    [locale]
+    [locale, boardDateStr]
   );
 
   /** Full-board print: every zone with current placements (matches play areas list/PDF layout). */
@@ -279,6 +289,50 @@ export default function PlayBoard({
           <h1 className="hidden md:block text-lg font-semibold">
             {dict.playBoard.boardTitle}
           </h1>
+          <p className="mt-1 text-xs text-gray-600">
+            <Link
+              href={`/${locale}/list/teachers-attendance?date=${encodeURIComponent(boardDateStr)}`}
+              className="font-medium text-gray-800 underline-offset-2 hover:underline"
+            >
+              {dict.playBoard.educatorAttendanceDayLabel}: {boardDateStr}
+            </Link>
+            {" — "}
+            {teacherAttendanceFilterActive
+              ? dict.playBoard.presentEducatorsOnly
+              : dict.playBoard.noTeacherAttendanceShowingAllEducators}
+          </p>
+          <div className="mt-2 flex flex-wrap items-end gap-2">
+            <label className="flex flex-col gap-1 text-xs text-gray-600">
+              <span>{dict.forms.date}</span>
+              <input
+                type="date"
+                className="border rounded-md px-2 py-1.5 text-sm bg-white"
+                value={boardDateStr}
+                disabled={dateNavPending}
+                onChange={(e) =>
+                  startDateNavTransition(() =>
+                    router.replace(
+                      `${pathname}?date=${encodeURIComponent(e.target.value)}`
+                    )
+                  )
+                }
+              />
+            </label>
+            <button
+              type="button"
+              className="self-end h-[34px] px-2 rounded-md border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-50"
+              disabled={dateNavPending}
+              onClick={() =>
+                startDateNavTransition(() =>
+                  router.replace(
+                    `${pathname}?date=${encodeURIComponent(todayDateStrLocal())}`
+                  )
+                )
+              }
+            >
+              {dict.playBoard.today}
+            </button>
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-3 flex-wrap justify-end">
           <button

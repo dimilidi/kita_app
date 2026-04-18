@@ -13,6 +13,22 @@ export async function getTeacherAttendanceByDate(dateStr: string) {
   });
 }
 
+/** Single educator’s row for the calendar day (no other teachers’ data). */
+export async function getTeacherAttendanceRowForTeacher(
+  dateStr: string,
+  teacherId: string
+) {
+  const range = parseDateStrToUtcRange(dateStr);
+  if (!range) return null;
+  return prisma.teacherAttendance.findFirst({
+    where: {
+      teacherId,
+      date: { gte: range.start, lt: range.end },
+    },
+    select: { teacherId: true, present: true },
+  });
+}
+
 /** When any teacher-attendance rows exist for the day, boards only show teachers marked present. */
 export function filterTeachersForBoard<
   T extends { id: string },

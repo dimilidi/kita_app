@@ -10,6 +10,7 @@ import { useTranslations } from "@/i18n/TranslationsProvider";
 
 const LUNCH_SUBMENU_ID = "lunch";
 const PLAY_SUBMENU_ID = "play";
+const ATTENDANCE_SUBMENU_ID = "attendance";
 
 function isLunchSectionPath(pathname: string) {
   return (
@@ -24,12 +25,29 @@ function isPlaySectionPath(pathname: string) {
   return pathname.includes("/list/areas");
 }
 
+function isAttendanceSectionPath(pathname: string) {
+  return (
+    pathname.includes("/list/attendance") &&
+    !pathname.includes("/list/teachers-attendance")
+  );
+}
+
+function isTeacherAttendancePath(pathname: string) {
+  return pathname.includes("/list/teachers-attendance");
+}
+
+function isAttendanceMenuSectionPath(pathname: string) {
+  return isAttendanceSectionPath(pathname) || isTeacherAttendancePath(pathname);
+}
+
 function isSubmenuParentActive(
   submenuId: string,
   pathname: string
 ): boolean {
   if (submenuId === LUNCH_SUBMENU_ID) return isLunchSectionPath(pathname);
   if (submenuId === PLAY_SUBMENU_ID) return isPlaySectionPath(pathname);
+  if (submenuId === ATTENDANCE_SUBMENU_ID)
+    return isAttendanceMenuSectionPath(pathname);
   return false;
 }
 
@@ -63,6 +81,8 @@ const Menu = () => {
       setOpenSubmenuId(LUNCH_SUBMENU_ID);
     } else if (isPlaySectionPath(pathname)) {
       setOpenSubmenuId(PLAY_SUBMENU_ID);
+    } else if (isAttendanceMenuSectionPath(pathname)) {
+      setOpenSubmenuId(ATTENDANCE_SUBMENU_ID);
     }
   }, [pathname]);
 
@@ -111,8 +131,20 @@ const Menu = () => {
         {
           icon: "/attendance.png",
           label: dict.menu.attendance,
-          href: `/${lang}/list/attendance`,
           visible: ["admin", "teacher", "student", "parent"],
+          submenuId: ATTENDANCE_SUBMENU_ID,
+          children: [
+            {
+              label: dict.menu.childrenAttendance,
+              href: `/${lang}/list/attendance`,
+              visible: ["admin", "teacher", "student", "parent"],
+            },
+            {
+              label: dict.menu.educatorAttendance,
+              href: `/${lang}/list/teachers-attendance`,
+              visible: ["admin", "teacher"],
+            },
+          ],
         },
         {
           icon: "/calendar.png",
@@ -238,26 +270,36 @@ const Menu = () => {
                   </button>
                   {expanded && (
                     <div className="flex flex-col border-l border-gray-200 ml-4 lg:ml-6 pl-3 lg:pl-4 mb-1">
-                      {item.children.map((child) => {
-                        const childActive = isSubmenuChildActive(
-                          pathname,
-                          child.href,
-                          "exact" in child ? child.exact : undefined
-                        );
-                        return (
-                          <Link
-                            key={child.href}
-                            href={child.href}
-                            className={`flex items-center justify-center lg:justify-start py-2 md:px-2 rounded-md hover:bg-lamaSkyLight text-sm ${
-                              childActive
-                                ? "bg-lamaSkyLight font-medium text-gray-700"
-                                : "text-gray-500"
-                            }`}
-                          >
-                            {child.label}
-                          </Link>
-                        );
-                      })}
+                      {item.children
+                        .filter((child) => {
+                          if (
+                            "visible" in child &&
+                            Array.isArray(child.visible)
+                          ) {
+                            return child.visible.includes(role);
+                          }
+                          return true;
+                        })
+                        .map((child) => {
+                          const childActive = isSubmenuChildActive(
+                            pathname,
+                            child.href,
+                            "exact" in child ? child.exact : undefined
+                          );
+                          return (
+                            <Link
+                              key={child.href}
+                              href={child.href}
+                              className={`flex items-center justify-center lg:justify-start py-2 md:px-2 rounded-md hover:bg-lamaSkyLight text-sm ${
+                                childActive
+                                  ? "bg-lamaSkyLight font-medium text-gray-700"
+                                  : "text-gray-500"
+                              }`}
+                            >
+                              {child.label}
+                            </Link>
+                          );
+                        })}
                     </div>
                   )}
                 </div>

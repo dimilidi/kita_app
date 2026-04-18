@@ -1,12 +1,30 @@
 import prisma from "@/lib/prisma";
 import PlayBoard from "../../../play/PlayBoard";
 import { Prisma } from "@prisma/client";
+import {
+  normalizeAttendanceDateStr,
+  parseDateStrToUtcRange,
+} from "@/lib/attendanceDate";
+import {
+  filterTeachersForBoard,
+  getTeacherAttendanceByDate,
+} from "@/lib/teacherAttendance";
 
 type StudentWithClass = Prisma.StudentGetPayload<{
   include: { class: true };
 }>;
 
-export default async function PlayBoardPage() {
+export default async function PlayBoardPage({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | undefined };
+}) {
+  const dateStr = normalizeAttendanceDateStr(searchParams.date);
+  const dayRange = parseDateStrToUtcRange(dateStr);
+
+  const teacherAttendanceRows =
+    dayRange != null ? await getTeacherAttendanceByDate(dateStr) : [];
+
   const students: StudentWithClass[] = await prisma.student.findMany({
     include: {
       class: true,
@@ -40,10 +58,13 @@ export default async function PlayBoardPage() {
 
   const studentZones = await prisma.studentZone.findMany();
 
-  const teachers = await prisma.teacher.findMany({
+  const teachersAll = await prisma.teacher.findMany({
     select: { id: true, name: true, surname: true, img: true },
     orderBy: { name: "asc" },
   });
+
+  const teachers = filterTeachersForBoard(teachersAll, teacherAttendanceRows);
+  const teacherAttendanceFilterActive = teacherAttendanceRows.length > 0;
 
   const teacherZoneRows = await prisma.teacherZone.findMany();
 
@@ -98,6 +119,8 @@ export default async function PlayBoardPage() {
         initialZones={initialZones}
         initialTeacherZones={initialTeacherZones}
         zoneActivityNames={zoneActivityNames}
+        boardDateStr={dateStr}
+        teacherAttendanceFilterActive={teacherAttendanceFilterActive}
       />
     </div>
   );
