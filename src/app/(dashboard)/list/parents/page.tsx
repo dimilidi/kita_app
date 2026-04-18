@@ -1,8 +1,7 @@
 import prisma from "@/lib/prisma";
-import { ITEM_PER_PAGE } from "@/lib/settings";
 import { getAuthData } from "@/lib/utils";
-import { Prisma } from "@prisma/client";
 import ParentListClient from "./ParentListClient";
+import { buildParentListQuery, parsePaginationParams } from "@/lib/queryBuilder";
 
 const ParentListPage = async ({
   searchParams,
@@ -12,45 +11,27 @@ const ParentListPage = async ({
 
   const { role } = getAuthData();
 
-  const { page, ...queryParams } = searchParams;
-
-  const p = page ? parseInt(page) : 1;
-
-  // URL PARAMS CONDITION
-
-  const query: Prisma.ParentWhereInput = {};
-
-  if (queryParams) {
-    for (const [key, value] of Object.entries(queryParams)) {
-      if (value !== undefined) {
-        switch (key) {
-          case "search":
-            query.name = { contains: value, mode: "insensitive" };
-            break;
-          default:
-            break;
-        }
-      }
-    }
-  }
+  const { page, limit, skip } = parsePaginationParams(searchParams);
+  const { where, orderBy } = buildParentListQuery(searchParams);
 
   const [data, count] = await prisma.$transaction([
     prisma.parent.findMany({
-      where: query,
+      where,
+      orderBy,
       include: {
         students: true,
       },
-      take: ITEM_PER_PAGE,
-      skip: ITEM_PER_PAGE * (p - 1),
+      take: limit,
+      skip,
     }),
-    prisma.parent.count({ where: query }),
+    prisma.parent.count({ where }),
   ]);
 
   return (
     <ParentListClient
       data={data}
       count={count}
-      page={p}
+      page={page}
       role={role as string}
     />
   );

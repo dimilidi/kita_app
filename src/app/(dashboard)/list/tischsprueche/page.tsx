@@ -1,6 +1,6 @@
 import prisma from "@/lib/prisma";
 import { getAuthData } from "@/lib/utils";
-import { Prisma } from "@prisma/client";
+import { buildTischspruchListQuery } from "@/lib/queryBuilder";
 import TischspruecheManager from "./TischspruecheManager";
 
 const TischspruechePage = async ({
@@ -10,19 +10,11 @@ const TischspruechePage = async ({
 }) => {
   const { role } = getAuthData();
 
-  const query: Prisma.TischspruchWhereInput = {};
-  const { search } = searchParams;
-
-  if (search) {
-    query.OR = [
-      { title: { contains: search, mode: "insensitive" } },
-      { text: { contains: search, mode: "insensitive" } },
-    ];
-  }
+  const { where, orderBy } = buildTischspruchListQuery(searchParams);
 
   const data = await prisma.tischspruch.findMany({
-    where: query,
-    orderBy: { createdAt: "desc" },
+    where,
+    orderBy,
   });
 
   return (

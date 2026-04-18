@@ -9,11 +9,16 @@ import Image from "next/image";
 import Link from "next/link";
 import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
-import TableSearch from "@/components/TableSearch";
+import FilterDropdown from "@/components/filter/FilterDropdown";
+import FilterPanel from "@/components/filter/FilterPanel";
+import ResetFiltersButton from "@/components/filter/ResetFiltersButton";
+import SearchInput from "@/components/search/SearchInput";
+import SortDropdown from "@/components/sort/SortDropdown";
+import SortPanel from "@/components/sort/SortPanel";
 import type { LunchGroupPdfSection } from "@/types/lunchGroups";
 import { DEFAULT_LOCALE } from "@/i18n/lang";
 import { useEffect, useRef, useState, type RefObject } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useTranslations } from "@/i18n/TranslationsProvider";
 import { toast } from "react-toastify";
 
@@ -56,18 +61,12 @@ export default function LunchGroupsManager({
   count,
   page,
   canManage,
-  search: searchFromServer,
-  sort: sortFromServer,
-  filter: filterFromServer,
   exportSections,
 }: {
   initialItems: LunchGroupItem[];
   count: number;
   page: number;
   canManage: boolean;
-  search: string;
-  sort: string;
-  filter: string;
   exportSections: LunchGroupPdfSection[];
 }) {
   const [items, setItems] = useState(initialItems);
@@ -79,16 +78,10 @@ export default function LunchGroupsManager({
   const dict = useTranslations();
   /** Sort/filter/PDF strings live under `lunchGroups.detail` in locale JSON. */
   const lgd = dict.lunchGroups.detail ?? {};
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [sortOpen, setSortOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
-  const filterRef = useRef<HTMLDivElement>(null);
-  const sortRef = useRef<HTMLDivElement>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
 
   const localeSegments = pathname.split("/").filter(Boolean);
   const lang =
@@ -97,52 +90,11 @@ export default function LunchGroupsManager({
       : DEFAULT_LOCALE;
   const boardHref = `/${lang}/list/lunch`;
 
-  const sortKey = sortFromServer || "name_asc";
-  const filterKey = filterFromServer || "all";
-
-  useClickOutside(filterRef, filterOpen, () => setFilterOpen(false));
-  useClickOutside(sortRef, sortOpen, () => setSortOpen(false));
   useClickOutside(actionsRef, actionsOpen, () => setActionsOpen(false));
 
   useEffect(() => {
     setItems(initialItems);
   }, [initialItems]);
-
-  const pushParams = (updates: Record<string, string | undefined>) => {
-    const params = new URLSearchParams(searchParams.toString());
-    Object.entries(updates).forEach(([k, v]) => {
-      if (v === undefined || v === "") params.delete(k);
-      else params.set(k, v);
-    });
-    params.set("page", "1");
-    router.push(`${pathname}?${params.toString()}`);
-  };
-
-  const setSort = (next: string) => {
-    pushParams({ sort: next });
-    setSortOpen(false);
-  };
-
-  const setFilter = (next: string) => {
-    pushParams({ filter: next === "all" ? undefined : next });
-    setFilterOpen(false);
-  };
-
-  const sortLabel =
-    sortKey === "name_desc"
-      ? lgd.sortNameDesc
-      : sortKey === "capacity_asc"
-        ? lgd.sortCapacityAsc
-        : sortKey === "capacity_desc"
-          ? lgd.sortCapacityDesc
-          : lgd.sortNameAsc;
-
-  const filterLabel =
-    filterKey === "with_children"
-      ? lgd.filterWithChildren
-      : filterKey === "with_space"
-        ? lgd.filterWithSpace
-        : lgd.filterAll;
 
   const onDownloadPdf = async () => {
     setIsDownloadingPdf(true);
@@ -435,86 +387,35 @@ export default function LunchGroupsManager({
               <Image src="/lunch.png" alt="" width={18} height={18} />
               {dict.lunchGroups.openBoard}
             </Link>
-            <div className="flex flex-col md:flex-row items-center gap-4 flex-1 md:flex-initial">
-              <TableSearch defaultValue={searchFromServer} />
-              <div className="flex items-center gap-2 sm:gap-4 self-end flex-wrap justify-end">
-                <div className="relative" ref={filterRef}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFilterOpen((v) => !v);
-                      setSortOpen(false);
-                    }}
-                    className="h-9 px-3 rounded-full bg-kitaYellow text-xs font-medium flex items-center gap-2"
-                  >
-                    <Image src="/filter.png" alt="" width={14} height={14} />
-                    <span className="max-w-[10rem] truncate">{filterLabel}</span>
-                  </button>
-                  {filterOpen && (
-                    <div className="absolute right-0 z-50 mt-2 w-56 rounded-md border border-gray-200 bg-white shadow-lg py-1 text-sm">
-                        {(
-                        [
-                          ["all", lgd.filterAll],
-                          [
-                            "with_children",
-                            lgd.filterWithChildren,
-                          ],
-                          ["with_space", lgd.filterWithSpace],
-                        ] as const
-                      ).map(([key, label]) => (
-                        <button
-                          key={key}
-                          type="button"
-                          className={`w-full px-3 py-2 text-left hover:bg-gray-50 ${
-                            (key === "all" ? filterKey === "all" : filterKey === key)
-                              ? "bg-kitaSky/30 font-medium"
-                              : ""
-                          }`}
-                          onClick={() => setFilter(key)}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+            <div className="flex flex-col md:flex-row items-center gap-3 flex-1 md:flex-initial">
+              <SearchInput />
+              <div className="flex flex-wrap items-center gap-3 sm:gap-4 self-end justify-end">
+                <FilterPanel title={dict.common.filters}>
+                  <FilterDropdown
+                    label={lgd.filterBy ?? dict.common.filters}
+                    paramKey="filter"
+                    options={[
+                      {
+                        label: lgd.filterWithChildren,
+                        value: "with_children",
+                      },
+                      { label: lgd.filterWithSpace, value: "with_space" },
+                    ]}
+                  />
+                </FilterPanel>
 
-                <div className="relative" ref={sortRef}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSortOpen((v) => !v);
-                      setFilterOpen(false);
-                    }}
-                    className="h-9 px-3 rounded-full bg-kitaYellow text-xs font-medium flex items-center gap-2"
-                  >
-                    <Image src="/sort.png" alt="" width={14} height={14} />
-                    <span className="max-w-[10rem] truncate">{sortLabel}</span>
-                  </button>
-                  {sortOpen && (
-                    <div className="absolute right-0 z-50 mt-2 w-56 rounded-md border border-gray-200 bg-white shadow-lg py-1 text-sm">
-                      {(
-                        [
-                          ["name_asc", lgd.sortNameAsc],
-                          ["name_desc", lgd.sortNameDesc],
-                          ["capacity_asc", lgd.sortCapacityAsc],
-                          ["capacity_desc", lgd.sortCapacityDesc],
-                        ] as const
-                      ).map(([key, label]) => (
-                        <button
-                          key={key}
-                          type="button"
-                          className={`w-full px-3 py-2 text-left hover:bg-gray-50 ${
-                            sortKey === key ? "bg-kitaSky/30 font-medium" : ""
-                          }`}
-                          onClick={() => setSort(key)}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <SortPanel title={dict.common.sortBy}>
+                  <SortDropdown
+                    options={[
+                      { label: dict.lunchGroups.name, value: "name" },
+                      { label: dict.lunchGroups.capacity, value: "capacity" },
+                    ]}
+                    defaultSort="name"
+                    defaultOrder="asc"
+                  />
+                </SortPanel>
+
+                <ResetFiltersButton label={dict.common.resetFilters} />
 
                 <div className="relative" ref={actionsRef}>
                   <button

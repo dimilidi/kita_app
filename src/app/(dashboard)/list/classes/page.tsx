@@ -1,8 +1,7 @@
 import prisma from "@/lib/prisma";
-import { ITEM_PER_PAGE } from "@/lib/settings";
 import { getAuthData } from "@/lib/utils";
-import { Prisma } from "@prisma/client";
 import ClassListClient from "./ClassListClient";
+import { buildClassListQuery, parsePaginationParams } from "@/lib/queryBuilder";
 
 const ClassListPage = async ({
   searchParams,
@@ -12,42 +11,21 @@ const ClassListPage = async ({
 
   const { role } = getAuthData();
 
-  const { page, ...queryParams } = searchParams;
-
-  const p = page ? parseInt(page) : 1;
-
-  // URL PARAMS CONDITION
-
-  const query: Prisma.ClassWhereInput = {};
-
-  if (queryParams) {
-    for (const [key, value] of Object.entries(queryParams)) {
-      if (value !== undefined) {
-        switch (key) {
-          case "supervisorId":
-            query.supervisorId = value;
-            break;
-          case "search":
-            query.name = { contains: value, mode: "insensitive" };
-            break;
-          default:
-            break;
-        }
-      }
-    }
-  }
+  const { page, limit, skip } = parsePaginationParams(searchParams);
+  const { where, orderBy } = buildClassListQuery(searchParams);
 
   const [data, count] = await prisma.$transaction([
     prisma.class.findMany({
-      where: query,
+      where,
+      orderBy,
       include: {
         grade: true,
         supervisor: true,
       },
-      take: ITEM_PER_PAGE,
-      skip: ITEM_PER_PAGE * (p - 1),
+      take: limit,
+      skip,
     }),
-    prisma.class.count({ where: query }),
+    prisma.class.count({ where }),
   ]);
 
   const clientData = data.map((c) => ({
@@ -78,7 +56,7 @@ const ClassListPage = async ({
     <ClassListClient
       data={clientData}
       count={count}
-      page={p}
+      page={page}
       role={role as string}
       relatedData={relatedData}
     />

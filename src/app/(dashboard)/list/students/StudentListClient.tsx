@@ -1,9 +1,14 @@
 "use client";
 
 import FormModal from "@/components/FormModal";
+import FilterDropdown from "@/components/filter/FilterDropdown";
+import FilterPanel from "@/components/filter/FilterPanel";
+import ResetFiltersButton from "@/components/filter/ResetFiltersButton";
 import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
-import TableSearch from "@/components/TableSearch";
+import SearchInput from "@/components/search/SearchInput";
+import SortDropdown from "@/components/sort/SortDropdown";
+import SortPanel from "@/components/sort/SortPanel";
 import { useTranslations } from "@/i18n/TranslationsProvider";
 import Image from "next/image";
 import Link from "next/link";
@@ -26,7 +31,7 @@ export default function StudentListClient({
   const columns = [
     { header: dict.students.columns.info, accessor: "info" },
     {
-      header: dict.students.columns.grade,
+      header: dict.students.columns.classGroup,
       accessor: "grade",
     },
     { header: dict.students.parent, accessor: "parent", className: "hidden lg:table-cell" },
@@ -80,26 +85,75 @@ export default function StudentListClient({
         <h1 className="hidden md:block text-lg font-semibold">
           {dict.students.titleAll}
         </h1>
-        <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
-          <TableSearch />
-          <div className="flex items-center gap-4 self-end">
-            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-kitaYellow">
-              <Image src="/filter.png" alt="" width={14} height={14} />
-            </button>
-            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-kitaYellow">
-              <Image src="/sort.png" alt="" width={14} height={14} />
-            </button>
-            {role === "admin" && (
-              <FormModal
-                table="student"
-                type="create"
-                relatedData={relatedData}
+        <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
+          <SearchInput />
+
+          <div className="flex flex-wrap items-center justify-end gap-3 self-end">
+            <FilterPanel title={dict.common.filters}>
+              <FilterDropdown
+                label={dict.students.filters.ageGroup}
+                paramKey="gradeId"
+                options={(relatedData?.grades ?? []).map((g: any) => ({
+                  label:
+                    g.level === 1
+                      ? `${dict.students.groups.nursery} (0–3)`
+                      : g.level === 2
+                        ? `${dict.students.groups.kindergarten} (3–6)`
+                        : String(g.level),
+                  value: String(g.id),
+                }))}
               />
+              <FilterDropdown
+                label={dict.students.filters.classGroup}
+                paramKey="classId"
+                options={(relatedData?.classes ?? []).map((c: any) => ({
+                  label: String(c.name),
+                  value: String(c.id),
+                }))}
+              />
+              <FilterDropdown
+                label={dict.students.filters.lunchGroup}
+                paramKey="lunchGroupId"
+                options={(relatedData?.lunchGroups ?? []).map((lg: any) => ({
+                  label: String(lg.name),
+                  value: String(lg.id),
+                }))}
+              />
+              <FilterDropdown
+                label={dict.forms.sex}
+                paramKey="sex"
+                options={[
+                  { label: dict.forms.male, value: "MALE" },
+                  { label: dict.forms.female, value: "FEMALE" },
+                ]}
+              />
+            </FilterPanel>
+
+            <SortPanel title={dict.common.sortBy}>
+              <SortDropdown
+                options={[
+                  { label: dict.forms.firstName, value: "name" },
+                  { label: dict.forms.lastName, value: "surname" },
+                  { label: dict.common.created, value: "createdAt" },
+                  { label: dict.forms.username, value: "username" },
+                ]}
+                defaultSort="surname"
+                defaultOrder="asc"
+              />
+            </SortPanel>
+
+            <ResetFiltersButton label={dict.common.resetFilters} />
+
+            {role === "admin" && (
+              <FormModal table="student" type="create" relatedData={relatedData} />
             )}
           </div>
         </div>
       </div>
 
+      {data.length === 0 ? (
+        <div className="mt-6 text-sm text-gray-500">{dict.common.noResults}</div>
+      ) : null}
       <Table columns={columns} renderRow={renderRow} data={data} />
       <Pagination page={page} count={count} />
     </div>

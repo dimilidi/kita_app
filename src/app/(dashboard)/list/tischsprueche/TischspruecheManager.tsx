@@ -5,9 +5,14 @@ import {
   deleteTischspruch,
   updateTischspruch,
 } from "@/lib/actions";
+import FilterDropdown from "@/components/filter/FilterDropdown";
+import FilterPanel from "@/components/filter/FilterPanel";
+import ResetFiltersButton from "@/components/filter/ResetFiltersButton";
+import SearchInput from "@/components/search/SearchInput";
+import SortDropdown from "@/components/sort/SortDropdown";
+import SortPanel from "@/components/sort/SortPanel";
 import Image from "next/image";
-import { useMemo, useState } from "react";
-import TableSearch from "@/components/TableSearch";
+import { useEffect, useState } from "react";
 import { useTranslations } from "@/i18n/TranslationsProvider";
 
 type Tischspruch = {
@@ -30,6 +35,10 @@ export default function TischspruecheManager({ initialItems, canManage }: Props)
   const [text, setText] = useState("");
 
   const dict = useTranslations();
+
+  useEffect(() => {
+    setItems(initialItems);
+  }, [initialItems]);
 
   const openCreate = () => {
     setMode("create");
@@ -55,30 +64,47 @@ export default function TischspruecheManager({ initialItems, canManage }: Props)
     setIsOpen(true);
   };
 
-  const sortedItems = useMemo(
-    () => [...items].sort((a, b) => a.title.localeCompare(b.title)),
-    [items]
-  );
-
   return (
     <>
       <div className="flex items-center justify-between">
         <h1 className="hidden md:block text-lg font-semibold">
           {dict.tischsprueche.titleAll}
         </h1>
-        <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
-          <TableSearch />
-          <div className="flex items-center gap-4 self-end">
-            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-kitaYellow">
-              <Image src="/filter.png" alt="" width={14} height={14} />
-            </button>
-            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-kitaYellow">
-              <Image src="/sort.png" alt="" width={14} height={14} />
-            </button>
+        <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
+          <SearchInput />
+
+          <div className="flex flex-wrap items-center justify-end gap-3 self-end">
+            <FilterPanel title={dict.common.filters}>
+              <FilterDropdown
+                label={dict.tischsprueche.filters.votes}
+                paramKey="popular"
+                allowClear={false}
+                options={[
+                  { label: dict.common.all, value: "" },
+                  { label: dict.tischsprueche.filters.popularOnly, value: "true" },
+                ]}
+              />
+            </FilterPanel>
+
+            <SortPanel title={dict.common.sortBy}>
+              <SortDropdown
+                options={[
+                  { label: dict.common.title, value: "title" },
+                  { label: dict.tischsprueche.sort.votes, value: "votes" },
+                  { label: dict.common.created, value: "createdAt" },
+                ]}
+                defaultSort="createdAt"
+                defaultOrder="desc"
+              />
+            </SortPanel>
+
+            <ResetFiltersButton label={dict.common.resetFilters} />
+
             {canManage && (
               <button
                 onClick={openCreate}
                 className="w-8 h-8 flex items-center justify-center rounded-full bg-kitaYellow"
+                type="button"
               >
                 <Image src="/create.png" alt="" width={14} height={14} />
               </button>
@@ -96,7 +122,7 @@ export default function TischspruecheManager({ initialItems, canManage }: Props)
           </tr>
         </thead>
         <tbody>
-          {sortedItems.map((item) => (
+          {items.map((item) => (
             <tr
               key={item.id}
               className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-kitaPurpleLight"
@@ -110,6 +136,7 @@ export default function TischspruecheManager({ initialItems, canManage }: Props)
                   <button
                     className="w-7 h-7 flex items-center justify-center rounded-full bg-kitaSky"
                     onClick={() => openView(item)}
+                    type="button"
                   >
                     <Image src="/view.png" alt="" width={16} height={16} />
                   </button>
@@ -118,6 +145,7 @@ export default function TischspruecheManager({ initialItems, canManage }: Props)
                       <button
                         className="w-7 h-7 flex items-center justify-center rounded-full bg-kitaYellow"
                         onClick={() => openEdit(item)}
+                        type="button"
                       >
                         <Image src="/update.png" alt="" width={16} height={16} />
                       </button>
@@ -128,6 +156,7 @@ export default function TischspruecheManager({ initialItems, canManage }: Props)
                           if (!res.success) return;
                           setItems((prev) => prev.filter((x) => x.id !== item.id));
                         }}
+                        type="button"
                       >
                         <Image src="/delete.png" alt="" width={16} height={16} />
                       </button>
@@ -148,12 +177,13 @@ export default function TischspruecheManager({ initialItems, canManage }: Props)
                 {mode === "create"
                   ? dict.tischsprueche.add
                   : mode === "edit"
-                  ? dict.tischsprueche.edit
-                  : dict.tischsprueche.view}
+                    ? dict.tischsprueche.edit
+                    : dict.tischsprueche.view}
               </h3>
               <button
                 className="rounded px-2 py-1 text-sm hover:bg-gray-100"
                 onClick={() => setIsOpen(false)}
+                type="button"
               >
                 {dict.common.close}
               </button>
@@ -207,6 +237,7 @@ export default function TischspruecheManager({ initialItems, canManage }: Props)
                       setIsOpen(false);
                     }
                   }}
+                  type="button"
                 >
                   {dict.common.save}
                 </button>

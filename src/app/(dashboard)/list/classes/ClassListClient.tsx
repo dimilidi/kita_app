@@ -1,9 +1,14 @@
 "use client";
 
 import FormModal from "@/components/FormModal";
+import FilterDropdown from "@/components/filter/FilterDropdown";
+import FilterPanel from "@/components/filter/FilterPanel";
+import ResetFiltersButton from "@/components/filter/ResetFiltersButton";
 import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
-import TableSearch from "@/components/TableSearch";
+import SearchInput from "@/components/search/SearchInput";
+import SortDropdown from "@/components/sort/SortDropdown";
+import SortPanel from "@/components/sort/SortPanel";
 import { useTranslations } from "@/i18n/TranslationsProvider";
 import Image from "next/image";
 
@@ -97,15 +102,47 @@ export default function ClassListClient({
         <h1 className="hidden md:block text-lg font-semibold">
           {dict.classes.titleAll}
         </h1>
-        <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
-          <TableSearch />
-          <div className="flex items-center gap-4 self-end">
-            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-kitaYellow">
-              <Image src="/filter.png" alt="" width={14} height={14} />
-            </button>
-            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-kitaYellow">
-              <Image src="/sort.png" alt="" width={14} height={14} />
-            </button>
+        <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
+          <SearchInput />
+
+          <div className="flex flex-wrap items-center justify-end gap-3 self-end">
+            <FilterPanel title={dict.common.filters}>
+              <FilterDropdown
+                label={dict.classes.columns.grade}
+                paramKey="gradeId"
+                options={(relatedData?.grades ?? []).map((g: any) => ({
+                  label:
+                    g.level === 1
+                      ? `${dict.students.groups.nursery} (0–3)`
+                      : g.level === 2
+                        ? `${dict.students.groups.kindergarten} (3–6)`
+                        : String(g.level),
+                  value: String(g.id),
+                }))}
+              />
+              <FilterDropdown
+                label={dict.classes.columns.supervisor}
+                paramKey="supervisorId"
+                options={(relatedData?.teachers ?? []).map((t: any) => ({
+                  label: `${t.name} ${t.surname}`,
+                  value: String(t.id),
+                }))}
+              />
+            </FilterPanel>
+
+            <SortPanel title={dict.common.sortBy}>
+              <SortDropdown
+                options={[
+                  { label: dict.classes.columns.className, value: "name" },
+                  { label: dict.classes.columns.capacity, value: "capacity" },
+                  { label: dict.classes.columns.grade, value: "gradeId" },
+                ]}
+                defaultSort="name"
+                defaultOrder="asc"
+              />
+            </SortPanel>
+
+            <ResetFiltersButton label={dict.common.resetFilters} />
             {role === "admin" && (
               <FormModal table="class" type="create" relatedData={relatedData} />
             )}
@@ -113,6 +150,9 @@ export default function ClassListClient({
         </div>
       </div>
 
+      {data.length === 0 ? (
+        <div className="mt-6 text-sm text-gray-500">{dict.common.noResults}</div>
+      ) : null}
       <Table columns={columns} renderRow={renderRow} data={data} />
       <Pagination page={page} count={count} />
     </div>

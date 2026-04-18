@@ -1,8 +1,7 @@
 import prisma from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
-import { ITEM_PER_PAGE } from "@/lib/settings";
 import { getAuthData } from "@/lib/utils";
 import TeacherListClient from "./TeacherListClient";
+import { buildTeacherListQuery, parsePaginationParams } from "@/lib/queryBuilder";
 
 const TeacherListPage = async ({
   searchParams,
@@ -11,61 +10,46 @@ const TeacherListPage = async ({
 }) => {
 
   const { role } = getAuthData();
-  const { page, ...queryParams } = searchParams;
-
-  const p = page ? parseInt(page) : 1;
-
-  // URL PARAMS CONDITION
-
-  const query: Prisma.TeacherWhereInput = {};
-
-  if (queryParams) {
-    for (const [key, value] of Object.entries(queryParams)) {
-      if (value !== undefined) {
-        switch (key) {
-          case "classId":
-            query.lessons = {
-              some: {
-                classId: parseInt(value),
-              },
-            };
-            break;
-          case "search":
-            query.name = { contains: value, mode: "insensitive" };
-            break;
-          default:
-            break;
-        }
-      }
-    }
-  }
+  const { page, limit, skip } = parsePaginationParams(searchParams);
+  const { where, orderBy } = buildTeacherListQuery(searchParams);
 
   const [data, count] = await prisma.$transaction([
     prisma.teacher.findMany({
-      where: query,
+      where,
+      orderBy,
       include: {
-        lessons: { select: { name: true } },
+        lessons: { select: { id: true, name: true } },
         zones: { select: { zone: { select: { name: true } } } },
         classes: true,
       },
-      take: ITEM_PER_PAGE,
-      skip: ITEM_PER_PAGE * (p - 1),
+      take: limit,
+      skip,
     }),
-    prisma.teacher.count({ where: query }),
+    prisma.teacher.count({ where }),
   ]);
 
-  const relatedData =
-    role === "admin"
-      ? {
-          zones: await prisma.zone.findMany({ select: { id: true, name: true } }),
-        }
-      : undefined;
+  const [zones, classes, lessons] = await prisma.$transaction([
+    prisma.zone.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.class.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.lesson.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
+
+  const relatedData = { zones, classes, lessons };
 
   return (
     <TeacherListClient
       data={data}
       count={count}
-      page={p}
+      page={page}
       role={role as string}
       relatedData={relatedData}
     />

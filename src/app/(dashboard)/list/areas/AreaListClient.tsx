@@ -1,9 +1,14 @@
 "use client";
 
 import FormModal from "@/components/FormModal";
+import FilterDropdown from "@/components/filter/FilterDropdown";
+import FilterPanel from "@/components/filter/FilterPanel";
+import ResetFiltersButton from "@/components/filter/ResetFiltersButton";
 import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
-import TableSearch from "@/components/TableSearch";
+import SearchInput from "@/components/search/SearchInput";
+import SortDropdown from "@/components/sort/SortDropdown";
+import SortPanel from "@/components/sort/SortPanel";
 import { DEFAULT_LOCALE } from "@/i18n/lang";
 import { useTranslations } from "@/i18n/TranslationsProvider";
 import Image from "next/image";
@@ -102,28 +107,62 @@ export default function AreaListClient({
             <Image src="/area.png" alt="" width={18} height={18} />
             {dict.areasList.openBoard}
           </Link>
-          <div className="flex flex-col md:flex-row items-center gap-4 flex-1 md:flex-initial">
-            <TableSearch />
-            <div className="flex items-center gap-4 self-end">
-              <button
-                type="button"
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-kitaYellow"
-              >
-                <Image src="/filter.png" alt="" width={14} height={14} />
-              </button>
-              <button
-                type="button"
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-kitaYellow"
-              >
-                <Image src="/sort.png" alt="" width={14} height={14} />
-              </button>
-              {role === "admin" && (
-                <FormModal table="zone" type="create" />
-              )}
+          <div className="flex flex-col md:flex-row items-center gap-3 flex-1 md:flex-initial">
+            <SearchInput />
+
+            <div className="flex flex-wrap items-center justify-end gap-3 self-end">
+              <FilterPanel title={dict.common.filters}>
+                <FilterDropdown
+                  label={dict.areasList.filters.hasActivities}
+                  paramKey="hasActivities"
+                  options={[
+                    {
+                      label: dict.areasList.filters.onlyWithActivities,
+                      value: "1",
+                    },
+                  ]}
+                  allowClear
+                />
+                <FilterDropdown
+                  label={dict.areasList.filters.capacityMinAtLeast}
+                  paramKey="capacityMin"
+                  options={[
+                    { label: dict.areasList.filters.capacityAny, value: "" },
+                    { label: "5+", value: "5" },
+                    { label: "10+", value: "10" },
+                    { label: "15+", value: "15" },
+                    { label: "20+", value: "20" },
+                  ]}
+                  allowClear={false}
+                />
+              </FilterPanel>
+
+              <SortPanel title={dict.common.sortBy}>
+                <SortDropdown
+                  options={[
+                    { label: dict.areasList.columns.name, value: "name" },
+                    { label: dict.areasList.columns.capacity, value: "capacity" },
+                    {
+                      label: dict.areasList.columns.scheduledActivities,
+                      value: "lessons",
+                    },
+                  ]}
+                  defaultSort="name"
+                  defaultOrder="asc"
+                />
+              </SortPanel>
+
+              <ResetFiltersButton label={dict.common.resetFilters} />
+
+              {role === "admin" && <FormModal table="zone" type="create" />}
             </div>
           </div>
         </div>
       </div>
+
+      {data.length === 0 ? (
+        <div className="mt-6 text-sm text-gray-500">{dict.common.noResults}</div>
+      ) : null}
 
       <div className="overflow-x-auto mt-4">
         <Table

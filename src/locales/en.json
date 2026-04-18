@@ -19,7 +19,17 @@
     "updateEntity": "Update the {label}",
     "schoolYear": "2024/25",
     "shortcuts": "Shortcuts",
-    "about": "No description available."
+    "about": "No description available.",
+    "noResults": "No results found.",
+    "filters": "Filters",
+    "sortBy": "Sort by",
+    "asc": "Asc",
+    "desc": "Desc",
+    "defaultSort": "Default",
+    "noFiltersHint": "No filters for this view.",
+    "resetFilters": "Reset filters",
+    "all": "All",
+    "created": "Created"
   },
   "entities": {
     "teacher": "Educator",
@@ -175,6 +185,9 @@
       "areas": "Areas",
       "phone": "Phone",
       "address": "Address"
+    },
+    "sort": {
+      "lessonCount": "Number of scheduled activities"
     }
   },
   "students": {
@@ -186,12 +199,18 @@
       "nursery": "Nursery",
       "kindergarten": "Kindergarten"
     },
+    "filters": {
+      "ageGroup": "Age group",
+      "classGroup": "Class group",
+      "lunchGroup": "Meal group"
+    },
     "columns": {
       "photo": "Photo",
       "name": "Name",
       "info": "Info",
       "studentId": "Child ID",
       "grade": "Group",
+      "classGroup": "Class group",
       "phone": "Phone",
       "parentContact": "Parent contact",
       "address": "Address"
@@ -199,6 +218,11 @@
   },
   "parents": {
     "titleAll": "All Parents",
+    "filters": {
+      "children": "Children",
+      "hasChildren": "Has children",
+      "noChildren": "No children"
+    },
     "columns": {
       "info": "Info",
       "studentNames": "Student Names",
@@ -223,6 +247,12 @@
       "name": "Name",
       "capacity": "Capacity",
       "scheduledActivities": "Scheduled activities"
+    },
+    "filters": {
+      "hasActivities": "Activities",
+      "onlyWithActivities": "Only areas with planned activities",
+      "capacityMinAtLeast": "Capacity at least",
+      "capacityAny": "Any capacity"
     }
   },
   "lessons": {
@@ -360,7 +390,14 @@
     "edit": "Edit Tischspruch",
     "view": "View Tischspruch",
     "title": "Title",
-    "text": "Text"
+    "text": "Text",
+    "filters": {
+      "votes": "Votes",
+      "popularOnly": "Has at least one vote"
+    },
+    "sort": {
+      "votes": "Popularity (votes)"
+    }
   },
   "attendancePage": {
     "subtitle": "Mark each child as present or absent for the selected day.",

@@ -19,7 +19,17 @@
     "updateEntity": "{label} bearbeiten",
     "schoolYear": "2024/25",
     "shortcuts": "Schnellzugriffe",
-    "about": "Keine Beschreibung verfügbar."
+    "about": "Keine Beschreibung verfügbar.",
+    "noResults": "Keine Ergebnisse gefunden.",
+    "filters": "Filter",
+    "sortBy": "Sortierung",
+    "asc": "Aufsteigend",
+    "desc": "Absteigend",
+    "defaultSort": "Standard",
+    "noFiltersHint": "Keine Filter für diese Ansicht.",
+    "resetFilters": "Filter zurücksetzen",
+    "all": "Alle",
+    "created": "Erstellt"
   },
   "entities": {
     "teacher": "Erzieher",
@@ -175,6 +185,9 @@
       "areas": "Bereiche",
       "phone": "Telefon",
       "address": "Adresse"
+    },
+    "sort": {
+      "lessonCount": "Anzahl geplanter Aktivitäten"
     }
   },
   "students": {
@@ -186,12 +199,18 @@
       "nursery": "Krippe",
       "kindergarten": "Kindergarten"
     },
+    "filters": {
+      "ageGroup": "Altersgruppe",
+      "classGroup": "Gruppe (Klasse)",
+      "lunchGroup": "Essensgruppe"
+    },
     "columns": {
       "photo": "Foto",
       "name": "Name",
       "info": "Info",
       "studentId": "Kind-ID",
       "grade": "Gruppe",
+      "classGroup": "Gruppe (Klasse)",
       "phone": "Telefon",
       "parentContact": "Elternkontakt",
       "address": "Adresse"
@@ -199,6 +218,11 @@
   },
   "parents": {
     "titleAll": "Alle Eltern",
+    "filters": {
+      "children": "Kinder",
+      "hasChildren": "Hat Kinder",
+      "noChildren": "Keine Kinder"
+    },
     "columns": {
       "info": "Info",
       "studentNames": "Kindernamen",
@@ -223,6 +247,12 @@
       "name": "Name",
       "capacity": "Kapazität",
       "scheduledActivities": "Geplante Aktivitäten"
+    },
+    "filters": {
+      "hasActivities": "Aktivitäten",
+      "onlyWithActivities": "Nur Bereiche mit geplanten Aktivitäten",
+      "capacityMinAtLeast": "Kapazität mindestens",
+      "capacityAny": "Beliebige Kapazität"
     }
   },
   "lessons": {
@@ -360,7 +390,14 @@
     "edit": "Tischspruch bearbeiten",
     "view": "Tischspruch ansehen",
     "title": "Titel",
-    "text": "Text"
+    "text": "Text",
+    "filters": {
+      "votes": "Stimmen",
+      "popularOnly": "Mindestens eine Stimme"
+    },
+    "sort": {
+      "votes": "Beliebtheit (Stimmen)"
+    }
   },
   "attendancePage": {
     "subtitle": "Markieren Sie jedes Kind für den gewählten Tag als anwesend oder abwesend.",

@@ -1,12 +1,15 @@
 import prisma from "@/lib/prisma";
 import { announcementAccessWhere } from "@/lib/announcementVisibility";
-import { ITEM_PER_PAGE } from "@/lib/settings";
 import { getAuthData } from "@/lib/utils";
-import { Announcement, Class, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import AnnouncementListClient from "./AnnouncementListClient";
+import {
+  buildAnnouncementFiltersWhere,
+  buildAnnouncementOrderBy,
+  parsePaginationParams,
+  parseSortOrder,
+} from "@/lib/queryBuilder";
 
-
-type AnnouncementList = Announcement & { class: Class };
 const AnnouncementListPage = async ({
   searchParams,
 }: {
@@ -14,38 +17,33 @@ const AnnouncementListPage = async ({
 }) => {
   const { userId, role } = getAuthData();
 
-  const { page, ...queryParams } = searchParams;
+  const { page, limit, skip } = parsePaginationParams(searchParams);
+  const filters = buildAnnouncementFiltersWhere(searchParams);
+  const access = announcementAccessWhere(role, userId);
 
-  const p = page ? parseInt(page) : 1;
+  const where: Prisma.AnnouncementWhereInput =
+    Object.keys(filters).length === 0
+      ? access
+      : Object.keys(access).length === 0
+        ? filters
+        : { AND: [access, filters] };
 
-  const query: Prisma.AnnouncementWhereInput = {
-    ...announcementAccessWhere(role, userId),
-  };
-
-  if (queryParams) {
-    for (const [key, value] of Object.entries(queryParams)) {
-      if (value !== undefined) {
-        switch (key) {
-          case "search":
-            query.title = { contains: value, mode: "insensitive" };
-            break;
-          default:
-            break;
-        }
-      }
-    }
-  }
+  const orderBy = buildAnnouncementOrderBy(
+    searchParams.sort,
+    parseSortOrder(searchParams.order)
+  );
 
   const [data, count] = await prisma.$transaction([
     prisma.announcement.findMany({
-      where: query,
+      where,
+      orderBy,
       include: {
         class: true,
       },
-      take: ITEM_PER_PAGE,
-      skip: ITEM_PER_PAGE * (p - 1),
+      take: limit,
+      skip,
     }),
-    prisma.announcement.count({ where: query }),
+    prisma.announcement.count({ where }),
   ]);
 
   const classes = await prisma.class.findMany({ select: { id: true, name: true } });
@@ -54,7 +52,7 @@ const AnnouncementListPage = async ({
     <AnnouncementListClient
       data={data}
       count={count}
-      page={p}
+      page={page}
       role={role as string}
       relatedData={{ classes }}
     />

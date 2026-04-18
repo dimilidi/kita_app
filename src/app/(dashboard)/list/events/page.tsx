@@ -1,43 +1,27 @@
 import prisma from "@/lib/prisma";
-import { ITEM_PER_PAGE } from "@/lib/settings";
 import { getAuthData } from "@/lib/utils";
-import { Class, Event, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import EventListClient from "./EventListClient";
-
-type EventList = Event & { class: Class };
+import {
+  buildEventFiltersWhere,
+  buildEventOrderBy,
+  parsePaginationParams,
+  parseSortOrder,
+} from "@/lib/queryBuilder";
 
 const EventListPage = async ({
   searchParams,
 }: {
   searchParams: { [key: string]: string | undefined };
 }) => {
-
   const { userId, role } = getAuthData();
 
-
-  const { page, ...queryParams } = searchParams;
-
-  const p = page ? parseInt(page) : 1;
-
-  // URL PARAMS CONDITION
-
-  const query: Prisma.EventWhereInput = {};
-
-  if (queryParams) {
-    for (const [key, value] of Object.entries(queryParams)) {
-      if (value !== undefined) {
-        switch (key) {
-          case "search":
-            query.title = { contains: value, mode: "insensitive" };
-            break;
-          default:
-            break;
-        }
-      }
-    }
-  }
-
-  // ROLE CONDITIONS
+  const { page, limit, skip } = parsePaginationParams(searchParams);
+  const filters = buildEventFiltersWhere(searchParams);
+  const orderBy = buildEventOrderBy(
+    searchParams.sort,
+    parseSortOrder(searchParams.order)
+  );
 
   const roleConditions = {
     teacher: { lessons: { some: { teacherId: userId! } } },
@@ -45,25 +29,40 @@ const EventListPage = async ({
     parent: { students: { some: { parentId: userId! } } },
   };
 
-  if (role !== "admin") {
-    query.OR = [
-      { classId: null },
-      {
-        class: roleConditions[role as keyof typeof roleConditions] || {},
-      },
-    ];
+  let where: Prisma.EventWhereInput;
+
+  if (role === "admin") {
+    where = filters;
+  } else {
+    where = {
+      AND: [
+        filters,
+        {
+          OR: [
+            { classId: null },
+            {
+              class:
+                roleConditions[role as keyof typeof roleConditions] || {
+                  id: { in: [] },
+                },
+            },
+          ],
+        },
+      ],
+    };
   }
 
   const [data, count] = await prisma.$transaction([
     prisma.event.findMany({
-      where: query,
+      where,
+      orderBy,
       include: {
         class: true,
       },
-      take: ITEM_PER_PAGE,
-      skip: ITEM_PER_PAGE * (p - 1),
+      take: limit,
+      skip,
     }),
-    prisma.event.count({ where: query }),
+    prisma.event.count({ where }),
   ]);
 
   const classes = await prisma.class.findMany({ select: { id: true, name: true } });
@@ -72,7 +71,7 @@ const EventListPage = async ({
     <EventListClient
       data={data}
       count={count}
-      page={p}
+      page={page}
       role={role as string}
       relatedData={{ classes }}
     />

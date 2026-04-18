@@ -4,6 +4,7 @@ import { getAuthData } from "@/lib/utils";
 import { Prisma } from "@prisma/client";
 import LunchGroupsManager from "./LunchGroupsManager";
 import type { LunchGroupPdfSection } from "@/types/lunchGroups";
+import { parsePaginationParams, parseSortOrder } from "@/lib/queryBuilder";
 
 const LunchGroupsPage = async ({
   searchParams,
@@ -11,15 +12,18 @@ const LunchGroupsPage = async ({
   searchParams: { [key: string]: string | undefined };
 }) => {
   const { role } = getAuthData();
-  const { search, page, sort, filter } = searchParams;
-  const p = Math.max(1, page ? parseInt(page, 10) : 1);
+  const { page: pageNum } = parsePaginationParams(searchParams);
+  const p = Math.max(1, pageNum);
 
-  const sortKey = sort ?? "name_asc";
-  const filterKey = filter ?? "all";
+  const filterKey = searchParams.filter ?? "all";
 
+  const sortField = searchParams.sort ?? "name";
+  const orderDir = parseSortOrder(searchParams.order);
+
+  const searchTrim = searchParams.search?.trim();
   const searchWhere: Prisma.LunchGroupEntityWhereInput = {};
-  if (search?.trim()) {
-    searchWhere.name = { contains: search.trim(), mode: "insensitive" };
+  if (searchTrim) {
+    searchWhere.name = { contains: searchTrim, mode: "insensitive" };
   }
 
   if (filterKey === "with_children") {
@@ -27,13 +31,7 @@ const LunchGroupsPage = async ({
   }
 
   const orderBy: Prisma.LunchGroupEntityOrderByWithRelationInput =
-    sortKey === "name_desc"
-      ? { name: "desc" }
-      : sortKey === "capacity_asc"
-        ? { capacity: "asc" }
-        : sortKey === "capacity_desc"
-          ? { capacity: "desc" }
-          : { name: "asc" };
+    sortField === "capacity" ? { capacity: orderDir } : { name: orderDir };
 
   let rows = await prisma.lunchGroupEntity.findMany({
     where: searchWhere,
@@ -124,9 +122,6 @@ const LunchGroupsPage = async ({
         count={total}
         page={p}
         canManage={role === "admin" || role === "teacher"}
-        search={search?.trim() ?? ""}
-        sort={sortKey}
-        filter={filterKey}
         exportSections={exportSections}
       />
     </div>
