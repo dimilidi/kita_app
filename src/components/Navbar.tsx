@@ -63,7 +63,7 @@ const Navbar = ({
 
   return (
     <div className="flex items-center justify-end gap-6 p-4">
-      <div className="hidden lg:block">
+      <div className="shrink-0">
         <LanguageSwitcher />
       </div>
       {showStaffChatIcon ? (

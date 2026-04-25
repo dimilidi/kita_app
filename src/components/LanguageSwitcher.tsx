@@ -46,8 +46,8 @@ export default function LanguageSwitcher() {
           onClick={() => goTo(loc)}
           className={
             loc === currentLocale
-              ? "text-xs font-semibold rounded-full bg-kitaSky px-3 py-1"
-              : "text-xs rounded-full bg-white px-3 py-1 hover:bg-gray-50"
+              ? "text-xs font-semibold rounded-full bg-kitaSky px-2 py-1 sm:px-3"
+              : "text-xs rounded-full bg-white px-2 py-1 hover:bg-gray-50 sm:px-3"
           }
         >
           {loc.toUpperCase()}
