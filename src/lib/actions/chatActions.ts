@@ -168,3 +168,59 @@ export async function toggleMessageReaction(
 
   return { ok: true };
 }
+
+export async function editGroupMessage(payload: {
+  messageId: string;
+  content: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { userId, role } = getAuthData();
+  if (!userId || !canAccessStaffChat(role)) {
+    return { ok: false, error: "forbidden" };
+  }
+
+  const messageId = payload.messageId;
+  const trimmed = payload.content.trim();
+
+  if (!messageId || typeof messageId !== "string") {
+    return { ok: false, error: "invalid" };
+  }
+  if (trimmed.length === 0) {
+    return { ok: false, error: "empty" };
+  }
+  if (trimmed.length > CHAT_MAX_MESSAGE_CHARS) {
+    return { ok: false, error: "too_long" };
+  }
+
+  const updated = await prisma.message.updateMany({
+    where: { id: messageId, senderId: userId },
+    data: { content: trimmed, editedAt: new Date() },
+  });
+  if (updated.count !== 1) {
+    return { ok: false, error: "not_found" };
+  }
+
+  return { ok: true };
+}
+
+export async function deleteGroupMessage(payload: {
+  messageId: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { userId, role } = getAuthData();
+  if (!userId || !canAccessStaffChat(role)) {
+    return { ok: false, error: "forbidden" };
+  }
+
+  const messageId = payload.messageId;
+  if (!messageId || typeof messageId !== "string") {
+    return { ok: false, error: "invalid" };
+  }
+
+  const res = await prisma.message.deleteMany({
+    where: { id: messageId, senderId: userId },
+  });
+  if (res.count !== 1) {
+    return { ok: false, error: "not_found" };
+  }
+
+  return { ok: true };
+}

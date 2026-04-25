@@ -156,7 +156,9 @@
     "errorReaction": "Could not update the reaction.",
     "download": "Download",
     "attachmentLabel": "Attachment",
-    "you": "You"
+    "you": "You",
+    "edit": "Edit",
+    "edited": "edited"
   },
   "signIn": {
     "appName": "KitaApp",

@@ -20,6 +20,8 @@ import {
 } from "@/lib/chatConstants";
 import type { ChatMessagePayload } from "@/lib/chatMessages";
 import {
+  deleteGroupMessage,
+  editGroupMessage,
   sendGroupMessage,
   toggleMessageReaction,
   type ChatAttachmentInput,
@@ -92,6 +94,9 @@ export default function GroupChatClient({
   const [text, setText] = useState("");
   const [pending, setPending] = useState<PendingAttachment[]>([]);
   const [sending, setSending] = useState(false);
+  const [openMenuFor, setOpenMenuFor] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
 
   const refresh = useCallback(async () => {
     try {
@@ -103,6 +108,17 @@ export default function GroupChatClient({
       /* ignore transient poll failures */
     }
   }, []);
+
+  useEffect(() => {
+    if (!openMenuFor) return;
+    const onDown = (e: MouseEvent) => {
+      if (!(e.target instanceof HTMLElement)) return;
+      if (e.target.closest("[data-chat-message-menu='true']")) return;
+      setOpenMenuFor(null);
+    };
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, [openMenuFor]);
 
   useEffect(() => {
     const id = window.setInterval(refresh, CHAT_POLL_INTERVAL_MS);
@@ -247,6 +263,46 @@ export default function GroupChatClient({
     }
   };
 
+  const startEdit = (m: ChatMessagePayload) => {
+    setOpenMenuFor(null);
+    setEditingId(m.id);
+    setEditingText(m.content || "");
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditingText("");
+  };
+
+  const saveEdit = async () => {
+    if (!editingId) return;
+    const result = await editGroupMessage({
+      messageId: editingId,
+      content: editingText,
+    });
+    if (!result.ok) {
+      if (result.error === "empty") toast(chat.errorEmpty);
+      else if (result.error === "too_long") toast(chat.errorSend);
+      else toast(chat.errorSend);
+      return;
+    }
+    cancelEdit();
+    await refresh();
+  };
+
+  const doDelete = async (messageId: string) => {
+    setOpenMenuFor(null);
+    const ok = window.confirm(dict.common.delete);
+    if (!ok) return;
+    const result = await deleteGroupMessage({ messageId });
+    if (!result.ok) {
+      toast(chat.errorSend);
+      return;
+    }
+    if (editingId === messageId) cancelEdit();
+    await refresh();
+  };
+
   const onToggleReaction = async (messageId: string, emoji: string) => {
     const result = await toggleMessageReaction(messageId, emoji);
     if (!result.ok) {
@@ -276,6 +332,7 @@ export default function GroupChatClient({
           <div className="flex flex-col gap-4">
             {messages.map((m) => {
               const mine = m.senderId === currentUserId;
+              const isEditing = editingId === m.id;
               return (
                 <div
                   key={m.id}
@@ -292,17 +349,98 @@ export default function GroupChatClient({
                       <span className="text-sm font-semibold">
                         {mine ? chat.you : m.senderName}
                       </span>
-                      <time
-                        className="text-[11px] text-gray-500"
-                        dateTime={m.createdAt}
-                      >
-                        {new Intl.DateTimeFormat(undefined, {
-                          dateStyle: "short",
-                          timeStyle: "short",
-                        }).format(new Date(m.createdAt))}
-                      </time>
+                      <div className="flex items-center gap-2">
+                        <time
+                          className="text-[11px] text-gray-500"
+                          dateTime={m.createdAt}
+                        >
+                          {new Intl.DateTimeFormat(undefined, {
+                            dateStyle: "short",
+                            timeStyle: "short",
+                          }).format(new Date(m.createdAt))}
+                        </time>
+                        {m.editedAt ? (
+                          <span className="text-[11px] text-gray-400">
+                            {chat.edited}
+                          </span>
+                        ) : null}
+                        {mine ? (
+                          <div
+                            className="relative shrink-0"
+                            data-chat-message-menu="true"
+                          >
+                            <button
+                              type="button"
+                              className="rounded-md p-0.5 text-gray-700/70 hover:bg-white/50 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-black/10"
+                              aria-expanded={openMenuFor === m.id}
+                              aria-haspopup="menu"
+                              aria-label={dict.common.actions}
+                              onClick={() =>
+                                setOpenMenuFor((prev) =>
+                                  prev === m.id ? null : m.id
+                                )
+                              }
+                            >
+                              <Image
+                                src="/more.png"
+                                alt=""
+                                width={18}
+                                height={18}
+                              />
+                            </button>
+                            {openMenuFor === m.id ? (
+                              <div
+                                className="absolute right-0 top-full z-40 mt-1.5 min-w-[10rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-md border border-gray-200 bg-white py-1 shadow-lg"
+                                role="menu"
+                              >
+                                <button
+                                  type="button"
+                                  role="menuitem"
+                                  className="w-full px-3 py-2 text-left text-sm font-medium text-gray-800 hover:bg-gray-50"
+                                  onClick={() => startEdit(m)}
+                                >
+                                  {chat.edit}
+                                </button>
+                                <button
+                                  type="button"
+                                  role="menuitem"
+                                  className="w-full px-3 py-2 text-left text-sm font-medium text-red-700 hover:bg-gray-50"
+                                  onClick={() => doDelete(m.id)}
+                                >
+                                  {dict.common.delete}
+                                </button>
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
-                    {m.content ? (
+                    {isEditing ? (
+                      <div className="mt-2 space-y-2">
+                        <textarea
+                          value={editingText}
+                          onChange={(e) => setEditingText(e.target.value)}
+                          rows={3}
+                          className="w-full resize-none rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                        />
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={cancelEdit}
+                            className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                          >
+                            {dict.common.close}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={saveEdit}
+                            className="rounded-md bg-blue-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-600"
+                          >
+                            {dict.common.save}
+                          </button>
+                        </div>
+                      </div>
+                    ) : m.content ? (
                       <p className="mt-2 whitespace-pre-wrap break-words text-sm">
                         {m.content}
                       </p>

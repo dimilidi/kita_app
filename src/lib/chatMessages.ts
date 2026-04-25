@@ -28,6 +28,7 @@ export type ChatMessagePayload = {
   senderId: string;
   senderName: string;
   createdAt: string;
+  editedAt: string | null;
   attachments: ChatAttachmentPayload[];
   reactions: ChatReactionPayload[];
 };
@@ -102,6 +103,7 @@ function toPayload(
     senderId: m.senderId,
     senderName,
     createdAt: m.createdAt.toISOString(),
+    editedAt: m.editedAt ? m.editedAt.toISOString() : null,
     attachments: m.attachments.map((a) => ({
       id: a.id,
       url: a.url,

@@ -156,7 +156,9 @@
     "errorReaction": "Reaktion konnte nicht aktualisiert werden.",
     "download": "Herunterladen",
     "attachmentLabel": "Anhang",
-    "you": "Du"
+    "you": "Du",
+    "edit": "Bearbeiten",
+    "edited": "bearbeitet"
   },
   "signIn": {
     "appName": "KitaApp",

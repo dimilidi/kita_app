@@ -176,6 +176,7 @@ model Message {
   content     String              @default("")
   senderId    String
   createdAt   DateTime            @default(now())
+  editedAt    DateTime?
   attachments MessageAttachment[]
   reactions   MessageReaction[]
 
