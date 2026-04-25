@@ -15,6 +15,7 @@ import {
 import { parseDateStrToUtcRange } from "./attendanceDate";
 import { announcementAccessWhere } from "./announcementVisibility";
 import { getUnreadAnnouncementCount } from "./announcementUnread";
+import { getUnreadStaffChatCount } from "./staffChatUnread";
 import { loadAttendancePageData } from "./attendancePageData";
 import prisma from "./prisma";
 import { clerkClient } from "@clerk/nextjs/server";
@@ -1013,6 +1014,11 @@ export async function markVisibleAnnouncementsAsRead(): Promise<void> {
 /** For client components (navbar badge refresh on navigation). */
 export async function getUnreadAnnouncementCountAction(): Promise<number> {
   return getUnreadAnnouncementCount();
+}
+
+/** For client components (navbar badge refresh on navigation). */
+export async function getUnreadStaffChatCountAction(): Promise<number> {
+  return getUnreadStaffChatCount();
 }
 
 export const createEvent = async (

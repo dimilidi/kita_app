@@ -5,7 +5,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getUnreadAnnouncementCountAction } from "@/lib/actions";
+import {
+  getUnreadAnnouncementCountAction,
+  getUnreadStaffChatCountAction,
+} from "@/lib/actions";
 import { DEFAULT_LOCALE } from "@/i18n/lang";
 import LanguageSwitcher from "./LanguageSwitcher";
 
@@ -20,23 +23,33 @@ const getLangFromPathname = (pathname: string) => {
 
 const Navbar = ({
   unreadAnnouncementCount: initialUnread,
+  unreadStaffChatCount: initialChatUnread,
 }: {
   unreadAnnouncementCount: number;
+  unreadStaffChatCount: number;
 }) => {
   const { user } = useUser();
   const dict = useTranslations();
   const pathname = usePathname();
   const lang = getLangFromPathname(pathname);
   const [unread, setUnread] = useState(initialUnread);
+  const [chatUnread, setChatUnread] = useState(initialChatUnread);
 
   useEffect(() => {
     setUnread(initialUnread);
   }, [initialUnread]);
 
   useEffect(() => {
+    setChatUnread(initialChatUnread);
+  }, [initialChatUnread]);
+
+  useEffect(() => {
     let cancelled = false;
     getUnreadAnnouncementCountAction().then((n) => {
       if (!cancelled) setUnread(n);
+    });
+    getUnreadStaffChatCountAction().then((n) => {
+      if (!cancelled) setChatUnread(n);
     });
     return () => {
       cancelled = true;
@@ -61,6 +74,11 @@ const Navbar = ({
           aria-label={dict.menu.messages}
         >
           <Image src="/message.png" alt="" width={20} height={20} />
+          {chatUnread > 0 ? (
+            <div className="absolute -top-3 -right-3 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-purple-500 px-1 text-[10px] font-semibold leading-none text-white">
+              {chatUnread > 99 ? "99+" : chatUnread}
+            </div>
+          ) : null}
         </Link>
       ) : null}
       <Link

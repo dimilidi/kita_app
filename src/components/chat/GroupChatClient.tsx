@@ -30,6 +30,96 @@ import { useTranslations } from "@/i18n/TranslationsProvider";
 
 type PendingAttachment = ChatAttachmentInput;
 
+const EMOJI_SECTIONS: { id: string; label: string; emojis: string[] }[] = [
+  {
+    id: "recent",
+    label: "🙂",
+    emojis: ["👍", "❤️", "😂", "😮", "👏", "🙏"],
+  },
+  {
+    id: "smileys",
+    label: "😄",
+    emojis: [
+      "😀",
+      "😁",
+      "😅",
+      "😂",
+      "🤣",
+      "😊",
+      "🙂",
+      "😉",
+      "😍",
+      "😘",
+      "😋",
+      "😎",
+      "🥳",
+      "🤩",
+      "😇",
+      "🤔",
+      "😴",
+      "😮",
+      "😢",
+      "😭",
+      "😡",
+      "🤯",
+      "🤗",
+      "😬",
+      "🙃",
+      "😶‍🌫️",
+    ],
+  },
+  {
+    id: "gestures",
+    label: "👍",
+    emojis: [
+      "👍",
+      "👎",
+      "👌",
+      "✌️",
+      "🤞",
+      "🤟",
+      "🤘",
+      "👏",
+      "🙏",
+      "🙌",
+      "💪",
+      "👋",
+      "🤝",
+      "🫶",
+    ],
+  },
+  {
+    id: "hearts",
+    label: "❤️",
+    emojis: ["❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎", "💔", "💕"],
+  },
+  {
+    id: "family",
+    label: "👶",
+    emojis: ["👶", "🧒", "👦", "👧", "🧑", "👩", "👨", "👵", "👴", "🧑‍🏫"],
+  },
+  {
+    id: "animals",
+    label: "🐶",
+    emojis: ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐮"],
+  },
+  {
+    id: "food",
+    label: "🍎",
+    emojis: ["🍎", "🍌", "🍇", "🍓", "🍉", "🍞", "🧀", "🥨", "🍪", "🍰", "🍫", "☕"],
+  },
+  {
+    id: "objects",
+    label: "📎",
+    emojis: ["📎", "📌", "✏️", "🖍️", "📚", "🧸", "🎈", "🎁", "🧼", "🧻", "🍼"],
+  },
+  {
+    id: "symbols",
+    label: "✨",
+    emojis: ["✨", "✅", "❌", "⚠️", "⭐", "🔥", "💡", "🎉", "🔔", "📣", "❓"],
+  },
+];
+
 function guessMimeFromCloudinaryInfo(info: {
   mime_type?: string;
   resource_type?: string;
@@ -86,8 +176,24 @@ export default function GroupChatClient({
   const dict = useTranslations();
   const chat = dict.staffChat as Record<string, string>;
   const listRef = useRef<HTMLDivElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
   const stickToBottomRef = useRef(true);
+  const shouldAutoScrollNextRef = useRef(false);
+  const scrollBehaviorNextRef = useRef<ScrollBehavior>("auto");
+
+  const scrollToBottom = (behavior: ScrollBehavior) => {
+    const el = listRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior });
+  };
+
+  const isNearBottom = () => {
+    const el = listRef.current;
+    if (!el) return true;
+    // Stricter threshold to avoid "jump" from small height changes.
+    const thresholdPx = 32;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    return distanceFromBottom <= thresholdPx;
+  };
 
   const [messages, setMessages] =
     useState<ChatMessagePayload[]>(initialMessages);
@@ -97,12 +203,20 @@ export default function GroupChatClient({
   const [openMenuFor, setOpenMenuFor] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const emojiRootRef = useRef<HTMLDivElement>(null);
+  const [reactionBarFor, setReactionBarFor] = useState<string | null>(null);
+  const longPressTimerRef = useRef<number | null>(null);
 
   const refresh = useCallback(async () => {
     try {
       const res = await fetch("/api/chat/messages", { cache: "no-store" });
       if (!res.ok) return;
       const data = (await res.json()) as { messages: ChatMessagePayload[] };
+      // Auto-scroll only if user was already near bottom (polling).
+      shouldAutoScrollNextRef.current = isNearBottom();
+      scrollBehaviorNextRef.current = "auto";
       setMessages(data.messages);
     } catch {
       /* ignore transient poll failures */
@@ -121,22 +235,47 @@ export default function GroupChatClient({
   }, [openMenuFor]);
 
   useEffect(() => {
+    if (!emojiOpen) return;
+    const onDown = (e: MouseEvent) => {
+      const el = emojiRootRef.current;
+      if (!el) return;
+      if (e.target instanceof Node && !el.contains(e.target)) setEmojiOpen(false);
+    };
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, [emojiOpen]);
+
+  useEffect(() => {
+    if (!reactionBarFor) return;
+    const onDown = (e: MouseEvent | PointerEvent) => {
+      if (!(e.target instanceof HTMLElement)) return;
+      if (e.target.closest("[data-reaction-root='true']")) return;
+      setReactionBarFor(null);
+    };
+    window.addEventListener("mousedown", onDown);
+    window.addEventListener("pointerdown", onDown);
+    return () => {
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("pointerdown", onDown);
+    };
+  }, [reactionBarFor]);
+
+  useEffect(() => {
     const id = window.setInterval(refresh, CHAT_POLL_INTERVAL_MS);
     return () => window.clearInterval(id);
   }, [refresh]);
 
   useLayoutEffect(() => {
-    if (stickToBottomRef.current && bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
-    }
+    if (!shouldAutoScrollNextRef.current) return;
+    scrollToBottom(scrollBehaviorNextRef.current);
+    shouldAutoScrollNextRef.current = false;
   }, [messages]);
 
   const onScrollList = () => {
     const el = listRef.current;
     if (!el) return;
-    const threshold = 120;
-    stickToBottomRef.current =
-      el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+    // Keep this in sync with isNearBottom().
+    stickToBottomRef.current = isNearBottom();
   };
 
   const addPendingFromUpload = useCallback(
@@ -257,6 +396,8 @@ export default function GroupChatClient({
       setText("");
       setPending([]);
       stickToBottomRef.current = true;
+      shouldAutoScrollNextRef.current = true;
+      scrollBehaviorNextRef.current = "smooth";
       await refresh();
     } finally {
       setSending(false);
@@ -312,6 +453,25 @@ export default function GroupChatClient({
     await refresh();
   };
 
+  const startLongPress = (messageId: string) => {
+    if (longPressTimerRef.current != null) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    longPressTimerRef.current = window.setTimeout(() => {
+      setReactionBarFor(messageId);
+      longPressTimerRef.current = null;
+    }, 350);
+  };
+
+  const cancelLongPress = () => {
+    if (longPressTimerRef.current != null) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -320,11 +480,11 @@ export default function GroupChatClient({
   };
 
   return (
-    <div className="flex flex-1 min-h-0 flex-col gap-2">
+    <div className="flex h-full flex-1 min-h-0 flex-col gap-2">
       <div
         ref={listRef}
         onScroll={onScrollList}
-        className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-gray-200 bg-white p-3"
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-lg border border-gray-200 bg-white p-3"
       >
         {messages.length === 0 ? (
           <p className="py-12 text-center text-sm text-gray-400">{chat.empty}</p>
@@ -333,13 +493,16 @@ export default function GroupChatClient({
             {messages.map((m) => {
               const mine = m.senderId === currentUserId;
               const isEditing = editingId === m.id;
+              const showReactionBar = reactionBarFor === m.id;
+              const existingReactions = m.reactions.filter((r) => r.count > 0);
               return (
                 <div
                   key={m.id}
                   className={`flex ${mine ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[min(85%,28rem)] rounded-2xl px-4 py-3 shadow-sm ${
+                    data-reaction-root="true"
+                    className={`group relative max-w-[min(85%,28rem)] rounded-2xl px-4 py-3 pr-10 shadow-sm ${
                       mine
                         ? "rounded-br-md bg-kitaSkyLight text-gray-900"
                         : "rounded-bl-md bg-gray-100 text-gray-900"
@@ -498,41 +661,103 @@ export default function GroupChatClient({
                         )}
                       </div>
                     ) : null}
-                    <div className="mt-2 flex flex-wrap gap-1 border-t border-black/5 pt-2">
-                      {CHAT_REACTION_EMOJIS.map((emoji) => {
-                        const row = m.reactions.find((r) => r.emoji === emoji);
-                        const count = row?.count ?? 0;
-                        const active = row?.reactedByMe ?? false;
-                        return (
+                    {existingReactions.length > 0 ? (
+                      <div className="mt-2 flex flex-wrap gap-1 border-t border-black/5 pt-2">
+                        {existingReactions.map((r) => (
                           <button
-                            key={emoji}
+                            key={`${m.id}-${r.emoji}`}
                             type="button"
-                            title={emoji}
-                            onClick={() => onToggleReaction(m.id, emoji)}
+                            title={r.emoji}
+                            onClick={() => onToggleReaction(m.id, r.emoji)}
                             className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition ${
-                              active
+                              r.reactedByMe
                                 ? "border-kitaPurple bg-white"
                                 : "border-gray-200 bg-white/60 hover:bg-white"
                             }`}
                           >
-                            <span>{emoji}</span>
-                            {count > 0 ? (
-                              <span className="text-gray-600">{count}</span>
-                            ) : null}
+                            <span>{r.emoji}</span>
+                            <span className="text-gray-600">{r.count}</span>
                           </button>
-                        );
-                      })}
+                        ))}
+                      </div>
+                    ) : null}
+
+                    {/* Default minimal reactions affordance (Viber-style) */}
+                    <div
+                      className="absolute bottom-2 right-2"
+                      onMouseEnter={() => setReactionBarFor(m.id)}
+                      onMouseLeave={() =>
+                        setReactionBarFor((prev) =>
+                          prev === m.id ? null : prev
+                        )
+                      }
+                      onPointerDown={(e) => {
+                        if (e.pointerType === "touch") startLongPress(m.id);
+                      }}
+                      onPointerUp={() => cancelLongPress()}
+                      onPointerCancel={() => cancelLongPress()}
+                    >
+                      <button
+                        type="button"
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/70 text-gray-400 shadow-sm ring-1 ring-black/5 opacity-80 transition hover:bg-white hover:text-gray-600 group-hover:opacity-100"
+                        aria-label="Reactions"
+                        title="Reactions"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Click opens picker (neutral entry point).
+                          setReactionBarFor((prev) => (prev === m.id ? null : m.id));
+                        }}
+                        onMouseEnter={() => setReactionBarFor(m.id)}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          className="h-4 w-4"
+                          aria-hidden="true"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm-2.75-8.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm5.5 0a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM6.97 11.72a.75.75 0 0 1 1.06.11A2.5 2.5 0 0 0 10 13c.78 0 1.48-.36 1.97-1.06a.75.75 0 1 1 1.22.85A4 4 0 0 1 10 14.5a4 4 0 0 1-3.14-1.71.75.75 0 0 1 .11-1.07Z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </button>
+
+                      {/* Floating reaction bar (hover/tap/long-press) */}
+                      <div
+                        className={`pointer-events-none absolute bottom-full right-0 z-40 mb-2 flex origin-bottom-right items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-1 shadow-lg transition ${
+                          showReactionBar
+                            ? "scale-100 opacity-100"
+                            : "scale-95 opacity-0"
+                        }`}
+                      >
+                        <div className="pointer-events-auto flex items-center gap-1">
+                          {CHAT_REACTION_EMOJIS.map((emoji) => (
+                            <button
+                              key={`${m.id}-${emoji}`}
+                              type="button"
+                              title={emoji}
+                              onClick={() => onToggleReaction(m.id, emoji)}
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-full hover:bg-gray-100"
+                            >
+                              <span className="text-base leading-none">
+                                {emoji}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
               );
             })}
-            <div ref={bottomRef} />
           </div>
         )}
       </div>
 
-      <div className="shrink-0 space-y-2 border-t border-gray-200 pt-3">
+      <div className="shrink-0 space-y-2 border-t border-gray-200 bg-white pt-3">
         {pending.length > 0 ? (
           <ul className="flex flex-wrap gap-2 text-xs">
             {pending.map((p, idx) => (
@@ -592,37 +817,150 @@ export default function GroupChatClient({
             }}
           >
             {({ open }) => (
-              <button
-                type="button"
-                disabled={
-                  pending.length >= CHAT_MAX_ATTACHMENTS_PER_MESSAGE || sending
-                }
-                className="flex h-10 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white px-3 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                onClick={() => open()}
-              >
-                {chat.attach}
-              </button>
+              <div className="flex flex-1 flex-col gap-1">
+                <div className="relative">
+                  <textarea
+                    ref={inputRef}
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    onKeyDown={onKeyDown}
+                    placeholder={chat.placeholder}
+                    rows={2}
+                    disabled={sending}
+                    className="min-h-[2.75rem] w-full resize-none rounded-lg border border-gray-300 px-3 py-2 pr-28 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:bg-gray-50"
+                  />
+
+                  <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1.5">
+                    {/* Emoji */}
+                    <div className="relative" ref={emojiRootRef}>
+                      <button
+                        type="button"
+                        disabled={sending}
+                        onClick={() => setEmojiOpen((v) => !v)}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-50 hover:text-gray-800 disabled:opacity-50"
+                        aria-label="Emoji"
+                        title="Emoji"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          className="h-5 w-5"
+                          aria-hidden="true"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm-2.75-8.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm5.5 0a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM6.97 11.72a.75.75 0 0 1 1.06.11A2.5 2.5 0 0 0 10 13c.78 0 1.48-.36 1.97-1.06a.75.75 0 1 1 1.22.85A4 4 0 0 1 10 14.5a4 4 0 0 1-3.14-1.71.75.75 0 0 1 .11-1.07Z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </button>
+                      {emojiOpen ? (
+                        <div className="absolute bottom-full right-0 z-50 mb-2 w-[min(22rem,calc(100vw-2rem))] rounded-lg border border-gray-200 bg-white p-2 shadow-lg">
+                          <div className="mb-2 flex flex-wrap gap-1">
+                            {EMOJI_SECTIONS.map((s) => (
+                              <a
+                                key={s.id}
+                                href={`#emoji-${s.id}`}
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 bg-white text-sm hover:bg-gray-50"
+                                aria-label={s.id}
+                                title={s.id}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  const el = document.getElementById(
+                                    `emoji-${s.id}`
+                                  );
+                                  el?.scrollIntoView({ block: "start" });
+                                }}
+                              >
+                                {s.label}
+                              </a>
+                            ))}
+                          </div>
+                          <div className="max-h-56 overflow-y-auto pr-1">
+                            {EMOJI_SECTIONS.map((section) => (
+                              <div key={section.id} className="mb-2">
+                                <div
+                                  id={`emoji-${section.id}`}
+                                  className="mb-1 text-[11px] font-medium text-gray-500"
+                                >
+                                  {section.id}
+                                </div>
+                                <div className="flex flex-wrap gap-1">
+                                  {section.emojis.map((emoji) => (
+                                    <button
+                                      key={`${section.id}-${emoji}`}
+                                      type="button"
+                                      disabled={sending}
+                                      onClick={() => {
+                                        setText((prev) => `${prev}${emoji}`);
+                                        inputRef.current?.focus();
+                                      }}
+                                      className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-gray-50"
+                                      aria-label={emoji}
+                                      title={emoji}
+                                    >
+                                      {emoji}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    {/* Attach */}
+                    <button
+                      type="button"
+                      disabled={
+                        pending.length >= CHAT_MAX_ATTACHMENTS_PER_MESSAGE ||
+                        sending
+                      }
+                      onClick={() => open()}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-50 hover:text-gray-800 disabled:opacity-50"
+                      aria-label={chat.attach}
+                      title={chat.attach}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        className="h-5 w-5"
+                        aria-hidden="true"
+                      >
+                        <path d="M12.5 5.25a3.25 3.25 0 0 1 3.25 3.25v5.25a5.75 5.75 0 1 1-11.5 0V6.5a4.25 4.25 0 1 1 8.5 0v7.25a2.75 2.75 0 1 1-5.5 0V7.5a.75.75 0 0 1 1.5 0v6.25a1.25 1.25 0 1 0 2.5 0V6.5a2.75 2.75 0 1 0-5.5 0v7.25a4.25 4.25 0 1 0 8.5 0V8.5a1.75 1.75 0 0 0-3.5 0v5.25a.75.75 0 0 1-1.5 0V8.5a3.25 3.25 0 0 1 3.25-3.25Z" />
+                      </svg>
+                    </button>
+
+                    {/* Send */}
+                    <button
+                      type="button"
+                      disabled={
+                        sending || (text.trim().length === 0 && pending.length === 0)
+                      }
+                      onClick={submit}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-white shadow-sm hover:bg-blue-600 disabled:bg-blue-500 disabled:opacity-40"
+                      aria-label={chat.send}
+                      title={chat.send}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="h-4 w-4 translate-x-[0.5px]"
+                        aria-hidden="true"
+                      >
+                        <path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
           </CldUploadWidget>
 
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={onKeyDown}
-            placeholder={chat.placeholder}
-            rows={2}
-            disabled={sending}
-            className="min-h-[2.75rem] flex-1 resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:bg-gray-50"
-          />
-
-          <button
-            type="button"
-            disabled={sending}
-            onClick={submit}
-            className="h-10 shrink-0 rounded-lg bg-blue-500 px-4 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50"
-          >
-            {chat.send}
-          </button>
         </div>
       </div>
     </div>

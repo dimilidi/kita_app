@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import GroupChatClient from "@/components/chat/GroupChatClient";
 import { fetchStaffChatMessagesPayload } from "@/lib/chatMessages";
 import { canAccessStaffChat } from "@/lib/chatPermissions";
+import { markStaffChatAsRead } from "@/lib/staffChatUnread";
 import { getDictionary } from "@/i18n/getDictionary";
 import { DEFAULT_LOCALE, type Locale } from "@/i18n/lang";
 import { getAuthData } from "@/lib/utils";
@@ -36,15 +37,16 @@ export default async function MessagesPage() {
   const chat = dict.staffChat;
 
   const initial = await fetchStaffChatMessagesPayload(userId);
+  await markStaffChatAsRead();
 
   return (
-    <div className="flex flex-col gap-3 p-4 lg:gap-4">
-      <header>
+    <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden p-4 lg:gap-4">
+      <header className="shrink-0">
         <h1 className="text-xl font-semibold">{chat.pageTitle}</h1>
         <p className="text-sm text-gray-500">{chat.subtitle}</p>
       </header>
 
-      <div className="flex min-h-[calc(100vh-220px)] flex-1 flex-col lg:min-h-[calc(100vh-180px)]">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <GroupChatClient
           initialMessages={initial.messages}
           currentUserId={userId}
