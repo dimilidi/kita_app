@@ -156,7 +156,7 @@ const Menu = () => {
           icon: "/message.png",
           label: dict.menu.messages,
           href: `/${lang}/list/messages`,
-          visible: ["admin", "teacher", "student", "parent"],
+          visible: ["admin", "teacher"],
         },
         {
           icon: "/announcement.png",

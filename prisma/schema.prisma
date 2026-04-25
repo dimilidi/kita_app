@@ -170,6 +170,41 @@ model AnnouncementRead {
   @@index([userId])
 }
 
+/// Staff group chat (single room): admins + educators only.
+model Message {
+  id          String              @id @default(cuid())
+  content     String              @default("")
+  senderId    String
+  createdAt   DateTime            @default(now())
+  attachments MessageAttachment[]
+  reactions   MessageReaction[]
+
+  @@index([createdAt])
+}
+
+model MessageAttachment {
+  id         String   @id @default(cuid())
+  messageId  String
+  url        String
+  fileName   String
+  mimeType   String
+  sizeBytes  Int
+  message    Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+}
+
+model MessageReaction {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  emoji     String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
+}
+
 model Zone {
   id          String        @id @default(cuid()) 
   name        String        @unique

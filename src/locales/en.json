@@ -141,6 +141,23 @@
     "settings": "Settings",
     "logout": "Logout"
   },
+  "staffChat": {
+    "pageTitle": "Team messages",
+    "subtitle": "Single group chat for admins and educators",
+    "empty": "No messages yet — start the conversation.",
+    "placeholder": "Write a message…",
+    "send": "Send",
+    "attach": "Attach file",
+    "fileTooLarge": "File exceeds the maximum size (10 MB).",
+    "tooManyFiles": "You can attach at most 5 files per message.",
+    "invalidFile": "This file type is not allowed.",
+    "errorEmpty": "Enter a message or attach a file.",
+    "errorSend": "Could not send the message.",
+    "errorReaction": "Could not update the reaction.",
+    "download": "Download",
+    "attachmentLabel": "Attachment",
+    "you": "You"
+  },
   "signIn": {
     "appName": "KitaApp",
     "title": "Sign in to your account",

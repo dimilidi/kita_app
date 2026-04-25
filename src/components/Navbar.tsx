@@ -44,15 +44,25 @@ const Navbar = ({
   }, [pathname]);
 
   const announcementsHref = `/${lang}/list/announcements`;
+  const messagesHref = `/${lang}/list/messages`;
+  const role = user?.publicMetadata?.role as string | undefined;
+  const showStaffChatIcon = role === "admin" || role === "teacher";
 
   return (
     <div className="flex items-center justify-end gap-6 p-4">
       <div className="hidden lg:block">
         <LanguageSwitcher />
       </div>
-      <div className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-white">
-        <Image src="/message.png" alt="" width={20} height={20} />
-      </div>
+      {showStaffChatIcon ? (
+        <Link
+          href={messagesHref}
+          className="relative flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-white"
+          title={dict.menu.messages}
+          aria-label={dict.menu.messages}
+        >
+          <Image src="/message.png" alt="" width={20} height={20} />
+        </Link>
+      ) : null}
       <Link
         href={announcementsHref}
         className="relative flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-white"

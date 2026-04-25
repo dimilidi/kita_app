@@ -141,6 +141,23 @@
     "settings": "Einstellungen",
     "logout": "Abmelden"
   },
+  "staffChat": {
+    "pageTitle": "Team-Nachrichten",
+    "subtitle": "Ein Gruppenchat für Admins und Erzieher",
+    "empty": "Noch keine Nachrichten — schreiben Sie die erste.",
+    "placeholder": "Nachricht schreiben…",
+    "send": "Senden",
+    "attach": "Datei anhängen",
+    "fileTooLarge": "Die Datei ist größer als 10 MB.",
+    "tooManyFiles": "Maximal 5 Dateien pro Nachricht.",
+    "invalidFile": "Dieser Dateityp ist nicht erlaubt.",
+    "errorEmpty": "Geben Sie Text ein oder hängen Sie eine Datei an.",
+    "errorSend": "Nachricht konnte nicht gesendet werden.",
+    "errorReaction": "Reaktion konnte nicht aktualisiert werden.",
+    "download": "Herunterladen",
+    "attachmentLabel": "Anhang",
+    "you": "Du"
+  },
   "signIn": {
     "appName": "KitaApp",
     "title": "Melde dich bei deinem Konto an",
