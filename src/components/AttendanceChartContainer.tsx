@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
 import AttendanceChartContainerClient from "./AttendanceChartContainerClient";
 import {
-  aggregateEducatorAttendanceByMonFriWeekday,
+  aggregateEducatorRowsByMonFriWeekday,
   aggregateRowsByMonFriWeekday,
   getWeekMondayLocal,
   weekdayShortLabelsMonFri,
@@ -16,11 +16,13 @@ const AttendanceChartContainer = async () => {
 
   const today = new Date();
   const lastMonday = getWeekMondayLocal(today);
+  const nextMonday = new Date(lastMonday);
+  nextMonday.setUTCDate(nextMonday.getUTCDate() + 7);
 
   const [childRows, teacherRows, totalEducators] = await Promise.all([
     prisma.attendance.findMany({
       where: {
-        date: { gte: lastMonday },
+        date: { gte: lastMonday, lt: nextMonday },
       },
       select: {
         date: true,
@@ -29,7 +31,7 @@ const AttendanceChartContainer = async () => {
     }),
     prisma.teacherAttendance.findMany({
       where: {
-        date: { gte: lastMonday },
+        date: { gte: lastMonday, lt: nextMonday },
       },
       select: {
         date: true,
@@ -42,10 +44,7 @@ const AttendanceChartContainer = async () => {
   const daysOfWeek = weekdayShortLabelsMonFri(lastMonday, intlLocale);
 
   const childCounts = aggregateRowsByMonFriWeekday(childRows);
-  const eduCounts = aggregateEducatorAttendanceByMonFriWeekday(
-    teacherRows,
-    totalEducators
-  );
+  const eduCounts = aggregateEducatorRowsByMonFriWeekday(teacherRows);
 
   const childrenData = daysOfWeek.map((name, idx) => ({
     name,

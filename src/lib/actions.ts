@@ -657,12 +657,42 @@ export async function saveDailyAttendance({
       return { success: false, error: "noLesson" };
     }
 
+    // Ensure complete daily snapshot for this class/day/lesson:
+    // every student in the class gets exactly one row; missing rows default to present=false.
+    const classStudentIds: string[] = (
+      await prisma.student.findMany({
+        where: { classId: student.classId },
+        select: { id: true },
+      })
+    ).map((s: { id: string }) => s.id);
+    const existingForDay = await prisma.attendance.findMany({
+      where: {
+        lessonId: lesson.id,
+        date: { gte: start, lt: end },
+        studentId: { in: classStudentIds },
+      },
+      select: { studentId: true },
+    });
+    const existingIds = new Set(existingForDay.map((r) => r.studentId));
+    const missingIds = classStudentIds.filter((id) => !existingIds.has(id));
+    if (missingIds.length > 0) {
+      await prisma.attendance.createMany({
+        data: missingIds.map((id) => ({
+          studentId: id,
+          lessonId: lesson.id,
+          date: start,
+          present: false,
+        })),
+      });
+    }
+
     const existing = await prisma.attendance.findFirst({
       where: {
         studentId,
         lessonId: lesson.id,
         date: { gte: start, lt: end },
       },
+      orderBy: { id: "desc" },
     });
 
     if (existing) {
@@ -731,6 +761,28 @@ export async function saveDailyAttendanceForLessonMany({
       return { success: false, error: "forbidden" };
     }
 
+    // Ensure complete daily snapshot for these students: missing rows default to present=false.
+    const existingForDay = await prisma.attendance.findMany({
+      where: {
+        lessonId,
+        studentId: { in: ids },
+        date: { gte: start, lt: end },
+      },
+      select: { studentId: true },
+    });
+    const existingIdsForDay = new Set(existingForDay.map((e) => e.studentId));
+    const missingIdsForDay = ids.filter((id) => !existingIdsForDay.has(id));
+    if (missingIdsForDay.length > 0) {
+      await prisma.attendance.createMany({
+        data: missingIdsForDay.map((studentId) => ({
+          studentId,
+          lessonId,
+          date: start,
+          present: false,
+        })),
+      });
+    }
+
     const existing = await prisma.attendance.findMany({
       where: {
         lessonId,
@@ -751,18 +803,6 @@ export async function saveDailyAttendanceForLessonMany({
         },
         data: { present },
       }),
-      ...(missingIds.length > 0
-        ? [
-            prisma.attendance.createMany({
-              data: missingIds.map((studentId) => ({
-                studentId,
-                lessonId,
-                date: start,
-                present,
-              })),
-            }),
-          ]
-        : []),
     ]);
 
     return { success: true };
@@ -826,6 +866,30 @@ export async function saveDailyAttendanceForAttendancePageFilterAll({
       for (let i = 0; i < ids.length; i += CHUNK) {
         const chunkIds: string[] = ids.slice(i, i + CHUNK);
 
+        // Ensure complete daily snapshot for this chunk: missing rows default to present=false.
+        const existingForDay = await prisma.attendance.findMany({
+          where: {
+            lessonId,
+            studentId: { in: chunkIds },
+            date: { gte: start, lt: end },
+          },
+          select: { studentId: true },
+        });
+        const existingIdsForDay = new Set(existingForDay.map((e) => e.studentId));
+        const missingIdsForDay: string[] = chunkIds.filter(
+          (id) => !existingIdsForDay.has(id)
+        );
+        if (missingIdsForDay.length > 0) {
+          await prisma.attendance.createMany({
+            data: missingIdsForDay.map((studentId) => ({
+              studentId,
+              lessonId,
+              date: start,
+              present: false,
+            })),
+          });
+        }
+
         const existing = await prisma.attendance.findMany({
           where: {
             lessonId,
@@ -846,18 +910,6 @@ export async function saveDailyAttendanceForAttendancePageFilterAll({
             },
             data: { present },
           }),
-          ...(missingIds.length > 0
-            ? [
-                prisma.attendance.createMany({
-                  data: missingIds.map((studentId) => ({
-                    studentId,
-                    lessonId,
-                    date: start,
-                    present,
-                  })),
-                }),
-              ]
-            : []),
         ]);
       }
     }
@@ -1587,6 +1639,23 @@ export async function upsertTeacherAttendance({
     const exists = await prisma.teacher.findUnique({ where: { id: teacherId } });
     if (!exists) {
       return { success: false, error: "notFound" };
+    }
+
+    // Ensure a complete daily record exists when admins take attendance:
+    // every teacher gets exactly one row for the day (missing rows default to present=false).
+    // We only do this backfill for admins to avoid teachers affecting other staff visibility.
+    if (role === "admin") {
+      const allTeacherIds = (
+        await prisma.teacher.findMany({ select: { id: true } })
+      ).map((t) => t.id);
+      await prisma.teacherAttendance.createMany({
+        data: allTeacherIds.map((id) => ({
+          teacherId: id,
+          date: range.start,
+          present: false,
+        })),
+        skipDuplicates: true,
+      });
     }
 
     await prisma.teacherAttendance.upsert({

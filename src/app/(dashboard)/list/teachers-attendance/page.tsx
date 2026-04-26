@@ -1,4 +1,4 @@
-import { normalizeAttendanceDateStr } from "@/lib/attendanceDate";
+import { normalizeAttendanceDateStr, parseDateStrToUtcRange } from "@/lib/attendanceDate";
 import { DEFAULT_LOCALE } from "@/i18n/lang";
 import prisma from "@/lib/prisma";
 import {
@@ -32,6 +32,24 @@ export default async function TeachersAttendancePage({
   const attendanceByTeacher: Record<string, boolean> = {};
 
   if (viewerIsAdmin) {
+    // Ensure a complete daily record exists for all teachers for this day
+    // (missing rows default to present=false). This keeps charts consistent:
+    // present = count(true), absent = count(false), no missing rows.
+    const range = parseDateStrToUtcRange(dateStr);
+    if (range) {
+      const ids: string[] = (
+        await prisma.teacher.findMany({ select: { id: true } })
+      ).map((t: { id: string }) => t.id);
+      await prisma.teacherAttendance.createMany({
+        data: ids.map((id) => ({
+          teacherId: id,
+          date: range.start,
+          present: false,
+        })),
+        skipDuplicates: true,
+      });
+    }
+
     const attendanceRows = await getTeacherAttendanceByDate(dateStr);
     for (const row of attendanceRows) {
       attendanceByTeacher[row.teacherId] = row.present;

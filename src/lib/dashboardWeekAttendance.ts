@@ -1,10 +1,17 @@
 /** Monday–Friday buckets (indices 0–4) for dashboard attendance charts. */
 
 export function getWeekMondayLocal(reference: Date = new Date()): Date {
-  const dayOfWeek = reference.getDay();
+  // Week anchor must be computed in UTC to align with UTC-stored attendance buckets.
+  const dayOfWeek = reference.getUTCDay();
   const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-  const monday = new Date(reference);
-  monday.setDate(reference.getDate() - daysSinceMonday);
+  const monday = new Date(
+    Date.UTC(
+      reference.getUTCFullYear(),
+      reference.getUTCMonth(),
+      reference.getUTCDate()
+    )
+  );
+  monday.setUTCDate(monday.getUTCDate() - daysSinceMonday);
   return monday;
 }
 
@@ -14,7 +21,7 @@ export function weekdayShortLabelsMonFri(
 ): string[] {
   return Array.from({ length: 5 }, (_, idx) => {
     const d = new Date(lastMonday);
-    d.setDate(lastMonday.getDate() + idx);
+    d.setUTCDate(lastMonday.getUTCDate() + idx);
     return new Intl.DateTimeFormat(intlLocale, { weekday: "short" }).format(
       d
     );
@@ -30,7 +37,9 @@ export function aggregateRowsByMonFriWeekday(
   }));
   for (const item of rows) {
     const itemDate = new Date(item.date);
-    const dow = itemDate.getDay();
+    // Attendance dates are stored as UTC timestamps (day buckets at 00:00Z),
+    // so weekday assignment must use UTC to avoid shifting across days.
+    const dow = itemDate.getUTCDay();
     if (dow >= 1 && dow <= 5) {
       const idx = dow - 1;
       if (item.present) {
@@ -41,6 +50,13 @@ export function aggregateRowsByMonFriWeekday(
     }
   }
   return counts;
+}
+
+/** Educators: explicit row counts grouped by weekday (Mon–Fri). */
+export function aggregateEducatorRowsByMonFriWeekday(
+  rows: { date: Date; present: boolean }[]
+): { present: number; absent: number }[] {
+  return aggregateRowsByMonFriWeekday(rows);
 }
 
 /**
