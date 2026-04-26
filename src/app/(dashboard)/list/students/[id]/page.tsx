@@ -6,6 +6,7 @@ import SiblingShortcuts from "@/components/SiblingShortcuts";
 import StudentAttendanceCard from "@/components/StudentAttendanceCard";
 import prisma from "@/lib/prisma";
 import { getAuthData } from "@/lib/utils";
+import { clerkClient } from "@clerk/nextjs/server";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -19,7 +20,7 @@ const SingleStudentPage = async ({
 }: {
   params: { id: string };
 }) => {
-  const { role } = getAuthData();
+  const { role, userId } = getAuthData();
   const cookieLang = cookies().get("NEXT_LANG")?.value as Locale | undefined;
   const lang = cookieLang ?? DEFAULT_LOCALE;
   const dict = getDictionary(lang) as any;
@@ -53,6 +54,26 @@ const SingleStudentPage = async ({
 
   if (!student) {
     return notFound();
+  }
+
+  if (role === "student" && userId) {
+    const sameClerkId = userId === student.id;
+    let sameByUsername = false;
+    if (!sameClerkId) {
+      try {
+        const cu = await clerkClient.users.getUser(userId);
+        const uname =
+          typeof cu.username === "string" && cu.username.length > 0
+            ? cu.username
+            : null;
+        sameByUsername = uname != null && uname === student.username;
+      } catch {
+        sameByUsername = false;
+      }
+    }
+    if (!sameClerkId && !sameByUsername) {
+      return notFound();
+    }
   }
 
   const siblings = await prisma.student.findMany({
@@ -150,8 +171,13 @@ const SingleStudentPage = async ({
                 <h1 className="text-xl font-semibold break-words">
                   {student.name + " " + student.surname}
                 </h1>
-                {role === "admin" && (
-                  <FormContainer table="student" type="update" data={student} />
+                {(role === "admin" || (role === "student" && userId === student.id)) && (
+                  <FormContainer
+                    table="student"
+                    type="update"
+                    data={student}
+                    variant={role === "admin" ? "admin" : "self"}
+                  />
                 )}
               </div>
               <div className="flex items-left gap-2 flex-col text-xs font-medium">

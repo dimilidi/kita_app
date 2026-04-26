@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DEFAULT_LOCALE } from "@/i18n/lang";
 import { useTranslations } from "@/i18n/TranslationsProvider";
+import { getProfileLinkAction } from "@/lib/actions";
 
 const LUNCH_SUBMENU_ID = "lunch";
 const PLAY_SUBMENU_ID = "play";
@@ -75,6 +76,8 @@ const Menu = () => {
   const dict = useTranslations();
 
   const [openSubmenuId, setOpenSubmenuId] = useState<string | null>(null);
+  const [profileHref, setProfileHref] = useState<string | null>(null);
+  const [profileRole, setProfileRole] = useState<"teacher" | "student" | null>(null);
 
   useEffect(() => {
     if (isLunchSectionPath(pathname)) {
@@ -86,7 +89,35 @@ const Menu = () => {
     }
   }, [pathname]);
 
+  useEffect(() => {
+    if (!isLoaded) return;
+    let alive = true;
+    // Reset when auth user changes to avoid stale profile link.
+    setProfileHref(null);
+    setProfileRole(null);
+    (async () => {
+      try {
+        const res = await getProfileLinkAction();
+        if (!alive) return;
+        setProfileHref(res.href);
+        setProfileRole(res.role);
+      } catch {
+        // ignore (menu still works without Profile)
+        if (!alive) return;
+        setProfileHref(null);
+        setProfileRole(null);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [isLoaded, user?.id]);
+
   if (!isLoaded) return null;
+
+  // Prefer server-derived role when available to avoid mixing sources.
+  const effectiveRole = (profileRole ?? (role as string | null) ?? null) as string | null;
+  const resolvedProfileHref = profileHref ? `/${lang}${profileHref}` : null;
 
   const menuItems = [
     {
@@ -206,36 +237,37 @@ const Menu = () => {
     {
       title: dict.menu.other,
       items: [
-        {
-          icon: "/profile.png",
-          label: dict.menu.profile,
-          href: `/${lang}/profile`,
-          visible: ["admin", "teacher", "student", "parent"],
-        },
-        {
-          icon: "/setting.png",
-          label: dict.menu.settings,
-          href: `/${lang}/settings`,
-          visible: ["admin", "teacher", "student", "parent"],
-        },
-        {
-          icon: "/logout.png",
-          label: dict.menu.logout,
-          href: `/${lang}/logout`,
-          visible: ["admin", "teacher", "student", "parent"],
-        },
+        ...(profileHref && resolvedProfileHref
+          ? [
+              {
+                isProfile: true,
+                icon: "/profile.png",
+                label: dict.menu.profile,
+                href: resolvedProfileHref,
+                visible: ["teacher", "student"],
+              },
+            ]
+          : []),
       ],
     },
   ];
   return (
     <div className="mt-4 text-sm">
-      {menuItems.map((i) => (
+      {menuItems
+        .filter((section) => section.items.length > 0)
+        .map((i) => (
         <div className="flex flex-col gap-2" key={i.title}>
           <span className="hidden lg:block text-gray-400 font-light my-4">
             {i.title}
           </span>
           {i.items.map((item) => {
-            if (!item.visible.includes(role)) return null;
+            // Profile is server-resolved + DB-validated; don't hide it due to client role mismatches.
+            const isResolvedProfile =
+              !!resolvedProfileHref && item.href === resolvedProfileHref;
+
+            if (!isResolvedProfile) {
+              if (!effectiveRole || !item.visible.includes(effectiveRole)) return null;
+            }
 
             if ("children" in item && item.children) {
               const expanded = openSubmenuId === item.submenuId;
@@ -276,7 +308,7 @@ const Menu = () => {
                             "visible" in child &&
                             Array.isArray(child.visible)
                           ) {
-                            return child.visible.includes(role);
+                            return !!effectiveRole && child.visible.includes(effectiveRole);
                           }
                           return true;
                         })
@@ -303,6 +335,19 @@ const Menu = () => {
                     </div>
                   )}
                 </div>
+              );
+            }
+
+            if ("isProfile" in item && item.isProfile) {
+              return (
+                <a
+                  key="profile"
+                  href={item.href}
+                  className="flex w-full min-h-[2.5rem] items-center justify-center lg:justify-start gap-4 text-gray-500 py-2 md:px-2 rounded-md hover:bg-lamaSkyLight"
+                >
+                  <Image src={item.icon} alt="" width={20} height={20} />
+                  <span className="hidden lg:block">{item.label}</span>
+                </a>
               );
             }
 

@@ -18,11 +18,13 @@ const StudentForm = ({
   data,
   setOpen,
   relatedData,
+  variant = "admin",
 }: {
   type: "create" | "update";
   data?: any;
   setOpen: Dispatch<SetStateAction<boolean>>;
   relatedData?: any;
+  variant?: "admin" | "self";
 }) => {
   const dict = useTranslations();
   const label = dict.entities?.student || "student";
@@ -208,9 +210,8 @@ const StudentForm = ({
           ? dict.common.createEntity.replace("{label}", label)
           : dict.common.updateEntity.replace("{label}", label)}
       </h1>
-      <span className="text-xs text-gray-400 font-medium">
-        {dict.forms.authInfo}
-      </span>
+      <div className={variant === "self" ? "hidden" : ""}>
+      <span className="text-xs text-gray-400 font-medium">{dict.forms.authInfo}</span>
       <div className="flex flex-wrap gap-4">
         <div className="flex flex-col gap-2 w-full md:w-1/4">
           <label className="text-xs text-gray-500">{dict.forms.username}</label>
@@ -249,6 +250,7 @@ const StudentForm = ({
           )}
         </div>
       </div>
+      </div>
       <span className="text-xs text-gray-400 font-medium">
         {dict.forms.personalInfo}
       </span>
@@ -265,14 +267,37 @@ const StudentForm = ({
           register={register}
           error={errors.surname}
         />
-        {/* Address is required by the Student model, but kindergarten UI keeps it non-editable */}
-        <InputField
-          label={dict.forms.address}
-          name="address"
-          register={register}
-          error={errors.address}
-          hidden
-        />
+        {variant === "self" ? (
+          <>
+            <InputField
+              label={dict.forms.phone}
+              name="phone"
+              register={register as any}
+              error={(errors as any).phone}
+            />
+            <InputField
+              label={dict.forms.email}
+              name="email"
+              register={register as any}
+              error={(errors as any).email}
+            />
+            <InputField
+              label={dict.forms.address}
+              name="address"
+              register={register}
+              error={errors.address}
+            />
+          </>
+        ) : (
+          // Address is required by the Student model, but kindergarten UI keeps it non-editable
+          <InputField
+            label={dict.forms.address}
+            name="address"
+            register={register}
+            error={errors.address}
+            hidden
+          />
+        )}
         <InputField
           label={dict.forms.bloodGroup}
           name="bloodType"
@@ -280,7 +305,7 @@ const StudentForm = ({
           error={errors.bloodType}
           hidden
         />
-        <div className="flex flex-col gap-2 w-full md:w-1/4">
+        <div className={variant === "self" ? "hidden" : "flex flex-col gap-2 w-full md:w-1/4"}>
           <label className="text-xs text-gray-500">{dict.forms.bloodGroup}</label>
           <select
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
@@ -305,6 +330,7 @@ const StudentForm = ({
           register={register}
           error={errors.birthday}
           type="date"
+          hidden={variant === "self"}
         />
         <InputField
           label="gradeId"
@@ -315,7 +341,7 @@ const StudentForm = ({
           hidden
         />
 
-        <div className="flex flex-col gap-2 w-full md:w-1/4">
+        <div className={variant === "self" ? "hidden" : "flex flex-col gap-2 w-full md:w-1/4"}>
           <label className="text-xs text-gray-500">{dict.forms.parent}</label>
           <select
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
@@ -345,7 +371,7 @@ const StudentForm = ({
             hidden
           />
         )}
-        <div className="flex flex-col gap-2 w-full md:w-1/4">
+        <div className={variant === "self" ? "hidden" : "flex flex-col gap-2 w-full md:w-1/4"}>
           <label className="text-xs text-gray-500">{dict.forms.sex}</label>
           <select
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
@@ -360,7 +386,7 @@ const StudentForm = ({
             </p>
           )}
         </div>
-        <div className="flex flex-col gap-2 w-full md:w-1/4">
+        <div className={variant === "self" ? "hidden" : "flex flex-col gap-2 w-full md:w-1/4"}>
           <label className="text-xs text-gray-500">{dict.forms.group}</label>
           <select
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
@@ -387,7 +413,7 @@ const StudentForm = ({
           )}
         </div>
 
-        {type === "update" && (
+        {variant === "self" ? null : type === "update" && (
           <>
             <InputField
               label={dict.forms.bringTime}

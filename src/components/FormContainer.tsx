@@ -17,9 +17,16 @@ export type FormContainerProps = {
   type: "create" | "update" | "delete";
   data?: any;
   id?: number | string;
+  variant?: "admin" | "self";
 };
 
-const FormContainer = async ({ table, type, data, id }: FormContainerProps) => {
+const FormContainer = async ({
+  table,
+  type,
+  data,
+  id,
+  variant = "admin",
+}: FormContainerProps) => {
   let relatedData = {};
   const { userId, role } = getAuthData();
 
@@ -75,6 +82,7 @@ const FormContainer = async ({ table, type, data, id }: FormContainerProps) => {
         type={type}
         data={data}
         id={id}
+        variant={variant}
         relatedData={relatedData}
       />
     </div>

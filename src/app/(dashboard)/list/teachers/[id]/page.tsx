@@ -16,7 +16,7 @@ const SingleTeacherPage = async ({
 }: {
   params: { id: string };
 }) => {
-  const { role } = getAuthData();
+  const { role, userId } = getAuthData();
   const cookieLang = cookies().get("NEXT_LANG")?.value as Locale | undefined;
   const lang = cookieLang ?? DEFAULT_LOCALE;
   const dict = getDictionary(lang) as any;
@@ -115,8 +115,13 @@ const SingleTeacherPage = async ({
                 <h1 className="text-xl font-semibold break-words">
                   {teacher.name} {teacher.surname}
                 </h1>
-                {role === "admin" && (
-                  <FormContainer table="teacher" type="update" data={teacher} />
+                {(role === "admin" || (role === "teacher" && userId === teacher.id)) && (
+                  <FormContainer
+                    table="teacher"
+                    type="update"
+                    data={teacher}
+                    variant={role === "admin" ? "admin" : "self"}
+                  />
                 )}
               </div>
 

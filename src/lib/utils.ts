@@ -11,8 +11,12 @@ import { auth } from "@clerk/nextjs/server";
 export const getAuthData = () => {
   const { userId, sessionClaims } = auth();
 
+  const claims = sessionClaims as any;
   const role =
-    (sessionClaims?.metadata as { role?: string })?.role ?? null;
+    (claims?.metadata as { role?: string } | undefined)?.role ??
+    (claims?.publicMetadata as { role?: string } | undefined)?.role ??
+    (claims?.user?.publicMetadata as { role?: string } | undefined)?.role ??
+    null;
 
   return { userId, role };
 };

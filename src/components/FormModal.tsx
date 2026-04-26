@@ -77,7 +77,8 @@ const forms: {
     setOpen: Dispatch<SetStateAction<boolean>>,
     type: "create" | "update",
     data?: any,
-    relatedData?: any
+    relatedData?: any,
+    variant?: "admin" | "self"
   ) => JSX.Element;
 } = {
   class: (setOpen, type, data, relatedData) => (
@@ -88,20 +89,22 @@ const forms: {
       relatedData={relatedData}
     />
   ),
-  teacher: (setOpen, type, data, relatedData) => (
+  teacher: (setOpen, type, data, relatedData, variant) => (
     <TeacherForm
       type={type}
       data={data}
       setOpen={setOpen}
       relatedData={relatedData}
+      variant={variant}
     />
   ),
-  student: (setOpen, type, data, relatedData) => (
+  student: (setOpen, type, data, relatedData, variant) => (
     <StudentForm
       type={type}
       data={data}
       setOpen={setOpen}
       relatedData={relatedData}
+      variant={variant}
     />
   ),
   parent: (setOpen, type, data) => (
@@ -139,6 +142,7 @@ const FormModal = ({
   type,
   data,
   id,
+  variant,
   relatedData,
 }: FormContainerProps & { relatedData?: any }) => {
   const dict = useTranslations();
@@ -218,7 +222,7 @@ const FormModal = ({
             {type === "delete" ? (
               <DeleteForm />
             ) : type === "create" || type === "update" ? (
-              forms[table](setOpen, type, data, relatedData)
+              forms[table](setOpen, type, data, relatedData, variant)
             ) : (
               dict.common.formNotFound ?? "Form not found!"
             )}

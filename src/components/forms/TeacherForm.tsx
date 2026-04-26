@@ -17,11 +17,13 @@ const TeacherForm = ({
   data,
   setOpen,
   relatedData,
+  variant = "admin",
 }: {
   type: "create" | "update";
   data?: any;
   setOpen: Dispatch<SetStateAction<boolean>>;
   relatedData?: any;
+  variant?: "admin" | "self";
 }) => {
   const dict = useTranslations();
   const label = dict.entities?.teacher || "teacher";
@@ -125,29 +127,29 @@ const TeacherForm = ({
           ? dict.common.createEntity.replace("{label}", label)
           : dict.common.updateEntity.replace("{label}", label)}
       </h1>
-      <span className="text-xs text-gray-400 font-medium">
-        {dict.forms.authInfo}
-      </span>
-      <div className="flex justify-between flex-wrap gap-4">
-        <InputField
-          label={dict.forms.username}
-          name="username"
-          register={register}
-          error={errors?.username}
-        />
-        <InputField
-          label={dict.forms.email}
-          name="email"
-          register={register}
-          error={errors?.email}
-        />
-        <InputField
-          label={dict.forms.password}
-          name="password"
-          type="password"
-          register={register}
-          error={errors?.password}
-        />
+      <div className={variant === "self" ? "hidden" : ""}>
+        <span className="text-xs text-gray-400 font-medium">{dict.forms.authInfo}</span>
+        <div className="flex justify-between flex-wrap gap-4">
+          <InputField
+            label={dict.forms.username}
+            name="username"
+            register={register}
+            error={errors?.username}
+          />
+          <InputField
+            label={dict.forms.email}
+            name="email"
+            register={register}
+            error={errors?.email}
+          />
+          <InputField
+            label={dict.forms.password}
+            name="password"
+            type="password"
+            register={register}
+            error={errors?.password}
+          />
+        </div>
       </div>
       <span className="text-xs text-gray-400 font-medium">
         {dict.forms.personalInfo}
@@ -177,6 +179,14 @@ const TeacherForm = ({
           register={register}
           error={errors.address}
         />
+        {variant === "self" ? (
+          <InputField
+            label={dict.forms.email}
+            name="email"
+            register={register}
+            error={errors?.email}
+          />
+        ) : null}
         <InputField
           label={dict.forms.bloodGroup}
           name="bloodType"
@@ -184,7 +194,7 @@ const TeacherForm = ({
           error={errors.bloodType}
           hidden
         />
-        <div className="flex flex-col gap-2 w-full md:w-1/4">
+        <div className={variant === "self" ? "hidden" : "flex flex-col gap-2 w-full md:w-1/4"}>
           <label className="text-xs text-gray-500">{dict.forms.bloodGroup}</label>
           <select
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
@@ -209,6 +219,7 @@ const TeacherForm = ({
           register={register}
           error={errors.birthday}
           type="date"
+          hidden={variant === "self"}
         />
         {data && (
           <InputField
@@ -219,7 +230,7 @@ const TeacherForm = ({
             hidden
           />
         )}
-        <div className="flex flex-col gap-2 w-full md:w-1/4">
+        <div className={variant === "self" ? "hidden" : "flex flex-col gap-2 w-full md:w-1/4"}>
           <label className="text-xs text-gray-500">{dict.forms.sex}</label>
           <select
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
@@ -234,7 +245,7 @@ const TeacherForm = ({
             </p>
           )}
         </div>
-        <div className="flex flex-col gap-2 w-full md:w-1/4">
+        <div className={variant === "self" ? "hidden" : "flex flex-col gap-2 w-full md:w-1/4"}>
           <label className="text-xs text-gray-500">
             {dict.forms.playArea ??  "Play Areas"}
           </label>

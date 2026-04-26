@@ -20,10 +20,94 @@ import { getUnreadStaffChatCount } from "./staffChatUnread";
 import { loadAttendancePageData } from "./attendancePageData";
 import { getActiveActivityAssignmentsNow } from "./activeActivityNow";
 import prisma from "./prisma";
-import { clerkClient } from "@clerk/nextjs/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import { getAuthData } from "./utils";
 import { randomUUID } from "crypto";
 import type { AttendanceRow } from "@/app/(dashboard)/list/attendance/types";
+
+/** For client components that need server-auth-derived id/role (e.g. Profile link). */
+export async function getAuthDataAction(): Promise<{ userId: string | null; role: string | null }> {
+  const { userId, role } = getAuthData();
+  return { userId: userId ?? null, role: (role as string | null) ?? null };
+}
+
+/**
+ * Profile link: DB record must exist. Prefer id === Clerk userId; if missing (legacy data),
+ * resolve by Clerk username (matches Student.username / Teacher.username from create flow).
+ */
+export async function getProfileLinkAction(): Promise<{
+  href: string | null;
+  role: "teacher" | "student" | null;
+  userId: string | null;
+}> {
+  const { userId } = await auth();
+  const uid = userId ?? null;
+  if (!uid) return { href: null, role: null, userId: null };
+
+  let student = await prisma.student.findUnique({
+    where: { id: uid },
+    select: { id: true },
+  });
+
+  if (!student) {
+    try {
+      const cu = await clerkClient.users.getUser(uid);
+      const uname =
+        typeof cu.username === "string" && cu.username.length > 0
+          ? cu.username
+          : null;
+      if (uname) {
+        student = await prisma.student.findUnique({
+          where: { username: uname },
+          select: { id: true },
+        });
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  if (student) {
+    return {
+      href: `/list/students/${student.id}`,
+      role: "student",
+      userId: student.id,
+    };
+  }
+
+  let teacher = await prisma.teacher.findUnique({
+    where: { id: uid },
+    select: { id: true },
+  });
+
+  if (!teacher) {
+    try {
+      const cu = await clerkClient.users.getUser(uid);
+      const uname =
+        typeof cu.username === "string" && cu.username.length > 0
+          ? cu.username
+          : null;
+      if (uname) {
+        teacher = await prisma.teacher.findUnique({
+          where: { username: uname },
+          select: { id: true },
+        });
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  if (teacher) {
+    return {
+      href: `/list/teachers/${teacher.id}`,
+      role: "teacher",
+      userId: teacher.id,
+    };
+  }
+
+  return { href: null, role: null, userId: uid };
+}
 
 type CurrentState = {
   success: boolean;
@@ -159,7 +243,35 @@ export const updateTeacher = async (
     return { success: false, error: true, message: "Missing teacher id" };
   }
   try {
-    const user = await clerkClient.users.updateUser(data.id, {
+    const { userId, role } = getAuthData();
+
+    if (role !== "admin" && userId !== data.id) {
+      throw new Error("Forbidden");
+    }
+
+    if (role !== "admin") {
+      // Self profile edit: only allow personal fields.
+      await clerkClient.users.updateUser(data.id, {
+        firstName: data.name,
+        lastName: data.surname,
+      });
+
+      await prisma.teacher.update({
+        where: { id: data.id },
+        data: {
+          name: data.name,
+          surname: data.surname,
+          phone: data.phone || null,
+          address: data.address,
+          email: data.email || null,
+          ...(data.img !== undefined && { img: data.img }),
+        },
+      });
+
+      return { success: true, error: false, message: "" };
+    }
+
+    await clerkClient.users.updateUser(data.id, {
       username: data.username,
       ...(data.password !== "" && { password: data.password }),
       firstName: data.name,
@@ -314,13 +426,41 @@ export const updateStudent = async (
     return { success: false, error: true, message: "Missing student id" };
   }
   try {
+    const { userId, role } = getAuthData();
+
+    if (role !== "admin" && userId !== data.id) {
+      throw new Error("Forbidden");
+    }
+
+    if (role !== "admin") {
+      // Self profile edit: only allow personal fields.
+      await clerkClient.users.updateUser(data.id, {
+        firstName: data.name,
+        lastName: data.surname,
+      });
+
+      await prisma.student.update({
+        where: { id: data.id },
+        data: {
+          name: data.name,
+          surname: data.surname,
+          phone: (data as any).phone?.trim?.() ? (data as any).phone.trim() : null,
+          address: data.address,
+          email: (data as any).email?.trim?.() ? (data as any).email.trim() : null,
+          ...(data.img !== undefined && { img: data.img }),
+        },
+      });
+
+      return { success: true, error: false, message: "" };
+    }
+
     const parent = await prisma.parent.findUnique({
       where: { id: data.parentId },
       select: { email: true },
     });
     const emailNorm = parent?.email?.trim() ? parent.email.trim() : null;
 
-    const user = await clerkClient.users.updateUser(data.id, {
+    await clerkClient.users.updateUser(data.id, {
       username: data.username,
       ...(data.password !== "" && { password: data.password }),
       firstName: data.name,

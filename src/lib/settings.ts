@@ -10,7 +10,8 @@ export const routeAccessMap: RouteAccessMap = {
   "/teacher(.*)": ["teacher"],
   "/parent(.*)": ["parent"],
   "/list/teachers": ["admin", "teacher"],
-  "/list/students": ["admin", "teacher"],
+  // Match only the list index, not /list/students/:id (student self-profile, etc.)
+  "/list/students$": ["admin", "teacher"],
   "/list/parents": ["admin", "teacher"],
   "/list/classes": ["admin", "teacher"],
   "/list/attendance": ["admin", "teacher", "student", "parent"],

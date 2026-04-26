@@ -69,6 +69,7 @@ export const studentSchema = z.object({
     .email({ message: "forms.invalidEmail" })
     .optional()
     .or(z.literal("")),
+  phone: z.string().optional().or(z.literal("")),
   address: z.string(),
   img: z.string().optional(),
   bloodType: z.string().min(1, { message: "forms.required" }),
