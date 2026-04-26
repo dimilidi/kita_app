@@ -60,6 +60,7 @@ const StudentForm = ({
       name: data?.name ?? "",
       surname: data?.surname ?? "",
       email: data?.email ?? "",
+      phone: data?.phone ?? "",
       address: data?.address ?? "",
       bloodType: data?.bloodType ?? "",
       birthday,
