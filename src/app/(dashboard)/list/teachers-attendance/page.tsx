@@ -1,4 +1,8 @@
-import { normalizeAttendanceDateStr, parseDateStrToUtcRange } from "@/lib/attendanceDate";
+import {
+  isWeekendDateStrUTC,
+  normalizeAttendanceDateStr,
+  parseDateStrToUtcRange,
+} from "@/lib/attendanceDate";
 import { DEFAULT_LOCALE } from "@/i18n/lang";
 import prisma from "@/lib/prisma";
 import {
@@ -19,8 +23,13 @@ export default async function TeachersAttendancePage({
     redirect(`/${DEFAULT_LOCALE}`);
   }
 
-  const canEdit = true;
-  const dateStr = normalizeAttendanceDateStr(searchParams.date);
+  // Prevent landing on weekend dates via URL.
+  const requested = searchParams.date;
+  const dateStr = normalizeAttendanceDateStr(requested);
+  if (requested && requested !== dateStr) {
+    redirect(`?date=${encodeURIComponent(dateStr)}`);
+  }
+  const canEdit = !isWeekendDateStrUTC(dateStr);
   const viewerIsAdmin = role === "admin";
 
   let teachers: {

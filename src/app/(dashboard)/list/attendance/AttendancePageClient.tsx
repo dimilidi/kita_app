@@ -9,6 +9,7 @@ import {
 } from "@/lib/actions";
 import Pagination from "@/components/Pagination";
 import { todayDateStrLocal } from "@/lib/attendanceDate";
+import WorkingDayDatePicker from "@/components/attendance/WorkingDayDatePicker";
 import { useTranslations } from "@/i18n/TranslationsProvider";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useRef, useTransition, useState } from "react";
@@ -432,16 +433,13 @@ export default function AttendancePageClient({
         <div className="flex flex-wrap gap-3 items-center">
           <label className="flex flex-col gap-1 text-sm">
             <span className="text-gray-600">{dict.attendancePage.date}</span>
-            <input
-              type="date"
-              className="border rounded-md px-3 py-2 text-sm bg-white"
+            <WorkingDayDatePicker
               value={dateStr}
               disabled={isPending}
-              onChange={(e) =>
+              ariaLabel={dict.attendancePage.date}
+              onChange={(next) =>
                 startTransition(() =>
-                  router.replace(
-                    `${pathname}?${buildQuery({ date: e.target.value })}`
-                  )
+                  router.replace(`${pathname}?${buildQuery({ date: next })}`)
                 )
               }
             />

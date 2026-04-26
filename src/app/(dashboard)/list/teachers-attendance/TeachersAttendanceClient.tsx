@@ -2,6 +2,7 @@
 
 import { upsertTeacherAttendance } from "@/lib/actions";
 import { todayDateStrLocal } from "@/lib/attendanceDate";
+import WorkingDayDatePicker from "@/components/attendance/WorkingDayDatePicker";
 import type { TeacherLite } from "@/components/PlayAreaCard";
 import { useTranslations } from "@/i18n/TranslationsProvider";
 import { usePathname, useRouter } from "next/navigation";
@@ -76,16 +77,13 @@ export default function TeachersAttendanceClient({
         <div className="flex flex-wrap gap-3 items-center">
           <label className="flex flex-col gap-1 text-sm">
             <span className="text-gray-600">{ta.date}</span>
-            <input
-              type="date"
-              className="border rounded-md px-3 py-2 text-sm bg-white"
+            <WorkingDayDatePicker
               value={dateStr}
               disabled={isPending}
-              onChange={(e) =>
+              ariaLabel={ta.date}
+              onChange={(next) =>
                 startTransition(() =>
-                  router.replace(
-                    `${pathname}?date=${encodeURIComponent(e.target.value)}`
-                  )
+                  router.replace(`${pathname}?date=${encodeURIComponent(next)}`)
                 )
               }
             />

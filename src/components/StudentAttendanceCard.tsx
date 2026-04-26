@@ -17,8 +17,13 @@ const StudentAttendanceCard = async ({ id }: { id: string }) => {
     },
   });
 
-  const totalDays = attendance.length;
-  const presentDays = attendance.filter((day) => day.present).length;
+  const weekdayRows = attendance.filter((row) => {
+    const dow = row.date.getUTCDay();
+    return dow >= 1 && dow <= 5;
+  });
+
+  const totalDays = weekdayRows.length;
+  const presentDays = weekdayRows.filter((day) => day.present).length;
   const percentage =
     totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : null;
   return (

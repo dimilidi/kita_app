@@ -13,6 +13,7 @@ import {
   ZoneSchema,
 } from "./formValidationSchemas";
 import { parseDateStrToUtcRange } from "./attendanceDate";
+import { isWeekendDateStrUTC } from "./attendanceDate";
 import { announcementAccessWhere } from "./announcementVisibility";
 import { getUnreadAnnouncementCount } from "./announcementUnread";
 import { getUnreadStaffChatCount } from "./staffChatUnread";
@@ -559,6 +560,10 @@ export const createAttendance = async (
   data: AttendanceSchema
 ) => {
   try {
+    const dow = data.date.getUTCDay();
+    if (dow === 0 || dow === 6) {
+      return { success: false, error: true };
+    }
     await prisma.attendance.create({
       data: {
         date: data.date,
@@ -579,6 +584,10 @@ export const updateAttendance = async (
   data: AttendanceSchema
 ) => {
   try {
+    const dow = data.date.getUTCDay();
+    if (dow === 0 || dow === 6) {
+      return { success: false, error: true };
+    }
     await prisma.attendance.update({
       where: { id: data.id },
       data: {
@@ -626,6 +635,9 @@ export async function saveDailyAttendance({
 
     const range = parseDateStrToUtcRange(dateStr);
     if (!range) {
+      return { success: false, error: "invalidDate" };
+    }
+    if (isWeekendDateStrUTC(dateStr)) {
       return { success: false, error: "invalidDate" };
     }
     const { start, end } = range;
@@ -743,6 +755,9 @@ export async function saveDailyAttendanceForLessonMany({
     if (!range) {
       return { success: false, error: "invalidDate" };
     }
+    if (isWeekendDateStrUTC(dateStr)) {
+      return { success: false, error: "invalidDate" };
+    }
     const { start, end } = range;
 
     const ids = Array.from(new Set(studentIds.map((s) => String(s).trim()).filter(Boolean)));
@@ -833,6 +848,9 @@ export async function saveDailyAttendanceForAttendancePageFilterAll({
 
     const range = parseDateStrToUtcRange(dateStr);
     if (!range) {
+      return { success: false, error: "invalidDate" };
+    }
+    if (isWeekendDateStrUTC(dateStr)) {
       return { success: false, error: "invalidDate" };
     }
     const { start, end } = range;
@@ -941,6 +959,9 @@ export async function saveAttendanceDayDetail({
 
     const range = parseDateStrToUtcRange(dateStr);
     if (!range) {
+      return { success: false, error: "invalidDate" };
+    }
+    if (isWeekendDateStrUTC(dateStr)) {
       return { success: false, error: "invalidDate" };
     }
     const { start, end } = range;
@@ -1634,6 +1655,9 @@ export async function upsertTeacherAttendance({
     }
     const range = parseDateStrToUtcRange(dateStr);
     if (!range) {
+      return { success: false, error: "invalidDate" };
+    }
+    if (isWeekendDateStrUTC(dateStr)) {
       return { success: false, error: "invalidDate" };
     }
     const exists = await prisma.teacher.findUnique({ where: { id: teacherId } });

@@ -77,6 +77,21 @@ const SingleTeacherPage = async ({
   );
   const teacherClassIdsParam = teacherClassIds.join(",");
 
+  // Attendance % (same approach as StudentAttendanceCard)
+  const yearStart = new Date(new Date().getFullYear(), 0, 1);
+  const attendanceRows = await prisma.teacherAttendance.findMany({
+    where: { teacherId: teacher.id, date: { gte: yearStart } },
+    select: { date: true, present: true },
+  });
+  const weekdayRows = attendanceRows.filter((row) => {
+    const dow = row.date.getUTCDay();
+    return dow >= 1 && dow <= 5;
+  });
+  const totalDays = weekdayRows.length;
+  const presentDays = weekdayRows.filter((r) => r.present).length;
+  const attendancePercentage =
+    totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : null;
+
   return (
     <div className="flex-1 p-4 flex flex-col gap-4 xl:flex-row">
       {/* LEFT */}
@@ -143,7 +158,9 @@ const SingleTeacherPage = async ({
             <div className="bg-white p-3 rounded-md flex gap-3 items-start justify-start">
               <Image src="/singleAttendance.png" alt="" width={24} height={24} className="w-6 h-6"/>
               <div>
-                <h1 className="text-xl font-semibold">90%</h1>
+                <h1 className="text-xl font-semibold">
+                  {attendancePercentage !== null ? `${attendancePercentage}%` : "—"}
+                </h1>
                 <span className="text-sm text-gray-400">
                   {dict.dashboard.attendance}
                 </span>
