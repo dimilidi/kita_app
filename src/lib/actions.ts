@@ -1440,7 +1440,9 @@ export async function saveZones(zones: Record<string, string[]>) {
     for (const [zoneId, students] of Object.entries(zones)) {
       for (const studentId of students) attemptedStudentToZone.set(studentId, zoneId);
     }
-    for (const [studentId, requiredZoneId] of studentZoneByStudentId.entries()) {
+    for (const [studentId, requiredZoneId] of Array.from(
+      studentZoneByStudentId.entries()
+    )) {
       const attempted = attemptedStudentToZone.get(studentId);
       if (attempted && attempted !== "pool" && attempted !== requiredZoneId) {
         throw new Error("Cannot reassign student during active activity");
@@ -1475,13 +1477,15 @@ export async function saveZones(zones: Record<string, string[]>) {
       records.map((r) => [r.studentId, r.zoneId])
     );
 
-    const historyToCreate = Array.from(nextByStudentId.entries())
-      .filter(([studentId, nextZoneId]) => prevByStudentId.get(studentId) !== nextZoneId)
-      .map(([studentId, nextZoneId]) => ({
+    const historyToCreate: { id: string; studentId: string; zoneId: string }[] = [];
+    nextByStudentId.forEach((nextZoneId, studentId) => {
+      if (prevByStudentId.get(studentId) === nextZoneId) return;
+      historyToCreate.push({
         id: randomUUID(),
         studentId,
         zoneId: nextZoneId,
-      }));
+      });
+    });
 
     const studentsInZones = Array.from(new Set(records.map((r) => r.studentId)));
 
@@ -1520,7 +1524,9 @@ export async function saveTeacherZones(zones: Record<string, string[]>) {
     for (const [zoneId, teacherIds] of Object.entries(zones)) {
       for (const teacherId of teacherIds) attemptedTeacherToZone.set(teacherId, zoneId);
     }
-    for (const [teacherId, requiredZoneId] of teacherZoneByTeacherId.entries()) {
+    for (const [teacherId, requiredZoneId] of Array.from(
+      teacherZoneByTeacherId.entries()
+    )) {
       const attempted = attemptedTeacherToZone.get(teacherId);
       if (attempted && attempted !== "teacherPool" && attempted !== requiredZoneId) {
         throw new Error("Cannot reassign teacher during active activity");
@@ -1588,7 +1594,7 @@ export async function saveTeacherLunchGroups(groups: Record<string, string[]>) {
       );
 
     const attemptedTeacherIds = new Set(records.map((r) => r.teacherId));
-    for (const teacherId of attemptedTeacherIds) {
+    for (const teacherId of Array.from(attemptedTeacherIds)) {
       if (teacherZoneByTeacherId.has(teacherId)) {
         throw new Error("Cannot assign teacher to lunch during active activity");
       }
@@ -1639,7 +1645,7 @@ export async function saveLunchGroups(groups: Record<string, string[]>) {
       .filter((item) => validGroupIds.has(item.groupId));
 
     const attemptedStudentIds = new Set(records.map((r) => r.studentId));
-    for (const studentId of attemptedStudentIds) {
+    for (const studentId of Array.from(attemptedStudentIds)) {
       if (studentZoneByStudentId.has(studentId)) {
         throw new Error("Cannot assign student to lunch during active activity");
       }

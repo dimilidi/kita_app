@@ -51,10 +51,10 @@ export async function getEffectivePlacementNow(): Promise<EffectivePlacementNow>
   }
 
   // Override: activity
-  for (const [teacherId, zoneId] of teacherZoneByTeacherId.entries()) {
+  for (const [teacherId, zoneId] of Array.from(teacherZoneByTeacherId.entries())) {
     teacher.set(teacherId, { kind: "activity", zoneId });
   }
-  for (const [studentId, zoneId] of studentZoneByStudentId.entries()) {
+  for (const [studentId, zoneId] of Array.from(studentZoneByStudentId.entries())) {
     student.set(studentId, { kind: "activity", zoneId });
   }
 

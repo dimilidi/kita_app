@@ -100,7 +100,7 @@ export async function getCurrentPlacementNow(): Promise<Map<string, TeacherPlace
     }
   }
 
-  for (const [teacherId, zoneId] of teacherZoneByTeacherId.entries()) {
+  for (const [teacherId, zoneId] of Array.from(teacherZoneByTeacherId.entries())) {
     const meta = activeLessonByTeacherId.get(teacherId);
     placement.set(teacherId, {
       type: "activity",
