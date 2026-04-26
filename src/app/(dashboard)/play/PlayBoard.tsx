@@ -10,7 +10,7 @@ import {
 } from "@dnd-kit/core";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import PlayAreaCard, { TeacherLite } from "@/components/PlayAreaCard";
 import PlayPoolCard from "@/components/PlayPoolCard";
 import Child from "@/components/Child";
@@ -34,10 +34,6 @@ type Props = {
   initialTeacherZones?: Record<ZoneId, string[]>;
   /** Catalog + scheduled activity titles per zone (for print/PDF-style export). */
   zoneActivityNames?: Record<string, string[]>;
-  /** YYYY-MM-DD; same query as educator attendance (`?date=`). */
-  boardDateStr?: string;
-  /** True when any educator-attendance row exists for that day — list is present-only. */
-  teacherAttendanceFilterActive?: boolean;
 };
 
 function parseDragId(raw: string): { kind: "child" | "teacher"; id: string } | null {
@@ -93,13 +89,9 @@ export default function PlayBoard({
   initialZones,
   initialTeacherZones: initialTeacherZonesProp,
   zoneActivityNames = {},
-  boardDateStr: boardDateStrProp,
-  teacherAttendanceFilterActive = false,
 }: Props) {
   const pathname = usePathname();
   const router = useRouter();
-  const [dateNavPending, startDateNavTransition] = useTransition();
-  const boardDateStr = boardDateStrProp ?? todayDateStrLocal();
   const localeSegments = pathname.split("/").filter(Boolean);
   const locale =
     localeSegments[0] === "en" || localeSegments[0] === "de"
@@ -134,6 +126,21 @@ export default function PlayBoard({
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [openZone, setOpenZone] = useState<ZoneId | null>(null);
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const actionsRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!actionsOpen) return;
+    const onDown = (e: MouseEvent) => {
+      const el = actionsRef.current;
+      if (!el) return;
+      if (e.target instanceof Node && !el.contains(e.target)) {
+        setActionsOpen(false);
+      }
+    };
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, [actionsOpen]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -160,11 +167,11 @@ export default function PlayBoard({
 
   const dateLong = useMemo(
     () =>
-      new Date(`${boardDateStr}T12:00:00`).toLocaleDateString(
+      new Date(`${todayDateStrLocal()}T12:00:00`).toLocaleDateString(
         locale === "de" ? "de-DE" : "en-GB",
         { dateStyle: "long" }
       ),
-    [locale, boardDateStr]
+    [locale]
   );
 
   /** Full-board print: every zone with current placements (matches play areas list/PDF layout). */
@@ -289,73 +296,89 @@ export default function PlayBoard({
           <h1 className="hidden md:block text-lg font-semibold">
             {dict.playBoard.boardTitle}
           </h1>
-          <p className="mt-1 text-xs text-gray-600">
-            <Link
-              href={`/${locale}/list/teachers-attendance?date=${encodeURIComponent(boardDateStr)}`}
-              className="font-medium text-gray-800 underline-offset-2 hover:underline"
-            >
-              {dict.playBoard.educatorAttendanceDayLabel}: {boardDateStr}
-            </Link>
-            {" — "}
-            {teacherAttendanceFilterActive
-              ? dict.playBoard.presentEducatorsOnly
-              : dict.playBoard.noTeacherAttendanceShowingAllEducators}
-          </p>
-          <div className="mt-2 flex flex-wrap items-end gap-2">
-            <label className="flex flex-col gap-1 text-xs text-gray-600">
-              <span>{dict.forms.date}</span>
-              <input
-                type="date"
-                className="border rounded-md px-2 py-1.5 text-sm bg-white"
-                value={boardDateStr}
-                disabled={dateNavPending}
-                onChange={(e) =>
-                  startDateNavTransition(() =>
-                    router.replace(
-                      `${pathname}?date=${encodeURIComponent(e.target.value)}`
-                    )
-                  )
-                }
-              />
-            </label>
-            <button
-              type="button"
-              className="self-end h-[34px] px-2 rounded-md border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-50"
-              disabled={dateNavPending}
-              onClick={() =>
-                startDateNavTransition(() =>
-                  router.replace(
-                    `${pathname}?date=${encodeURIComponent(todayDateStrLocal())}`
-                  )
-                )
-              }
-            >
-              {dict.playBoard.today}
-            </button>
-          </div>
         </div>
         <div className="flex shrink-0 items-center gap-3 flex-wrap justify-end">
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="rounded-full border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-800 hover:bg-gray-50"
-          >
-            {dict.areasList.exportPrint}
-          </button>
           <Link
             href={`/${locale}/list/areas`}
             className="rounded-full bg-kitaYellow px-3 py-2 text-xs font-medium"
           >
             {dict.playBoard.playAreasLink}
           </Link>
-          <button
-            type="button"
-            disabled={clearingBoard}
-            onClick={() => void handleClearPlayBoard()}
-            className="rounded-full border border-amber-600/40 bg-amber-100 px-3 py-2 text-xs font-medium text-amber-950 hover:bg-amber-200/90 disabled:opacity-50"
-          >
-            {dict.playBoard.clearPlayBoard}
-          </button>
+          <div className="relative" ref={actionsRef}>
+            <button
+              type="button"
+              className="h-[36px] w-[36px] rounded-full border border-gray-300 bg-white flex items-center justify-center hover:bg-gray-50"
+              onClick={() => setActionsOpen((v) => !v)}
+              aria-label={dict.common?.actions ?? "Actions"}
+              title={dict.common?.actions ?? "Actions"}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                className="w-5 h-5 text-gray-700"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="5.5" r="1.6" fill="currentColor" />
+                <circle cx="12" cy="12" r="1.6" fill="currentColor" />
+                <circle cx="12" cy="18.5" r="1.6" fill="currentColor" />
+              </svg>
+            </button>
+
+            {actionsOpen ? (
+              <div className="absolute right-0 mt-2 w-56 rounded-md border border-gray-200 bg-white shadow-lg overflow-hidden z-50">
+                <button
+                  type="button"
+                  className="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                  onClick={() => {
+                    setActionsOpen(false);
+                    window.print();
+                  }}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="w-4 h-4"
+                    aria-hidden="true"
+                  >
+                    <path d="M6 9V3h12v6" />
+                    <rect x="6" y="14" width="12" height="7" rx="1" />
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                  </svg>
+                  <span>{dict.areasList.exportPrint}</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="w-full px-3 py-2 text-sm text-rose-700 hover:bg-rose-50 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={clearingBoard}
+                  onClick={() => {
+                    setActionsOpen(false);
+                    void handleClearPlayBoard();
+                  }}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="w-4 h-4"
+                    aria-hidden="true"
+                  >
+                    <path d="M3 6h18" />
+                    <path d="M8 6V4h8v2" />
+                    <path d="M6 6l1 16h10l1-16" />
+                    <path d="M10 11v6" />
+                    <path d="M14 11v6" />
+                  </svg>
+                  <span>{dict.playBoard.clearPlayBoard}</span>
+                </button>
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
 

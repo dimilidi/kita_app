@@ -30,13 +30,16 @@ import {
   useMemo,
   useRef,
   useState,
+  useTransition,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "@/i18n/TranslationsProvider";
 import { toast } from "react-toastify";
+import WorkingDayDatePicker from "@/components/attendance/WorkingDayDatePicker";
+import { todayDateStrLocal } from "@/lib/attendanceDate";
 
 type GroupId = string;
 
@@ -409,11 +412,32 @@ export default function LunchBoardClient({
   teacherAttendanceFilterActive = false,
 }: Props) {
   const pathname = usePathname();
+  const router = useRouter();
   const localeSegments = pathname.split("/").filter(Boolean);
   const locale = (localeSegments[0] === "en" || localeSegments[0] === "de"
     ? localeSegments[0]
     : "de") as "en" | "de";
   const dict = useTranslations();
+
+  const [dateNavPending, startDateNavTransition] = useTransition();
+  const isToday = attendanceDateStr === todayDateStrLocal();
+  const canEditDate = isToday;
+
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const actionsRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!actionsOpen) return;
+    const onDown = (e: MouseEvent) => {
+      const el = actionsRef.current;
+      if (!el) return;
+      if (e.target instanceof Node && !el.contains(e.target)) {
+        setActionsOpen(false);
+      }
+    };
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, [actionsOpen]);
 
   const [groups, setGroups] = useState<Record<GroupId, string[]>>(() => ({
     ...initialGroups,
@@ -554,6 +578,7 @@ export default function LunchBoardClient({
   };
 
   const handleClearLunchboard = async () => {
+    if (!canEditDate) return;
     if (!window.confirm(dict.lunch.clearLunchboardConfirm)) return;
     setClearingBoard(true);
     try {
@@ -578,6 +603,7 @@ export default function LunchBoardClient({
     const { active, over } = event;
     setActiveId(null);
     setDraggingSection(false);
+    if (!canEditDate) return;
 
     const fromKey = parseSectionDragId(String(active.id));
     if (fromKey) {
@@ -753,15 +779,66 @@ export default function LunchBoardClient({
               {dict.lunch.teacherAttendanceBoardNote}
             </p>
           ) : null}
+          <div className="mt-2 flex flex-wrap items-end gap-2">
+            <WorkingDayDatePicker
+              value={attendanceDateStr}
+              disabled={dateNavPending}
+              ariaLabel={dict.forms.date}
+              onChange={(next) =>
+                startDateNavTransition(() => {
+                  const current = new URLSearchParams(
+                    typeof window !== "undefined" ? window.location.search : ""
+                  );
+                  const params = new URLSearchParams();
+                  params.set("date", next);
+                  const search = current.get("search");
+                  if (search) params.set("search", search);
+                  router.replace(`${pathname}?${params.toString()}`);
+                })
+              }
+            />
+            <button
+              type="button"
+              className="self-end h-[34px] px-2 rounded-md border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
+              disabled={dateNavPending}
+              onClick={() =>
+                startDateNavTransition(() => {
+                  const current = new URLSearchParams(
+                    typeof window !== "undefined" ? window.location.search : ""
+                  );
+                  const params = new URLSearchParams();
+                  params.set("date", todayDateStrLocal());
+                  const search = current.get("search");
+                  if (search) params.set("search", search);
+                  router.replace(`${pathname}?${params.toString()}`);
+                })
+              }
+            >
+              {dict.attendancePage?.today ?? "Today"}
+            </button>
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-3 flex-wrap justify-end">
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="rounded-full border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-800 hover:bg-gray-50"
-          >
-            {lgd.printList ?? "Print"}
-          </button>
+          {!canEditDate ? (
+            <span
+              className="inline-flex items-center justify-center rounded-full border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500"
+              title="Viewing a past day"
+              aria-label="Viewing a past day"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="w-4 h-4"
+                aria-hidden="true"
+              >
+                <rect x="3" y="11" width="18" height="11" rx="2" />
+                <path d="M7 11V8a5 5 0 0 1 10 0v3" />
+              </svg>
+            </span>
+          ) : null}
           <Link
             href={`/${locale}/list/lunch-groups`}
             className="rounded-full bg-kitaYellow px-3 py-2 text-xs font-medium"
@@ -774,14 +851,83 @@ export default function LunchBoardClient({
           >
             {dict.lunch.tischsprueche}
           </Link>
-          <button
-            type="button"
-            disabled={clearingBoard}
-            onClick={() => void handleClearLunchboard()}
-            className="rounded-full border border-amber-600/40 bg-amber-100 px-3 py-2 text-xs font-medium text-amber-950 hover:bg-amber-200/90 disabled:opacity-50"
-          >
-            {dict.lunch.clearLunchboard}
-          </button>
+
+          <div className="relative" ref={actionsRef}>
+            <button
+              type="button"
+              className="h-[36px] w-[36px] rounded-full border border-gray-300 bg-white flex items-center justify-center hover:bg-gray-50"
+              onClick={() => setActionsOpen((v) => !v)}
+              aria-label={dict.common?.actions ?? "Actions"}
+              title={dict.common?.actions ?? "Actions"}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                className="w-5 h-5 text-gray-700"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="5.5" r="1.6" fill="currentColor" />
+                <circle cx="12" cy="12" r="1.6" fill="currentColor" />
+                <circle cx="12" cy="18.5" r="1.6" fill="currentColor" />
+              </svg>
+            </button>
+
+            {actionsOpen ? (
+              <div className="absolute right-0 mt-2 w-56 rounded-md border border-gray-200 bg-white shadow-lg overflow-hidden z-50">
+                <button
+                  type="button"
+                  className="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                  onClick={() => {
+                    setActionsOpen(false);
+                    window.print();
+                  }}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="w-4 h-4"
+                    aria-hidden="true"
+                  >
+                    <path d="M6 9V3h12v6" />
+                    <rect x="6" y="14" width="12" height="7" rx="1" />
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                  </svg>
+                  <span>{lgd.printList ?? "Print list"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="w-full px-3 py-2 text-sm text-rose-700 hover:bg-rose-50 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={clearingBoard || !canEditDate}
+                  onClick={() => {
+                    setActionsOpen(false);
+                    void handleClearLunchboard();
+                  }}
+                  title={!canEditDate ? "Only available for today" : undefined}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="w-4 h-4"
+                    aria-hidden="true"
+                  >
+                    <path d="M3 6h18" />
+                    <path d="M8 6V4h8v2" />
+                    <path d="M6 6l1 16h10l1-16" />
+                    <path d="M10 11v6" />
+                    <path d="M14 11v6" />
+                  </svg>
+                  <span>{dict.lunch.clearLunchboard}</span>
+                </button>
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -897,8 +1043,12 @@ export default function LunchBoardClient({
                       (c) => childVotes[c] != null
                     )}
                     maxPerGroup={group.capacity}
-                    onSelectChild={setActiveChildForVote}
+                    onSelectChild={(id) => {
+                      if (!canEditDate) return;
+                      setActiveChildForVote(id);
+                    }}
                     onVote={(tischspruchId: number) => {
+                      if (!canEditDate) return;
                       if (!activeChildForVote) return;
 
                       setChildVotes((prev) => ({

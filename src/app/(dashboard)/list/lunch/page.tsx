@@ -5,6 +5,7 @@ import {
   normalizeAttendanceDateStr,
   parseDateStrToUtcRange,
 } from "@/lib/attendanceDate";
+import { redirect } from "next/navigation";
 import {
   filterTeachersForBoard,
   getTeacherAttendanceByDate,
@@ -15,7 +16,15 @@ export default async function LunchPage({
 }: {
   searchParams: { [key: string]: string | undefined };
 }) {
-  const dateStr = normalizeAttendanceDateStr(searchParams.date);
+  // Prevent landing on weekend dates via URL.
+  const requested = searchParams.date;
+  const dateStr = normalizeAttendanceDateStr(requested);
+  if (requested && requested !== dateStr) {
+    const { search } = searchParams;
+    redirect(
+      `?date=${encodeURIComponent(dateStr)}${search ? `&search=${encodeURIComponent(search)}` : ""}`
+    );
+  }
   const dayRange = parseDateStrToUtcRange(dateStr);
 
   const attendanceForDate =
