@@ -1,6 +1,8 @@
 import prisma from "@/lib/prisma";
 import PlayBoard from "../../../play/PlayBoard";
 import { Prisma } from "@prisma/client";
+import { getEffectivePlacementNow } from "@/lib/effectivePlacementNow";
+import { getCurrentPlacementNow } from "@/lib/currentPlacementNow";
 
 type StudentWithClass = Prisma.StudentGetPayload<{
   include: { class: true };
@@ -11,6 +13,12 @@ export default async function PlayBoardPage({
 }: {
   searchParams: { [key: string]: string | undefined };
 }) {
+  const effective = await getEffectivePlacementNow();
+  const teacherPlacement = await getCurrentPlacementNow();
+  const lockedTeacherIds = Array.from(teacherPlacement.entries())
+    .filter(([, p]) => p.type === "activity")
+    .map(([id]) => id);
+
   const students: StudentWithClass[] = await prisma.student.findMany({
     include: {
       class: true,
@@ -42,16 +50,12 @@ export default async function PlayBoardPage({
     ({ activities: _activities, lessons: _lessons, ...zone }) => zone
   );
 
-  const studentZones = await prisma.studentZone.findMany();
-
   const teachersAll = await prisma.teacher.findMany({
     select: { id: true, name: true, surname: true, img: true },
     orderBy: { name: "asc" },
   });
 
   const teachers = teachersAll;
-
-  const teacherZoneRows = await prisma.teacherZone.findMany();
 
   const initialZones: Record<string, string[]> = {};
 
@@ -61,17 +65,13 @@ export default async function PlayBoardPage({
 
   initialZones["pool"] = [];
 
-  studentZones.forEach((sz) => {
-    initialZones[sz.zoneId]?.push(sz.studentId);
-  });
-
-  const placedStudents = new Set(studentZones.map((z) => z.studentId));
-
-  students.forEach((s) => {
-    if (!placedStudents.has(s.id)) {
-      initialZones.pool.push(s.id);
-    }
-  });
+  for (const s of students) {
+    const loc = effective.student.get(s.id);
+    const zid =
+      loc?.kind === "activity" || loc?.kind === "zone" ? loc.zoneId : null;
+    if (zid && initialZones[zid]) initialZones[zid].push(s.id);
+    else initialZones.pool.push(s.id);
+  }
 
   const initialTeacherZones: Record<string, string[]> = {};
   zones.forEach((z) => {
@@ -79,31 +79,42 @@ export default async function PlayBoardPage({
   });
   initialTeacherZones.teacherPool = [];
 
-  const teacherToZone = new Map<string, string>();
-  for (const row of teacherZoneRows) {
-    if (!teacherToZone.has(row.teacherId)) {
-      teacherToZone.set(row.teacherId, row.zoneId);
+  for (const t of teachers) {
+    const p = teacherPlacement.get(t.id) ?? { type: "pool", locked: false };
+    if (p.type === "activity" || p.type === "zone") {
+      const zid = p.zoneId;
+      if (zid && initialTeacherZones[zid] !== undefined) {
+        initialTeacherZones[zid].push(t.id);
+        continue;
+      }
     }
+    // lunch + pool -> show in pool on Play Board
+    initialTeacherZones.teacherPool.push(t.id);
   }
 
-  for (const t of teachers) {
-    const zid = teacherToZone.get(t.id);
-    if (zid != null && initialTeacherZones[zid] !== undefined) {
-      initialTeacherZones[zid].push(t.id);
-    } else {
-      initialTeacherZones.teacherPool.push(t.id);
+  const lockedSet = new Set(lockedTeacherIds);
+  const teachersWithBadges = teachers.map((t) => {
+    const p = teacherPlacement.get(t.id) ?? { type: "pool", locked: false };
+    if (p.type === "activity") {
+      return { ...t, subtitle: `Activity: ${p.activityName}`, readOnly: true };
     }
-  }
+    if (p.type === "lunch") {
+      // requirement: show in educator card (pool) why they aren't available
+      return { ...t, subtitle: `Lunch: ${p.groupName}` };
+    }
+    return t;
+  });
 
   return (
     <div className="p-4 print:p-0 print:overflow-visible print:h-auto print:min-h-0">
       <PlayBoard
         students={students}
-        teachers={teachers}
+        teachers={teachersWithBadges}
         zones={zones}
         initialZones={initialZones}
         initialTeacherZones={initialTeacherZones}
         zoneActivityNames={zoneActivityNames}
+        lockedTeacherIds={lockedTeacherIds}
       />
     </div>
   );

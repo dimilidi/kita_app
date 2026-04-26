@@ -34,6 +34,8 @@ type Props = {
   initialTeacherZones?: Record<ZoneId, string[]>;
   /** Catalog + scheduled activity titles per zone (for print/PDF-style export). */
   zoneActivityNames?: Record<string, string[]>;
+  /** Teacher ids locked by an active Lesson right now. */
+  lockedTeacherIds?: string[];
 };
 
 function parseDragId(raw: string): { kind: "child" | "teacher"; id: string } | null {
@@ -89,6 +91,7 @@ export default function PlayBoard({
   initialZones,
   initialTeacherZones: initialTeacherZonesProp,
   zoneActivityNames = {},
+  lockedTeacherIds = [],
 }: Props) {
   const pathname = usePathname();
   const router = useRouter();
@@ -104,6 +107,10 @@ export default function PlayBoard({
   const zoneIds = useMemo(() => zones.map((z) => z.id), [zones]);
   const studentIds = useMemo(() => students.map((s) => s.id), [students]);
   const teacherIds = useMemo(() => teachers.map((t) => t.id), [teachers]);
+  const lockedTeacherIdSet = useMemo(
+    () => new Set(lockedTeacherIds),
+    [lockedTeacherIds]
+  );
 
   const [clearingBoard, setClearingBoard] = useState(false);
 
@@ -252,6 +259,10 @@ export default function PlayBoard({
         return next;
       });
     } else {
+      if (lockedTeacherIdSet.has(entityId)) {
+        toast("Teacher is currently in an activity and cannot be moved");
+        return;
+      }
       setTeacherZonesState((prev) => {
         const from = Object.keys(prev).find((z) =>
           prev[z].includes(entityId)
@@ -263,7 +274,15 @@ export default function PlayBoard({
           [from]: prev[from].filter((t) => t !== entityId),
           [toZone]: [...(prev[toZone] ?? []), entityId],
         };
-        void saveTeacherZones(next);
+        saveTeacherZones(next).catch((e) => {
+          const msg =
+            e instanceof Error ? e.message : typeof e === "string" ? e : "";
+          if (msg.includes("Cannot reassign teacher during active activity")) {
+            toast("Teacher is currently in an activity and cannot be moved");
+          } else {
+            toast(dict.forms.somethingWentWrong);
+          }
+        });
         return next;
       });
     }
@@ -384,7 +403,13 @@ export default function PlayBoard({
 
       <DndContext
         sensors={sensors}
-        onDragStart={({ active }) => setActiveId(String(active.id))}
+        onDragStart={({ active }) => {
+          const parsed = parseDragId(String(active.id));
+          if (parsed?.kind === "teacher" && lockedTeacherIdSet.has(parsed.id)) {
+            return;
+          }
+          setActiveId(String(active.id));
+        }}
         onDragEnd={onDragEnd}
       >
         <div className="space-y-6">

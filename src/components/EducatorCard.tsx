@@ -36,7 +36,19 @@ export default function EducatorCard({
       />
       <span className="text-xs font-semibold leading-tight mt-1">{name}</span>
       {subtitle ? (
-        <span className="text-[10px] text-gray-500">{subtitle}</span>
+        <span
+          className={clsx(
+            "text-[10px] mt-1 px-1.5 py-0.5 rounded-full border",
+            subtitle.startsWith("Activity:")
+              ? "text-amber-800 bg-amber-50 border-amber-200"
+              : subtitle.startsWith("Lunch:")
+                ? "text-purple-700 bg-purple-50 border-purple-200"
+                : "text-gray-500 bg-gray-50 border-gray-200"
+          )}
+          title={subtitle}
+        >
+          {subtitle}
+        </span>
       ) : null}
     </>
   );

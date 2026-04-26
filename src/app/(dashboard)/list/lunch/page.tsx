@@ -10,6 +10,7 @@ import {
   filterTeachersForBoard,
   getTeacherAttendanceByDate,
 } from "@/lib/teacherAttendance";
+import { getCurrentPlacementNow } from "@/lib/currentPlacementNow";
 
 export default async function LunchPage({
   searchParams,
@@ -112,10 +113,28 @@ export default async function LunchPage({
     orderBy: { name: "asc" },
   });
 
+  const placementNow = await getCurrentPlacementNow();
+  const lockedTeacherIds = new Set(
+    Array.from(placementNow.entries())
+      .filter(([, p]) => p.type === "activity")
+      .map(([id]) => id)
+  );
+
   const teacherAttendanceRows =
     dayRange != null ? await getTeacherAttendanceByDate(dateStr) : [];
 
-  const teachers = filterTeachersForBoard(teachersAll, teacherAttendanceRows);
+  const teachersBase = filterTeachersForBoard(teachersAll, teacherAttendanceRows);
+  const teachers = teachersBase.map((t) => {
+    const p = placementNow.get(t.id) ?? { type: "pool", locked: false };
+    if (p.type === "activity") {
+      return { ...t, subtitle: `Activity: ${p.activityName}`, readOnly: true };
+    }
+    // requirement: in lunch board educator pool, show zone name if they are in a play zone
+    if (p.type === "zone") {
+      return { ...t, subtitle: p.zoneName };
+    }
+    return t;
+  });
   const teacherAttendanceFilterActive = teacherAttendanceRows.length > 0;
 
   const teacherLunchRows = await prisma.teacherLunchGroup.findMany();
@@ -136,7 +155,10 @@ export default async function LunchPage({
 
   for (const t of teachers) {
     const gid = teacherToGroup.get(t.id);
-    if (gid != null && initialTeacherLunchGroups[gid] !== undefined) {
+    if (lockedTeacherIds.has(t.id)) {
+      // Activity overrides everything: always keep visible in pool, non-draggable.
+      initialTeacherLunchGroups.teacherPool.push(t.id);
+    } else if (gid != null && initialTeacherLunchGroups[gid] !== undefined) {
       initialTeacherLunchGroups[gid].push(t.id);
     } else {
       initialTeacherLunchGroups.teacherPool.push(t.id);

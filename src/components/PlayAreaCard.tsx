@@ -10,6 +10,10 @@ export type TeacherLite = {
   name: string;
   surname: string;
   img?: string | null;
+  /** Optional UI hint (e.g. "In activity"). */
+  subtitle?: string;
+  /** When true, educator chip is non-draggable. */
+  readOnly?: boolean;
 };
 
 type ZoneLike = {
@@ -88,6 +92,8 @@ export default function PlayAreaCard({
                     id={t.id}
                     name={`${t.name} ${t.surname}`}
                     img={t.img}
+                    subtitle={t.subtitle}
+                    readOnly={t.readOnly}
                   />
                 );
               })}

@@ -92,6 +92,8 @@ export default function PlayPoolCard({
                   id={t.id}
                   name={`${t.name} ${t.surname}`}
                   img={t.img}
+                  subtitle={t.subtitle}
+                  readOnly={t.readOnly}
                 />
               );
             })}
