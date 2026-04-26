@@ -1020,7 +1020,7 @@ export async function saveDailyAttendanceForAttendancePageFilterAll({
     // For each lesson group, update existing rows and create missing ones.
     // We chunk student ids a bit to avoid overly large queries.
     const CHUNK = 500;
-    for (const [lessonId, allStudentIds] of Array.from(byLesson.entries())) {
+    for (const [lessonId, allStudentIds] of Array.from(byLesson)) {
       const ids = Array.from(new Set<string>(allStudentIds.map((s) => String(s))));
       for (let i = 0; i < ids.length; i += CHUNK) {
         const chunkIds: string[] = ids.slice(i, i + CHUNK);
@@ -1440,9 +1440,7 @@ export async function saveZones(zones: Record<string, string[]>) {
     for (const [zoneId, students] of Object.entries(zones)) {
       for (const studentId of students) attemptedStudentToZone.set(studentId, zoneId);
     }
-    for (const [studentId, requiredZoneId] of Array.from(
-      studentZoneByStudentId.entries()
-    )) {
+    for (const [studentId, requiredZoneId] of Array.from(studentZoneByStudentId)) {
       const attempted = attemptedStudentToZone.get(studentId);
       if (attempted && attempted !== "pool" && attempted !== requiredZoneId) {
         throw new Error("Cannot reassign student during active activity");
@@ -1524,9 +1522,7 @@ export async function saveTeacherZones(zones: Record<string, string[]>) {
     for (const [zoneId, teacherIds] of Object.entries(zones)) {
       for (const teacherId of teacherIds) attemptedTeacherToZone.set(teacherId, zoneId);
     }
-    for (const [teacherId, requiredZoneId] of Array.from(
-      teacherZoneByTeacherId.entries()
-    )) {
+    for (const [teacherId, requiredZoneId] of Array.from(teacherZoneByTeacherId)) {
       const attempted = attemptedTeacherToZone.get(teacherId);
       if (attempted && attempted !== "teacherPool" && attempted !== requiredZoneId) {
         throw new Error("Cannot reassign teacher during active activity");
