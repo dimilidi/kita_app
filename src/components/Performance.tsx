@@ -136,6 +136,8 @@ type PerformanceProps = {
   title?: string; // ✅ optional title
   emptyText?: string;
   hideTitleWhenEmpty?: boolean;
+  /** When true, do not render the internal title row (parent supplies layout/title). */
+  omitHeader?: boolean;
 };
 
 const Performance = ({
@@ -143,6 +145,7 @@ const Performance = ({
   title,
   emptyText,
   hideTitleWhenEmpty = false,
+  omitHeader = false,
 }: PerformanceProps) => {
   const dict = useTranslations();
   const d = dict.dashboard as Record<string, string> | undefined;
@@ -155,9 +158,21 @@ const Performance = ({
   const total = data.reduce((s, x) => s + x.value, 0);
   const hasData = total > 0;
 
+  const showInnerHeader =
+    !omitHeader && !(hideTitleWhenEmpty && !hasData);
+  const bodyHeightClass = showInnerHeader
+    ? "h-[calc(100%-2.5rem)]"
+    : "h-full min-h-[12rem]";
+
   return (
-    <div className="bg-white p-4 rounded-md h-80 relative">
-      {!(hideTitleWhenEmpty && !hasData) && (
+    <div
+      className={
+        omitHeader
+          ? "flex flex-1 flex-col min-h-0 w-full h-full"
+          : "bg-white p-4 rounded-md h-80 relative"
+      }
+    >
+      {showInnerHeader && (
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">
             {title ?? d?.timeByPlayArea ?? "Time by Play Area"}
@@ -167,11 +182,13 @@ const Performance = ({
       )}
 
       {!hasData ? (
-        <div className="flex h-[calc(100%-2.5rem)] items-center justify-center text-sm text-gray-500 px-4 text-center">
+        <div
+          className={`flex ${bodyHeightClass} items-center justify-center text-sm text-gray-500 px-4 text-center`}
+        >
           {emptyText ?? d?.noAreaData ?? "No area data"}
         </div>
       ) : (
-        <div className="h-[calc(100%-2.5rem)] min-h-0 w-full pt-2">
+        <div className={`${bodyHeightClass} min-h-0 w-full ${showInnerHeader ? "pt-2" : ""}`}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart margin={{ top: 4, right: 4, left: 4, bottom: 4 }}>
               <Tooltip

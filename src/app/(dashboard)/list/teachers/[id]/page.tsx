@@ -1,7 +1,8 @@
 import Announcements from "@/components/Announcements";
 import BigCalendarContainer from "@/components/BigCalenderContainer";
 import FormContainer from "@/components/FormContainer";
-import Performance from "@/components/Performance";
+import TeacherPlannedAreaCard from "@/components/TeacherPlannedAreaCard";
+import { getCurrentPlacementNow } from "@/lib/currentPlacementNow";
 import prisma from "@/lib/prisma";
 import Image from "next/image";
 import Link from "next/link";
@@ -38,38 +39,52 @@ const SingleTeacherPage = async ({
     return notFound();
   }
 
-  // Get teacher lessons and aggregate by play area.
-  const lessons = await (prisma as any).lesson.findMany({
-    where: { teacherId: teacher.id },
-    select: {
-      zoneId: true,
-      classId: true,
-    },
-  }) as { zoneId: string; classId: number }[];
+  const yearStart = new Date(new Date().getFullYear(), 0, 1);
 
-  const groupCount = Array.from(new Set(lessons.map((l) => l.classId))).length;
+  const [lessons, placementMap, attendanceRows] = await Promise.all([
+    prisma.lesson.findMany({
+      where: { teacherId: teacher.id },
+      select: {
+        zoneId: true,
+        classId: true,
+        startTime: true,
+        endTime: true,
+      },
+    }),
+    getCurrentPlacementNow(),
+    prisma.teacherAttendance.findMany({
+      where: { teacherId: teacher.id, date: { gte: yearStart } },
+      select: { date: true, present: true },
+    }),
+  ]);
 
-  const zoneIds = Array.from(new Set(lessons.map((l) => l.zoneId)));
-  const zones = await prisma.zone.findMany({
-    where: { id: { in: zoneIds } },
-    select: { id: true, name: true },
-  });
-  const zoneNameById = new Map(zones.map((z) => [z.id, z.name]));
+  const groupCount = new Set(lessons.map((l) => l.classId)).size;
 
-  const byZone = new Map<string, number>();
-
+  const msByZoneId = new Map<string, number>();
   for (const lesson of lessons) {
-    const zoneName = zoneNameById.get(lesson.zoneId);
-    if (!zoneName) continue;
-    byZone.set(zoneName, (byZone.get(zoneName) ?? 0) + 1);
+    const ms = lesson.endTime.getTime() - lesson.startTime.getTime();
+    if (!Number.isFinite(ms) || ms <= 0) continue;
+    msByZoneId.set(lesson.zoneId, (msByZoneId.get(lesson.zoneId) ?? 0) + ms);
   }
 
-  // ✅ Convert to chart data
-  const activities = Array.from(byZone.entries())
-    .map(([name, value]) => ({
-      name,
+  const zoneIdsForChart = Array.from(msByZoneId.keys());
+  const zonesForChart =
+    zoneIdsForChart.length > 0
+      ? await prisma.zone.findMany({
+          where: { id: { in: zoneIdsForChart } },
+          select: { id: true, name: true },
+        })
+      : [];
+  const zoneNameById = new Map(zonesForChart.map((z) => [z.id, z.name]));
+
+  const distinctZonesWithLessons = new Set(lessons.map((l) => l.zoneId)).size;
+
+  const activities = Array.from(msByZoneId)
+    .map(([zoneId, value]) => ({
+      name: zoneNameById.get(zoneId) ?? zoneId,
       value,
     }))
+    .filter((a) => a.value > 0)
     .sort((a, b) => b.value - a.value);
 
   const teacherClassIds = Array.from(new Set(lessons.map((l) => l.classId))).sort(
@@ -77,12 +92,33 @@ const SingleTeacherPage = async ({
   );
   const teacherClassIdsParam = teacherClassIds.join(",");
 
-  // Attendance % (same approach as StudentAttendanceCard)
-  const yearStart = new Date(new Date().getFullYear(), 0, 1);
-  const attendanceRows = await prisma.teacherAttendance.findMany({
-    where: { teacherId: teacher.id, date: { gte: yearStart } },
-    select: { date: true, present: true },
-  });
+  const placement = placementMap.get(teacher.id) ?? { type: "pool", locked: false };
+  let currentZoneDisplay: string;
+  let currentBadgeLabel = "";
+
+  const d = dict.dashboard;
+  const badgePlay = d.currentAreaBadgePlayArea ?? "Play area";
+  const badgeActivity = d.currentAreaBadgeActivity ?? "Activity";
+  const badgePool = d.currentZonePool ?? "Pool";
+  const badgeLunch = d.currentZoneLunchPrefix ?? "Lunch";
+
+  if (placement.type === "pool") {
+    currentZoneDisplay = badgePool;
+    currentBadgeLabel = badgePool;
+  } else if (placement.type === "zone") {
+    currentZoneDisplay = placement.zoneName;
+    currentBadgeLabel = badgePlay;
+  } else if (placement.type === "lunch") {
+    currentZoneDisplay = `${badgeLunch}: ${placement.groupName}`;
+    currentBadgeLabel = badgeLunch;
+  } else {
+    const zoneRow = await prisma.zone.findUnique({
+      where: { id: placement.zoneId },
+      select: { name: true },
+    });
+    currentZoneDisplay = zoneRow?.name ?? placement.activityName;
+    currentBadgeLabel = badgeActivity;
+  }
   const weekdayRows = attendanceRows.filter((row) => {
     const dow = row.date.getUTCDay();
     return dow >= 1 && dow <= 5;
@@ -176,7 +212,7 @@ const SingleTeacherPage = async ({
               <Image src="/singleBranch.png" alt="" width={24} height={24} className="w-6 h-6" />
               <div>
                 <h1 className="text-xl font-semibold">
-                  {activities.length}
+                  {distinctZonesWithLessons}
                 </h1>
                 <span className="text-sm text-gray-400">
                   {dict.menu.areas}
@@ -249,14 +285,22 @@ const SingleTeacherPage = async ({
           </div>
         </div>
 
-        {/* ✅ PERFORMANCE CHART */}
-        {activities.length === 0 ? (
-          <div className="bg-white p-4 rounded-md h-80 flex items-center justify-center text-sm text-gray-500 text-center">
-            No data available to be displayed
-          </div>
-        ) : (
-          <Performance activities={activities} title={dict.dashboard.timeByPlayArea} />
-        )}
+        <TeacherPlannedAreaCard
+          plannedActivities={activities}
+          currentAreaLabel={currentZoneDisplay}
+          currentBadgeLabel={currentBadgeLabel}
+          strings={{
+            plannedTitle:
+              dict.dashboard.plannedTimeByPlayArea ?? "Planned Time by Play Area",
+            plannedMenuLabel: dict.dashboard.plannedAreas ?? "Planned Areas",
+            currentTitle: dict.dashboard.currentArea ?? "Current Area",
+            overflowAria: dict.dashboard.chartMenu?.overflowAria ?? "Options",
+            noPlanned:
+              dict.dashboard.noPlannedActivityTime ??
+              dict.dashboard.noAreaData ??
+              "No planned activity time",
+          }}
+        />
 
         <Announcements />
       </div>

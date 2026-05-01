@@ -3,6 +3,12 @@ import PlayBoard from "../../../play/PlayBoard";
 import { Prisma } from "@prisma/client";
 import { getEffectivePlacementNow } from "@/lib/effectivePlacementNow";
 import { getCurrentPlacementNow } from "@/lib/currentPlacementNow";
+import { normalizeAttendanceDateStr } from "@/lib/attendanceDate";
+import { redirect } from "next/navigation";
+import {
+  filterTeachersForBoard,
+  getTeacherAttendanceByDate,
+} from "@/lib/teacherAttendance";
 
 type StudentWithClass = Prisma.StudentGetPayload<{
   include: { class: true };
@@ -13,6 +19,13 @@ export default async function PlayBoardPage({
 }: {
   searchParams: { [key: string]: string | undefined };
 }) {
+  // Match Attendance/Lunch Board: optional ?date=YYYY-MM-DD with weekend clamping.
+  const requested = searchParams.date;
+  const dateStr = normalizeAttendanceDateStr(requested);
+  if (requested && requested !== dateStr) {
+    redirect(`?date=${encodeURIComponent(dateStr)}`);
+  }
+
   const effective = await getEffectivePlacementNow();
   const teacherPlacement = await getCurrentPlacementNow();
   const lockedTeacherIds = Array.from(teacherPlacement.entries())
@@ -55,7 +68,8 @@ export default async function PlayBoardPage({
     orderBy: { name: "asc" },
   });
 
-  const teachers = teachersAll;
+  const teacherAttendanceRows = await getTeacherAttendanceByDate(dateStr);
+  const teachers = filterTeachersForBoard(teachersAll, teacherAttendanceRows);
 
   const initialZones: Record<string, string[]> = {};
 
@@ -92,7 +106,6 @@ export default async function PlayBoardPage({
     initialTeacherZones.teacherPool.push(t.id);
   }
 
-  const lockedSet = new Set(lockedTeacherIds);
   const teachersWithBadges = teachers.map((t) => {
     const p = teacherPlacement.get(t.id) ?? { type: "pool", locked: false };
     if (p.type === "activity") {
@@ -115,6 +128,8 @@ export default async function PlayBoardPage({
         initialTeacherZones={initialTeacherZones}
         zoneActivityNames={zoneActivityNames}
         lockedTeacherIds={lockedTeacherIds}
+        attendanceDateStr={dateStr}
+        teacherAttendanceFilterActive={teacherAttendanceRows.length > 0}
       />
     </div>
   );
