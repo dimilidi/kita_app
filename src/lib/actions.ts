@@ -1180,6 +1180,99 @@ export async function saveAttendanceDayDetail({
   }
 }
 
+/** Marks a child as picked up (once) for the calendar day. */
+export async function markAttendancePickedUp({
+  studentId,
+  dateStr,
+  pickedUpAt,
+}: {
+  studentId: string;
+  dateStr: string;
+  /** HH:mm (from client local time) */
+  pickedUpAt: string;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { userId, role } = getAuthData();
+    if (role !== "admin" && role !== "teacher") {
+      return { success: false, error: "forbidden" };
+    }
+
+    const range = parseDateStrToUtcRange(dateStr);
+    if (!range) {
+      return { success: false, error: "invalidDate" };
+    }
+    if (isWeekendDateStrUTC(dateStr)) {
+      return { success: false, error: "invalidDate" };
+    }
+
+    if (!/^\d{2}:\d{2}$/.test(pickedUpAt)) {
+      return { success: false, error: "invalidPickupTime" };
+    }
+
+    const { start, end } = range;
+
+    const student = await prisma.student.findUnique({
+      where: { id: studentId },
+      select: { id: true, classId: true },
+    });
+    if (!student) {
+      return { success: false, error: "notFound" };
+    }
+
+    if (role === "teacher") {
+      const teachesHere = await prisma.lesson.findFirst({
+        where: {
+          classId: student.classId,
+          teacherId: userId!,
+        },
+        select: { id: true },
+      });
+      if (!teachesHere) {
+        return { success: false, error: "forbidden" };
+      }
+    }
+
+    const lesson = await prisma.lesson.findFirst({
+      where: { classId: student.classId },
+      orderBy: { startTime: "asc" },
+      select: { id: true },
+    });
+    if (!lesson) {
+      return { success: false, error: "noLesson" };
+    }
+
+    const existing = await prisma.attendance.findFirst({
+      where: {
+        studentId,
+        lessonId: lesson.id,
+        date: { gte: start, lt: end },
+      },
+      select: { id: true, present: true, actualPickupTime: true },
+    });
+
+    // Requirement: attendance record must exist and present/absent logic stays untouched.
+    if (!existing) {
+      return { success: false, error: "notFound" };
+    }
+    if (!existing.present) {
+      return { success: false, error: "absent" };
+    }
+    if (existing.actualPickupTime) {
+      return { success: false, error: "alreadyPickedUp" };
+    }
+
+    await prisma.attendance.update({
+      where: { id: existing.id },
+      data: { actualPickupTime: pickedUpAt },
+    });
+
+    return { success: true };
+  } catch (err) {
+    console.log(err);
+    return { success: false, error: "server" };
+  }
+}
+
 /** Full attendance rows for PDF export (all matching students, not paginated). */
 export async function getAttendanceRowsForPdfExport(
   dateStr: string,

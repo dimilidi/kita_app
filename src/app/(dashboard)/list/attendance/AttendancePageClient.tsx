@@ -2,6 +2,7 @@
 
 import {
   getAttendanceRowsForPdfExport,
+  markAttendancePickedUp,
   saveAttendanceDayDetail,
   saveDailyAttendance,
   saveDailyAttendanceForLessonMany,
@@ -27,6 +28,7 @@ export default function AttendancePageClient({
   summary,
   classes,
   canEdit,
+  canRevertAbsent,
 }: {
   dateStr: string;
   classId: string;
@@ -36,6 +38,7 @@ export default function AttendancePageClient({
   summary: { total: number; presentCount: number; absentCount: number };
   classes: { id: number; name: string }[];
   canEdit: boolean;
+  canRevertAbsent: boolean;
 }) {
   const dict = useTranslations();
   const router = useRouter();
@@ -44,26 +47,13 @@ export default function AttendancePageClient({
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const actionsRef = useRef<HTMLDivElement | null>(null);
-  const [pickupModalStudentId, setPickupModalStudentId] = useState<string | null>(null);
-  const [pickupDraft, setPickupDraft] = useState("");
-  const [isSavingPickup, setIsSavingPickup] = useState(false);
   const [localRows, setLocalRows] = useState<AttendanceRow[]>(rows);
-  const selectAllRef = useRef<HTMLInputElement | null>(null);
   const [globalPresentOverride, setGlobalPresentOverride] = useState<boolean | null>(null);
 
   useEffect(() => {
     setLocalRows(rows);
     setGlobalPresentOverride(null);
   }, [rows]);
-
-  useEffect(() => {
-    if (!pickupModalStudentId) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setPickupModalStudentId(null);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [pickupModalStudentId]);
 
   useEffect(() => {
     if (!actionsOpen) return;
@@ -87,18 +77,13 @@ export default function AttendancePageClient({
 
   const { total, presentCount, absentCount } = summary;
 
-  const editableRows = localRows.filter((r) => !!r.lessonId);
-  const editableCount = editableRows.length;
-  const presentEditableCount = editableRows.reduce((acc, r) => acc + (r.present ? 1 : 0), 0);
-  const allEditablePresent = editableCount > 0 && presentEditableCount === editableCount;
-  const noneEditablePresent = presentEditableCount === 0;
-  const someEditablePresent = presentEditableCount > 0 && !allEditablePresent;
-
-  useEffect(() => {
-    const el = selectAllRef.current;
-    if (!el) return;
-    el.indeterminate = someEditablePresent && !allEditablePresent;
-  }, [someEditablePresent, allEditablePresent]);
+  // Status is derived from existing DB fields (no new persisted status).
+  type DerivedStatus = "absent" | "checked_in" | "checked_out";
+  const deriveStatus = (r: AttendanceRow): DerivedStatus => {
+    if (!r.present) return "absent";
+    if (r.actualPickupTime) return "checked_out";
+    return "checked_in";
+  };
 
   // Keep summary cards responsive to optimistic local changes.
   // Summary values are for all filtered students (not just the current page),
@@ -139,30 +124,6 @@ export default function AttendancePageClient({
     startTransition(() => router.refresh());
   };
 
-  const onToggleAll = async (nextPresent: boolean) => {
-    if (!canEdit) return;
-    setGlobalPresentOverride(nextPresent);
-    // optimistic update for rows that have a lesson
-    setLocalRows((prev) =>
-      prev.map((r) => (r.lessonId ? { ...r, present: nextPresent } : r))
-    );
-
-    // Persist: on page 1, this checkbox should update *all* matching students.
-    // On other pages the checkbox is hidden, but keep this logic robust.
-    const resGlobal = await saveDailyAttendanceForAttendancePageFilterAll({
-      dateStr,
-      classIdParam: classId,
-      present: nextPresent,
-    });
-    if (!resGlobal.success) {
-      toast(dict.attendancePage.saveFailed);
-      setLocalRows(rows);
-      setGlobalPresentOverride(null);
-      return;
-    }
-    startTransition(() => router.refresh());
-  };
-
   const onSaveNoteBlur = async (studentId: string, note: string) => {
     if (!canEdit) return;
     const res = await saveAttendanceDayDetail({
@@ -177,29 +138,26 @@ export default function AttendancePageClient({
     startTransition(() => router.refresh());
   };
 
-  const savePickupOverride = async (studentId: string, value: string) => {
+  const nowHHmm = () => {
+    const d = new Date();
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    return `${hh}:${mm}`;
+  };
+
+  const onMarkPickedUp = async (studentId: string) => {
     if (!canEdit) return;
-    const res = await saveAttendanceDayDetail({
-      studentId,
-      dateStr,
-      actualPickupTime: value.trim() ? value.trim() : null,
-    });
+    const pickedUpAt = nowHHmm();
+    setLocalRows((prev) =>
+      prev.map((r) => (r.id === studentId ? { ...r, actualPickupTime: pickedUpAt } : r))
+    );
+    const res = await markAttendancePickedUp({ studentId, dateStr, pickedUpAt });
     if (!res.success) {
       toast(dict.attendancePage.detailSaveFailed);
+      setLocalRows(rows);
       return;
     }
     startTransition(() => router.refresh());
-  };
-
-  const onSavePickupModal = async () => {
-    if (!pickupModalStudentId || isSavingPickup) return;
-    setIsSavingPickup(true);
-    try {
-      await savePickupOverride(pickupModalStudentId, pickupDraft);
-      setPickupModalStudentId(null);
-    } finally {
-      setIsSavingPickup(false);
-    }
   };
 
   const onDownloadPdf = async () => {
@@ -588,26 +546,10 @@ export default function AttendancePageClient({
                   {dict.attendancePage.group}
                 </th>
                 <th className="p-3 sm:p-4 font-medium text-gray-700 min-w-[8.5rem] align-top">
-                  <div className="flex flex-col gap-2">
-                    <span>{dict.attendancePage.status}</span>
-                    {canEdit && page === 1 ? (
-                      <label className="inline-flex items-center gap-2 font-normal">
-                        <input
-                          ref={selectAllRef}
-                          type="checkbox"
-                          className="h-4 w-4"
-                          disabled={isPending || editableCount === 0}
-                          checked={editableCount > 0 && allEditablePresent}
-                          onChange={(e) => onToggleAll(e.target.checked)}
-                          aria-label={dict.common.selectAll ?? "Select all"}
-                          title={dict.common.selectAll ?? "Select all"}
-                        />
-                        <span className="text-xs text-gray-700">
-                          {someEditablePresent ? "Mixed" : allEditablePresent ? "All Present" : "All Absent"}
-                        </span>
-                      </label>
-                    ) : null}
-                  </div>
+                  {dict.attendancePage.status}
+                </th>
+                <th className="p-3 sm:p-4 font-medium text-gray-700 min-w-[10rem] align-top">
+                  {dict.common.actions ?? "Actions"}
                 </th>
                 <th className="p-3 sm:p-4 font-medium text-gray-700 min-w-[10rem] align-top">
                   {dict.forms.pickupTime}
@@ -620,13 +562,30 @@ export default function AttendancePageClient({
             <tbody>
               {localRows.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-gray-500">
+                  <td colSpan={6} className="p-8 text-center text-gray-500">
                     {dict.attendancePage.noStudents}
                   </td>
                 </tr>
               ) : (
                 localRows.map((row) => {
                   const disabled = !canEdit || !row.lessonId || isPending;
+                  const status = deriveStatus(row);
+                  const statusLabel =
+                    status === "absent"
+                      ? (dict.attendancePage.statusAbsent ?? "Absent")
+                      : status === "checked_in"
+                        ? (dict.attendancePage.statusCheckedIn ?? "Checked-in")
+                        : (dict.attendancePage.statusCheckedOut ?? "Checked-out");
+                  const statusClass =
+                    status === "absent"
+                      ? "border-rose-200 bg-rose-50 text-rose-700"
+                      : status === "checked_in"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        : "border-kitaSky/30 bg-kitaSkyLight text-gray-700";
+
+                  const canCheckIn = !disabled && status === "absent";
+                  const canCheckOut = !disabled && status === "checked_in";
+                  const canSetAbsent = canRevertAbsent && !disabled && status !== "absent";
                   return (
                     <tr
                       key={`${row.id}-${dateStr}`}
@@ -639,55 +598,52 @@ export default function AttendancePageClient({
                         {row.className}
                       </td>
                       <td className="p-3 sm:p-4">
-                        <label className="inline-flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            className="h-4 w-4"
-                            disabled={disabled}
-                            checked={row.present}
-                            onChange={(e) => onToggle(row.id, e.target.checked)}
-                          />
-                          <span className="text-xs text-gray-700">
-                            {row.present
-                              ? dict.dashboard.present
-                              : dict.dashboard.absent}
-                          </span>
-                        </label>
+                        <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClass}`}>
+                          {statusLabel}
+                        </span>
                         {!row.lessonId && (
                           <p className="text-xs text-amber-600 mt-1">
                             {dict.attendancePage.noLessonShort}
                           </p>
                         )}
                       </td>
+                      <td className="p-3 sm:p-4 align-middle">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            className="inline-flex items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={!canCheckIn}
+                            onClick={() => onToggle(row.id, true)}
+                          >
+                            {dict.attendancePage.actionCheckIn ?? "Check in"}
+                          </button>
+                          <button
+                            type="button"
+                            className="inline-flex items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={!canCheckOut}
+                            title={dict.attendancePage.pickupMarkTooltip ?? undefined}
+                            aria-label={dict.attendancePage.pickupMarkTooltip ?? undefined}
+                            onClick={() => onMarkPickedUp(row.id)}
+                          >
+                            {dict.attendancePage.actionCheckOut ?? "Check out"}
+                          </button>
+                          {canRevertAbsent ? (
+                            <button
+                              type="button"
+                              className="inline-flex items-center justify-center rounded-md border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                              disabled={!canSetAbsent}
+                              onClick={() => onToggle(row.id, false)}
+                            >
+                              {dict.attendancePage.actionSetAbsent ?? "Set absent"}
+                            </button>
+                          ) : null}
+                        </div>
+                      </td>
                       <td className="p-3 sm:p-4 align-middle min-w-0">
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-medium text-xs text-gray-900 tabular-nums min-w-0 break-words">
-                            {row.displayPickupTime ?? "—"}
+                            {row.actualPickupTime ?? "—"}
                           </span>
-                          {canEdit && row.lessonId ? (
-                            <button
-                              type="button"
-                              className="shrink-0 w-8 h-8 inline-flex items-center justify-center rounded-md border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-50"
-                              disabled={disabled}
-                              aria-label={dict.attendancePage.pickupEditModalTitle}
-                              title={dict.attendancePage.pickupEditModalTitle}
-                              onClick={() => {
-                                setPickupModalStudentId(row.id);
-                                setPickupDraft(row.actualPickupTime ?? "");
-                              }}
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 24 24"
-                                className="w-4 h-4 text-gray-600"
-                                aria-hidden
-                              >
-                                <circle cx="12" cy="5.5" r="1.5" fill="currentColor" />
-                                <circle cx="12" cy="12" r="1.5" fill="currentColor" />
-                                <circle cx="12" cy="18.5" r="1.5" fill="currentColor" />
-                              </svg>
-                            </button>
-                          ) : null}
                         </div>
                       </td>
                       <td className="p-3 sm:p-4 align-top min-w-0">
@@ -716,72 +672,6 @@ export default function AttendancePageClient({
           <Pagination page={page} count={count} />
         </div>
       </div>
-      {pickupModalStudentId ? (
-        (() => {
-          const modalRow = localRows.find((r) => r.id === pickupModalStudentId);
-          if (!modalRow) return null;
-          return (
-            <div
-              className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 print:hidden"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="pickup-modal-title"
-              onClick={() => !isSavingPickup && setPickupModalStudentId(null)}
-            >
-              <div
-                className="bg-white rounded-lg shadow-xl border border-gray-200 p-4 w-full max-w-sm"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <h3
-                  id="pickup-modal-title"
-                  className="text-sm font-semibold text-gray-900 mb-3"
-                >
-                  {dict.attendancePage.pickupEditModalTitle}
-                </h3>
-                <p className="text-xs text-gray-500 mb-3">
-                  <span className="text-gray-600">
-                    {dict.attendancePage.defaultPickupLabel}:
-                  </span>{" "}
-                  <span className="font-medium text-gray-800 tabular-nums">
-                    {modalRow.defaultPickupTime ?? "—"}
-                  </span>
-                </p>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                  {dict.attendancePage.pickupOverride}
-                </label>
-                <input
-                  type="time"
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm ring-[1.5px] ring-transparent focus:ring-kitaSky focus:border-kitaSky outline-none"
-                  value={pickupDraft}
-                  onChange={(e) => setPickupDraft(e.target.value)}
-                  disabled={isSavingPickup}
-                />
-                <p className="text-[10px] text-gray-400 mt-2">
-                  {dict.attendancePage.pickupOverrideHint}
-                </p>
-                <div className="flex justify-end gap-2 mt-4">
-                  <button
-                    type="button"
-                    className="px-3 py-1.5 text-sm rounded-md border border-gray-300 bg-white hover:bg-gray-50"
-                    disabled={isSavingPickup}
-                    onClick={() => setPickupModalStudentId(null)}
-                  >
-                    {dict.common.close}
-                  </button>
-                  <button
-                    type="button"
-                    className="px-3 py-1.5 text-sm rounded-md bg-kitaYellow hover:opacity-90"
-                    disabled={isSavingPickup}
-                    onClick={() => onSavePickupModal()}
-                  >
-                    {dict.common.save}
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })()
-      ) : null}
 
       <style jsx global>{`
         @media print {

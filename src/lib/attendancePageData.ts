@@ -183,6 +183,7 @@ export async function loadAttendancePageData(opts: LoadOpts) {
   }
 
   const canEdit = role === "admin" || role === "teacher";
+  const canRevertAbsent = role === "admin";
 
   return {
     dateStr,
@@ -197,5 +198,6 @@ export async function loadAttendancePageData(opts: LoadOpts) {
     },
     classesForFilter,
     canEdit,
+    canRevertAbsent,
   };
 }

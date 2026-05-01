@@ -503,11 +503,16 @@
     "noLessonShort": "Add an activity for this group first.",
     "saveFailed": "Could not save attendance. Please try again.",
     "notes": "Notes",
-    "pickupOverride": "Override pickup (today)",
-    "pickupEditModalTitle": "Edit pickup time",
-    "defaultPickupLabel": "Default (agreed)",
-    "pickupOverrideHint": "Leave empty to use the default pickup time for today.",
-    "detailSaveFailed": "Could not save note or pickup time.",
+    "statusAbsent": "Absent",
+    "statusCheckedIn": "Checked-in",
+    "statusCheckedOut": "Checked-out",
+    "actionCheckIn": "Check in",
+    "actionCheckOut": "Check out",
+    "actionSetAbsent": "Set absent",
+    "pickedUpAction": "Picked up",
+    "pickedUpLabel": "Picked up",
+    "pickupMarkTooltip": "Mark child as picked up",
+    "detailSaveFailed": "Could not save changes.",
     "downloadPdf": "Download PDF"
   }
 }

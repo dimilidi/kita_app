@@ -39,6 +39,7 @@ export default async function AttendancePage({
       summary={data.summary}
       classes={data.classesForFilter}
       canEdit={data.canEdit && !isWeekendDateStrUTC(data.dateStr)}
+      canRevertAbsent={data.canRevertAbsent && !isWeekendDateStrUTC(data.dateStr)}
     />
   );
 }

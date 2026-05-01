@@ -503,11 +503,16 @@
     "noLessonShort": "Zuerst eine Aktivität für diese Gruppe anlegen.",
     "saveFailed": "Anwesenheit konnte nicht gespeichert werden. Bitte erneut versuchen.",
     "notes": "Notizen",
-    "pickupOverride": "Abholzeit (heute)",
-    "pickupEditModalTitle": "Abholzeit bearbeiten",
-    "defaultPickupLabel": "Vereinbart",
-    "pickupOverrideHint": "Leer lassen, um die vereinbarte Abholzeit für heute zu nutzen.",
-    "detailSaveFailed": "Notiz oder Abholzeit konnte nicht gespeichert werden.",
+    "statusAbsent": "Abwesend",
+    "statusCheckedIn": "Eingecheckt",
+    "statusCheckedOut": "Abgeholt",
+    "actionCheckIn": "Check-in",
+    "actionCheckOut": "Check-out",
+    "actionSetAbsent": "Als abwesend",
+    "pickedUpAction": "Abgeholt",
+    "pickedUpLabel": "Abgeholt",
+    "pickupMarkTooltip": "Kind als abgeholt markieren",
+    "detailSaveFailed": "Änderungen konnten nicht gespeichert werden.",
     "downloadPdf": "PDF herunterladen"
   }
 }
