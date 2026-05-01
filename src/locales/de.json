@@ -432,7 +432,8 @@
     "playAreasLink": "Spielbereiche",
     "clearPlayBoard": "Spieltafel leeren",
     "clearPlayBoardConfirm": "Spieltafel leeren? Alle Kinder und Erzieher werden in die Pools zurückgelegt.",
-    "clearPlayBoardSuccess": "Spieltafel wurde geleert."
+    "clearPlayBoardSuccess": "Spieltafel wurde geleert.",
+    "lunchNowBadge": "Jetzt Mittagessen"
   },
   "zones": {
     "educators": "Erzieher",

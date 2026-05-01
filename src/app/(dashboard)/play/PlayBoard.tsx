@@ -47,6 +47,12 @@ type Props = {
   attendanceDateStr: string;
   /** True when any educator-attendance row exists — only educators marked present load into the board. */
   teacherAttendanceFilterActive?: boolean;
+  /** Visual only: students whose scheduled lunch slot matches current time. */
+  lunchNowByStudentId?: Record<string, boolean>;
+  /** Zone id whose name matches Essraum (detected on server). */
+  essraumZoneId?: string | null;
+  /** During 11:30–13:00 local — highlight Essraum card (visual only). */
+  highlightEssraum?: boolean;
 };
 
 function parseDragId(raw: string): { kind: "child" | "teacher"; id: string } | null {
@@ -105,6 +111,9 @@ export default function PlayBoard({
   lockedTeacherIds = [],
   attendanceDateStr,
   teacherAttendanceFilterActive = false,
+  lunchNowByStudentId = {},
+  essraumZoneId = null,
+  highlightEssraum = false,
 }: Props) {
   const pathname = usePathname();
   const router = useRouter();
@@ -490,6 +499,8 @@ export default function PlayBoard({
               ids={zonesState.pool ?? []}
               getStudent={getStudent}
               getTeacher={getTeacher}
+              lunchNowByStudentId={lunchNowByStudentId}
+              lunchNowLabel={dict.playBoard.lunchNowBadge}
             />
             <PlayPoolCard
               droppableId="teacherPool"
@@ -510,6 +521,8 @@ export default function PlayBoard({
           getStudent={getStudent}
           getTeacher={getTeacher}
           onClose={() => setOpenZone(null)}
+          lunchNowByStudentId={lunchNowByStudentId}
+          lunchNowLabel={dict.playBoard.lunchNowBadge}
         />
       )}
 
@@ -521,6 +534,8 @@ export default function PlayBoard({
             name={`${activeStudent.name} ${activeStudent.surname}`}
             img={activeStudent.img ?? undefined}
             group={activeStudent.class.name}
+            lunchNow={!!lunchNowByStudentId[activeStudent.id]}
+            lunchNowLabel={dict.playBoard.lunchNowBadge}
           />
         ) : activeTeacher ? (
           <EducatorCard

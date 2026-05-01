@@ -40,6 +40,7 @@ export default async function AttendancePage({
 
   return (
     <AttendancePageClient
+      viewerRole={data.viewerRole}
       dateStr={data.dateStr}
       classId={data.classIdParam}
       rows={data.rows}

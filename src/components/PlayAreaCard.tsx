@@ -1,5 +1,6 @@
 "use client";
 
+import clsx from "clsx";
 import { useDroppable } from "@dnd-kit/core";
 import Child from "@/components/Child";
 import EducatorCard from "@/components/EducatorCard";
@@ -29,6 +30,10 @@ type Props = {
   getStudent: (id: string) => StudentWithClass | undefined;
   getTeacher: (id: string) => TeacherLite | undefined;
   onOpen?: (zoneId: string) => void;
+  /** Highlight Essraum (or similar) during the lunch service window — visual only. */
+  essraumHighlight?: boolean;
+  lunchNowByStudentId?: Record<string, boolean>;
+  lunchNowLabel?: string;
 };
 
 function getZoneStatusColor(count: number, max?: number) {
@@ -46,6 +51,9 @@ export default function PlayAreaCard({
   getStudent,
   getTeacher,
   onOpen,
+  essraumHighlight = false,
+  lunchNowByStudentId = {},
+  lunchNowLabel,
 }: Props) {
   const kidDrop = useDroppable({ id: `kid-zone-${zone.id}` });
   const teacherDrop = useDroppable({ id: `teacher-zone-${zone.id}` });
@@ -54,7 +62,11 @@ export default function PlayAreaCard({
 
   return (
     <div
-      className={`flex flex-col rounded-xl border shadow-sm transition-colors flex-shrink-0 w-[280px] h-[420px] ${zoneColor}`}
+      className={clsx(
+        "flex flex-col rounded-xl border shadow-sm transition-colors flex-shrink-0 w-[280px] h-[420px]",
+        zoneColor,
+        essraumHighlight && "ring-2 ring-amber-400 ring-offset-2 ring-offset-white"
+      )}
     >
       <button
         type="button"
@@ -123,6 +135,8 @@ export default function PlayAreaCard({
                   name={`${student.name} ${student.surname}`}
                   img={student.img ?? undefined}
                   group={student.class.name}
+                  lunchNow={!!lunchNowByStudentId[student.id]}
+                  lunchNowLabel={lunchNowLabel}
                 />
               );
             })}

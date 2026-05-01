@@ -28,29 +28,38 @@ const ParentPage = async () => {
   const range = parseDateStrToUtcRange(dateStr);
   const effective = await getEffectivePlacementNow();
 
-  const [zones, lunchGroups, lessonsByClass, attendanceRows] = await Promise.all([
-    prisma.zone.findMany({ select: { id: true, name: true } }),
-    (prisma as any).lunchGroupEntity.findMany({ select: { id: true, name: true } }),
-    prisma.lesson.findMany({
-      where: { classId: { in: Array.from(new Set(students.map((s) => s.classId))) } },
-      orderBy: { startTime: "asc" },
-      select: { id: true, classId: true },
-    }),
-    range
-      ? prisma.attendance.findMany({
-          where: {
-            date: { gte: range.start, lt: range.end },
-            studentId: { in: students.map((s) => s.id) },
-          },
-          select: { studentId: true, lessonId: true, present: true, actualPickupTime: true },
-        })
-      : [],
-  ]);
+  const [zones, lunchGroups, studentLunchLinks, lessonsByClass, attendanceRows] =
+    await Promise.all([
+      prisma.zone.findMany({ select: { id: true, name: true } }),
+      prisma.lunchGroupEntity.findMany({ select: { id: true, name: true } }),
+      prisma.studentLunchGroup.findMany({
+        where: { studentId: { in: students.map((s) => s.id) } },
+        select: { studentId: true, groupId: true },
+      }),
+      prisma.lesson.findMany({
+        where: { classId: { in: Array.from(new Set(students.map((s) => s.classId))) } },
+        orderBy: { startTime: "asc" },
+        select: { id: true, classId: true },
+      }),
+      range
+        ? prisma.attendance.findMany({
+            where: {
+              date: { gte: range.start, lt: range.end },
+              studentId: { in: students.map((s) => s.id) },
+            },
+            select: { studentId: true, lessonId: true, present: true, actualPickupTime: true },
+          })
+        : [],
+    ]);
 
   const zoneNameById = new Map(zones.map((z) => [z.id, z.name]));
-  const lunchNameById = new Map(
-    (lunchGroups as Array<{ id: string; name: string }>).map((g) => [g.id, g.name])
-  );
+  const lunchNameById = new Map(lunchGroups.map((g) => [g.id, g.name]));
+  const lunchGroupNameByStudentId = new Map<string, string>();
+  for (const link of studentLunchLinks) {
+    if (!link.groupId) continue;
+    const label = lunchNameById.get(link.groupId) ?? link.groupId;
+    lunchGroupNameByStudentId.set(link.studentId, label);
+  }
   const firstLessonIdByClass = new Map<number, number>();
   for (const l of lessonsByClass) {
     if (!firstLessonIdByClass.has(l.classId)) firstLessonIdByClass.set(l.classId, l.id);
@@ -93,10 +102,7 @@ const ParentPage = async () => {
               loc.kind === "zone" || loc.kind === "activity"
                 ? (loc.zoneId ? zoneNameById.get(loc.zoneId) ?? loc.zoneId : null)
                 : null;
-            const lunchGroupLabel =
-              loc.kind === "lunch"
-                ? (loc.groupId ? lunchNameById.get(loc.groupId) ?? loc.groupId : null)
-                : null;
+            const lunchGroupLabel = lunchGroupNameByStudentId.get(student.id) ?? null;
 
             return (
               <ParentChildStatusCardClient

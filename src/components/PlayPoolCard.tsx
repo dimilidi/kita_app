@@ -21,6 +21,8 @@ type Props = {
   suspendDroppables?: boolean;
   /** Lunch board: fill resizable section; scroll areas grow with section height */
   fillSectionHeight?: boolean;
+  lunchNowByStudentId?: Record<string, boolean>;
+  lunchNowLabel?: string;
 };
 
 export default function PlayPoolCard({
@@ -33,6 +35,8 @@ export default function PlayPoolCard({
   dragHandle,
   suspendDroppables = false,
   fillSectionHeight = false,
+  lunchNowByStudentId = {},
+  lunchNowLabel,
 }: Props) {
   const { setNodeRef, isOver } = useDroppable({
     id: droppableId,
@@ -80,6 +84,8 @@ export default function PlayPoolCard({
                   name={`${s.name} ${s.surname}`}
                   img={s.img ?? undefined}
                   group={s.class.name}
+                  lunchNow={!!lunchNowByStudentId[s.id]}
+                  lunchNowLabel={lunchNowLabel}
                 />
               );
             })

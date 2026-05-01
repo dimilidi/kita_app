@@ -10,6 +10,9 @@ type ChildProps = {
   name?: string;
   img?: string;
   group?: string;
+  /** Visual only: child’s scheduled lunch slot is active (does not move them). */
+  lunchNow?: boolean;
+  lunchNowLabel?: string;
   voted?: boolean;
   inGroup?: boolean;
   onSelect?: (id: string) => void;
@@ -23,6 +26,8 @@ export default function Child({
   name,
   img,
   group,
+  lunchNow = false,
+  lunchNowLabel,
   voted = false,
   inGroup = false,
   onSelect,
@@ -63,6 +68,12 @@ export default function Child({
       <span className="text-xs font-semibold leading-tight mt-1">
         {name}
       </span>
+
+      {lunchNow && lunchNowLabel ? (
+        <span className="mt-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold leading-none text-amber-950">
+          {lunchNowLabel}
+        </span>
+      ) : null}
 
       {/* Group badge */}
       {group && (

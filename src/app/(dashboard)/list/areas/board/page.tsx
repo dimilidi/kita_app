@@ -9,6 +9,12 @@ import {
   filterTeachersForBoard,
   getTeacherAttendanceByDate,
 } from "@/lib/teacherAttendance";
+import {
+  isNowWithinLunchSlot,
+  isWithinOverallLunchServiceWindow,
+  lunchSlotForLunchGroupEntity,
+  type LunchSlotKey,
+} from "@/lib/lunchSchedule";
 
 type StudentWithClass = Prisma.StudentGetPayload<{
   include: { class: true };
@@ -28,6 +34,7 @@ export default async function PlayBoardPage({
 
   const effective = await getEffectivePlacementNow();
   const teacherPlacement = await getCurrentPlacementNow();
+  const now = new Date();
   const lockedTeacherIds = Array.from(teacherPlacement.entries())
     .filter(([, p]) => p.type === "activity")
     .map(([id]) => id);
@@ -62,6 +69,39 @@ export default async function PlayBoardPage({
   const zones = zonesFull.map(
     ({ activities: _activities, lessons: _lessons, ...zone }) => zone
   );
+
+  const studentIds = students.map((s) => s.id);
+  const [studentLunchLinks, lunchGroupEntities] = await Promise.all([
+    studentIds.length
+      ? prisma.studentLunchGroup.findMany({
+          where: { studentId: { in: studentIds } },
+          select: { studentId: true, groupId: true },
+        })
+      : [],
+    prisma.lunchGroupEntity.findMany({
+      select: { id: true, name: true, color: true },
+    }),
+  ]);
+
+  const slotByGroupId = new Map<string, LunchSlotKey>();
+  for (const g of lunchGroupEntities) {
+    const slot = lunchSlotForLunchGroupEntity({ name: g.name, color: g.color });
+    if (slot) slotByGroupId.set(g.id, slot);
+  }
+
+  const lunchNowByStudentId: Record<string, boolean> = {};
+  for (const link of studentLunchLinks) {
+    if (!link.groupId) continue;
+    const slot = slotByGroupId.get(link.groupId);
+    if (slot && isNowWithinLunchSlot(slot, now)) {
+      lunchNowByStudentId[link.studentId] = true;
+    }
+  }
+
+  const essraumZoneId =
+    zones.find((z) => /essraum/i.test(z.name.trim()))?.id ?? null;
+  const highlightEssraum =
+    essraumZoneId != null && isWithinOverallLunchServiceWindow(now);
 
   const teachersAll = await prisma.teacher.findMany({
     select: { id: true, name: true, surname: true, img: true },
@@ -130,6 +170,9 @@ export default async function PlayBoardPage({
         lockedTeacherIds={lockedTeacherIds}
         attendanceDateStr={dateStr}
         teacherAttendanceFilterActive={teacherAttendanceRows.length > 0}
+        lunchNowByStudentId={lunchNowByStudentId}
+        essraumZoneId={essraumZoneId}
+        highlightEssraum={highlightEssraum}
       />
     </div>
   );

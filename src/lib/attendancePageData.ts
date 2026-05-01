@@ -213,6 +213,7 @@ export async function loadAttendancePageData(opts: LoadOpts) {
   const canRevertAbsent = role === "admin";
 
   return {
+    viewerRole: role,
     dateStr,
     classIdParam,
     rows: pageRows,

@@ -432,7 +432,8 @@
     "playAreasLink": "Play areas",
     "clearPlayBoard": "Clear Play Board",
     "clearPlayBoardConfirm": "Clear the play board? All children and educators will be moved back to the pools.",
-    "clearPlayBoardSuccess": "Play board cleared."
+    "clearPlayBoardSuccess": "Play board cleared.",
+    "lunchNowBadge": "Lunch now"
   },
   "zones": {
     "educators": "Educators",

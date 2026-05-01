@@ -5,6 +5,7 @@ import {
   markAttendancePickedUp,
   saveAttendanceDayDetail,
   saveDailyAttendance,
+  sendParentMessageToKindergartenEmail,
 } from "@/lib/actions";
 import Pagination from "@/components/Pagination";
 import WorkingDayDatePicker from "@/components/attendance/WorkingDayDatePicker";
@@ -17,10 +18,12 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useTransition, useState } from "react";
 import { toast } from "react-toastify";
 import type { AttendanceRow } from "./types";
+import { Mail, UserX } from "lucide-react";
 
 export type { AttendanceRow };
 
 export default function AttendancePageClient({
+  viewerRole,
   dateStr,
   classId,
   rows,
@@ -31,6 +34,7 @@ export default function AttendancePageClient({
   canEdit,
   canRevertAbsent,
 }: {
+  viewerRole: string | null;
   dateStr: string;
   classId: string;
   rows: AttendanceRow[];
@@ -58,6 +62,13 @@ export default function AttendancePageClient({
   const [notesModalStudentId, setNotesModalStudentId] = useState<string | null>(null);
   const [notesDraft, setNotesDraft] = useState("");
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [parentAbsenceStudentId, setParentAbsenceStudentId] = useState<string | null>(null);
+  const [parentAbsenceNote, setParentAbsenceNote] = useState("");
+  const [parentAbsenceSending, setParentAbsenceSending] = useState(false);
+  const [parentMessageStudentId, setParentMessageStudentId] = useState<string | null>(null);
+  const [parentSubject, setParentSubject] = useState("");
+  const [parentMessage, setParentMessage] = useState("");
+  const [parentMessageSending, setParentMessageSending] = useState(false);
 
   useEffect(() => {
     setLocalRows(rows);
@@ -71,6 +82,17 @@ export default function AttendancePageClient({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [notesModalStudentId]);
+
+  useEffect(() => {
+    if (!parentAbsenceStudentId && !parentMessageStudentId) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (parentAbsenceStudentId) setParentAbsenceStudentId(null);
+      if (parentMessageStudentId) setParentMessageStudentId(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [parentAbsenceStudentId, parentMessageStudentId]);
 
   useEffect(() => {
     if (!actionsOpen) return;
@@ -191,6 +213,59 @@ export default function AttendancePageClient({
     const hh = String(d.getHours()).padStart(2, "0");
     const mm = String(d.getMinutes()).padStart(2, "0");
     return `${hh}:${mm}`;
+  };
+
+  const todayStr = () => new Date().toLocaleDateString("en-CA");
+
+  const onSendParentAbsenceEmail = async (studentId: string, studentName: string) => {
+    if (parentAbsenceSending) return;
+    setParentAbsenceSending(true);
+    try {
+      const note = parentAbsenceNote.trim();
+      const lines = [`The child will be absent today.`, `Date: ${todayStr()}`];
+      if (note) lines.push("", `Note: ${note}`);
+      const res = await sendParentMessageToKindergartenEmail({
+        studentId,
+        subject: `Absence report: ${studentName} (${todayStr()})`,
+        message: lines.join("\n"),
+      });
+      if (!res.ok) {
+        toast(dict.attendancePage.detailSaveFailed);
+        return;
+      }
+      toast(dict.dashboard.absenceReportedSuccess ?? "Absence reported successfully");
+      setParentAbsenceStudentId(null);
+      setParentAbsenceNote("");
+      if (pathname) {
+        // no-op; parent action sends email only
+      }
+    } finally {
+      setParentAbsenceSending(false);
+    }
+  };
+
+  const onSendParentMessageEmail = async (studentId: string) => {
+    if (parentMessageSending) return;
+    const trimmed = parentMessage.trim();
+    if (!trimmed) return;
+    setParentMessageSending(true);
+    try {
+      const res = await sendParentMessageToKindergartenEmail({
+        studentId,
+        subject: parentSubject.trim() ? parentSubject.trim() : undefined,
+        message: trimmed,
+      });
+      if (!res.ok) {
+        toast(dict.attendancePage.detailSaveFailed);
+        return;
+      }
+      toast(dict.dashboard.messageSentSuccess ?? "Message sent.");
+      setParentMessageStudentId(null);
+      setParentSubject("");
+      setParentMessage("");
+    } finally {
+      setParentMessageSending(false);
+    }
   };
 
   const onMarkPickedUp = async (studentId: string) => {
@@ -645,6 +720,7 @@ export default function AttendancePageClient({
                 </tr>
               ) : (
                 localRows.map((row) => {
+                  const isParentView = viewerRole === "parent";
                   const disabled = !canEdit || !row.lessonId || isPending;
                   const status = deriveStatus(row);
                   const statusLabel =
@@ -664,6 +740,7 @@ export default function AttendancePageClient({
                   const canCheckOut = !disabled && status === "checked_in";
                   const canSetAbsent = canRevertAbsent && !disabled && status !== "absent";
                   const canNotes = canEdit && !!row.lessonId;
+                  const canParentReportAbsence = isParentView && status === "absent";
                   return (
                     <tr
                       key={`${row.id}-${dateStr}`}
@@ -716,92 +793,128 @@ export default function AttendancePageClient({
                       </td>
                       <td className="p-3 sm:p-4 align-middle">
                         <div className="flex flex-wrap items-center gap-2">
-                          <button
-                            type="button"
-                            className="w-7 h-7 flex items-center justify-center rounded-full bg-kitaYellow hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:opacity-40"
-                            disabled={!canCheckIn}
-                            title={dict.attendancePage.actionCheckIn ?? "Check in"}
-                            aria-label={dict.attendancePage.actionCheckIn ?? "Check in"}
-                            onClick={() => onToggle(row.id, true)}
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              className="w-4 h-4 text-gray-800"
-                              aria-hidden
-                            >
-                              <path d="M20 6 9 17l-5-5" />
-                            </svg>
-                          </button>
-                          <button
-                            type="button"
-                            className="w-7 h-7 flex items-center justify-center rounded-full bg-kitaSky hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:opacity-40"
-                            disabled={!canCheckOut}
-                            title={dict.attendancePage.actionCheckOut ?? "Check out"}
-                            aria-label={dict.attendancePage.actionCheckOut ?? "Check out"}
-                            onClick={() => onMarkPickedUp(row.id)}
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              className="w-4 h-4 text-gray-800"
-                              aria-hidden
-                            >
-                              <circle cx="12" cy="12" r="9" />
-                              <path d="M12 7v5l3 2" />
-                            </svg>
-                          </button>
-                          {canRevertAbsent ? (
+                          {isParentView ? (
                             <button
                               type="button"
-                              className="w-7 h-7 flex items-center justify-center rounded-full bg-kitaPurpleLight hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:opacity-40"
-                              disabled={!canSetAbsent}
-                              title={dict.attendancePage.actionSetAbsent ?? "Set absent"}
-                              aria-label={dict.attendancePage.actionSetAbsent ?? "Set absent"}
-                              onClick={() => onToggle(row.id, false)}
+                              className="w-7 h-7 flex items-center justify-center rounded-full bg-kitaYellow hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:opacity-40"
+                              disabled={!canParentReportAbsence || parentAbsenceSending || parentMessageSending}
+                              title={dict.dashboard.reportAbsence ?? "Report absence"}
+                              aria-label={dict.dashboard.reportAbsence ?? "Report absence"}
+                              onClick={() => {
+                                if (!canParentReportAbsence) return;
+                                setParentAbsenceStudentId(row.id);
+                                setParentAbsenceNote("");
+                              }}
                             >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                className="w-4 h-4 text-gray-800"
-                                aria-hidden
+                              <UserX className="w-4 h-4 text-gray-800" aria-hidden />
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                className="w-7 h-7 flex items-center justify-center rounded-full bg-kitaYellow hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:opacity-40"
+                                disabled={!canCheckIn}
+                                title={dict.attendancePage.actionCheckIn ?? "Check in"}
+                                aria-label={dict.attendancePage.actionCheckIn ?? "Check in"}
+                                onClick={() => onToggle(row.id, true)}
                               >
-                                <path d="M18 6 6 18M6 6l12 12" />
-                              </svg>
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  className="w-4 h-4 text-gray-800"
+                                  aria-hidden
+                                >
+                                  <path d="M20 6 9 17l-5-5" />
+                                </svg>
+                              </button>
+                              <button
+                                type="button"
+                                className="w-7 h-7 flex items-center justify-center rounded-full bg-kitaSky hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:opacity-40"
+                                disabled={!canCheckOut}
+                                title={dict.attendancePage.actionCheckOut ?? "Check out"}
+                                aria-label={dict.attendancePage.actionCheckOut ?? "Check out"}
+                                onClick={() => onMarkPickedUp(row.id)}
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  className="w-4 h-4 text-gray-800"
+                                  aria-hidden
+                                >
+                                  <circle cx="12" cy="12" r="9" />
+                                  <path d="M12 7v5l3 2" />
+                                </svg>
+                              </button>
+                              {canRevertAbsent ? (
+                                <button
+                                  type="button"
+                                  className="w-7 h-7 flex items-center justify-center rounded-full bg-kitaPurpleLight hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:opacity-40"
+                                  disabled={!canSetAbsent}
+                                  title={dict.attendancePage.actionSetAbsent ?? "Set absent"}
+                                  aria-label={dict.attendancePage.actionSetAbsent ?? "Set absent"}
+                                  onClick={() => onToggle(row.id, false)}
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    className="w-4 h-4 text-gray-800"
+                                    aria-hidden
+                                  >
+                                    <path d="M18 6 6 18M6 6l12 12" />
+                                  </svg>
+                                </button>
+                              ) : null}
+                              <button
+                                type="button"
+                                className="w-7 h-7 flex items-center justify-center rounded-full bg-white ring-1 ring-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
+                                disabled={!canNotes || disabled}
+                                title={dict.attendancePage.notesTooltip ?? dict.attendancePage.notes}
+                                aria-label={dict.attendancePage.notesTooltip ?? dict.attendancePage.notes}
+                                onClick={() => {
+                                  setNotesModalStudentId(row.id);
+                                  setNotesDraft(row.note ?? "");
+                                }}
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  className="w-4 h-4 text-gray-800"
+                                  aria-hidden
+                                >
+                                  <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+                                </svg>
+                              </button>
+                            </>
+                          )}
+
+                          {isParentView ? (
+                            <button
+                              type="button"
+                              className="w-7 h-7 flex items-center justify-center rounded-full bg-white ring-1 ring-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
+                              disabled={parentAbsenceSending || parentMessageSending}
+                              title={dict.dashboard.sendMessageKindergarten ?? "Message kindergarten"}
+                              aria-label={dict.dashboard.sendMessageKindergarten ?? "Message kindergarten"}
+                              onClick={() => {
+                                setParentMessageStudentId(row.id);
+                                setParentSubject("");
+                                setParentMessage("");
+                              }}
+                            >
+                              <Mail className="w-4 h-4 text-gray-800" aria-hidden />
                             </button>
                           ) : null}
-                          <button
-                            type="button"
-                            className="w-7 h-7 flex items-center justify-center rounded-full bg-white ring-1 ring-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
-                            disabled={!canNotes || disabled}
-                            title={dict.attendancePage.notesTooltip ?? dict.attendancePage.notes}
-                            aria-label={dict.attendancePage.notesTooltip ?? dict.attendancePage.notes}
-                            onClick={() => {
-                              setNotesModalStudentId(row.id);
-                              setNotesDraft(row.note ?? "");
-                            }}
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              className="w-4 h-4 text-gray-800"
-                              aria-hidden
-                            >
-                              <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
-                            </svg>
-                          </button>
                         </div>
                       </td>
                     </tr>
@@ -854,6 +967,119 @@ export default function AttendancePageClient({
                 onClick={() => void onSaveNotesModal()}
               >
                 {dict.common.save}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {parentAbsenceStudentId ? (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 print:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="parent-absence-modal-title"
+          onClick={() => !parentAbsenceSending && setParentAbsenceStudentId(null)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl border border-gray-200 p-4 w-full max-w-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="parent-absence-modal-title" className="text-sm font-semibold text-gray-900 mb-3">
+              {dict.dashboard.absenceReportTitle ?? dict.dashboard.reportAbsence ?? "Report absence"}
+            </h3>
+            <p className="text-xs text-gray-600 mb-3 tabular-nums">{todayStr()}</p>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">
+              {dict.dashboard.absenceOptionalNote ?? "Optional note"}
+            </label>
+            <textarea
+              className="w-full min-h-[6rem] border border-gray-300 rounded-md px-3 py-2 text-sm ring-[1.5px] ring-transparent focus:ring-kitaSky focus:border-kitaSky outline-none"
+              value={parentAbsenceNote}
+              onChange={(e) => setParentAbsenceNote(e.target.value)}
+              disabled={parentAbsenceSending}
+              placeholder="(optional)"
+            />
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                type="button"
+                className="px-3 py-1.5 text-sm rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-60"
+                disabled={parentAbsenceSending}
+                onClick={() => setParentAbsenceStudentId(null)}
+              >
+                {dict.common.close}
+              </button>
+              <button
+                type="button"
+                className="px-3 py-1.5 text-sm rounded-md bg-kitaYellow hover:opacity-90 disabled:opacity-60"
+                disabled={parentAbsenceSending}
+                onClick={() => {
+                  const row = localRows.find((r) => r.id === parentAbsenceStudentId);
+                  const fullName = row ? `${row.name} ${row.surname}` : parentAbsenceStudentId;
+                  void onSendParentAbsenceEmail(parentAbsenceStudentId, fullName);
+                }}
+              >
+                {parentAbsenceSending
+                  ? (dict.dashboard.absenceSending ?? dict.dashboard.sending ?? "Sending…")
+                  : (dict.dashboard.absenceSend ?? "Send")}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {parentMessageStudentId ? (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 print:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="parent-message-modal-title"
+          onClick={() => !parentMessageSending && setParentMessageStudentId(null)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl border border-gray-200 p-4 w-full max-w-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="parent-message-modal-title" className="text-sm font-semibold text-gray-900 mb-3">
+              {dict.dashboard.messageKindergartenTitle ?? dict.dashboard.sendMessageKindergarten ?? "Message kindergarten"}
+            </h3>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">
+              {dict.dashboard.messageSubject ?? "Subject (optional)"}
+            </label>
+            <input
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm ring-[1.5px] ring-transparent focus:ring-kitaSky focus:border-kitaSky outline-none mb-3"
+              value={parentSubject}
+              onChange={(e) => setParentSubject(e.target.value)}
+              disabled={parentMessageSending}
+              placeholder={dict.dashboard.messageSubject ?? "Subject (optional)"}
+            />
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">
+              {dict.dashboard.messageBody ?? "Message"}
+            </label>
+            <textarea
+              className="w-full min-h-[7rem] border border-gray-300 rounded-md px-3 py-2 text-sm ring-[1.5px] ring-transparent focus:ring-kitaSky focus:border-kitaSky outline-none"
+              value={parentMessage}
+              onChange={(e) => setParentMessage(e.target.value)}
+              disabled={parentMessageSending}
+              placeholder={dict.dashboard.messageBody ?? "Message"}
+            />
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                type="button"
+                className="px-3 py-1.5 text-sm rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-60"
+                disabled={parentMessageSending}
+                onClick={() => setParentMessageStudentId(null)}
+              >
+                {dict.common.close}
+              </button>
+              <button
+                type="button"
+                className="px-3 py-1.5 text-sm rounded-md bg-kitaYellow hover:opacity-90 disabled:opacity-60"
+                disabled={parentMessageSending || !parentMessage.trim()}
+                onClick={() => void onSendParentMessageEmail(parentMessageStudentId)}
+              >
+                {parentMessageSending
+                  ? (dict.dashboard.sending ?? "Sending…")
+                  : (dict.dashboard.send ?? "Send")}
               </button>
             </div>
           </div>

@@ -13,6 +13,8 @@ type Props = {
   getStudent: (id: string) => StudentWithClass | undefined;
   getTeacher: (id: string) => TeacherLite | undefined;
   onClose: () => void;
+  lunchNowByStudentId?: Record<string, boolean>;
+  lunchNowLabel?: string;
 };
 
 export default function ZonePanel({
@@ -22,6 +24,8 @@ export default function ZonePanel({
   getStudent,
   getTeacher,
   onClose,
+  lunchNowByStudentId = {},
+  lunchNowLabel,
 }: Props) {
   const dict = useTranslations();
 
@@ -91,6 +95,8 @@ export default function ZonePanel({
                   name={`${student.name} ${student.surname}`}
                   img={student.img ?? undefined}
                   group={student.class.name}
+                  lunchNow={!!lunchNowByStudentId[student.id]}
+                  lunchNowLabel={lunchNowLabel}
                 />
               );
             })}

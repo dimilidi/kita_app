@@ -15,25 +15,24 @@ export type EffectivePlacementNow = {
 };
 
 /**
- * Computes effective "where is this person right now?" with priority:
- * Activity zone (derived from active Lesson)
- * else Lunch group (stored)
- * else Play zone (stored)
+ * Computes effective play/activity placement only (manual StudentZone + Lesson-derived activity).
+ * Lunch group assignment does NOT override zone/activity — educators move children manually on the play board.
+ *
+ * Priority:
+ * - Activity zone (derived from active Lesson)
+ * - else Play zone (stored StudentZone)
  */
 export async function getEffectivePlacementNow(): Promise<EffectivePlacementNow> {
-  const [{ teacherZoneByTeacherId, studentZoneByStudentId }, studentZones, teacherZones, studentLunch, teacherLunch] =
+  const [{ teacherZoneByTeacherId, studentZoneByStudentId }, studentZones, teacherZones] =
     await Promise.all([
       getActiveActivityAssignmentsNow(),
       prisma.studentZone.findMany({ select: { studentId: true, zoneId: true } }),
       prisma.teacherZone.findMany({ select: { teacherId: true, zoneId: true } }),
-      prisma.studentLunchGroup.findMany({ select: { studentId: true, groupId: true } }),
-      prisma.teacherLunchGroup.findMany({ select: { teacherId: true, groupId: true } }),
     ]);
 
   const student = new Map<string, EffectiveLocation>();
   const teacher = new Map<string, EffectiveLocation>();
 
-  // Base: zone
   for (const z of studentZones) {
     student.set(z.studentId, { kind: "zone", zoneId: z.zoneId });
   }
@@ -41,16 +40,6 @@ export async function getEffectivePlacementNow(): Promise<EffectivePlacementNow>
     teacher.set(z.teacherId, { kind: "zone", zoneId: z.zoneId });
   }
 
-  // Override: lunch
-  for (const l of studentLunch) {
-    if (!l.groupId) continue;
-    student.set(l.studentId, { kind: "lunch", groupId: l.groupId });
-  }
-  for (const l of teacherLunch) {
-    teacher.set(l.teacherId, { kind: "lunch", groupId: l.groupId });
-  }
-
-  // Override: activity
   for (const [teacherId, zoneId] of Array.from(teacherZoneByTeacherId.entries())) {
     teacher.set(teacherId, { kind: "activity", zoneId });
   }
@@ -60,4 +49,3 @@ export async function getEffectivePlacementNow(): Promise<EffectivePlacementNow>
 
   return { student, teacher };
 }
-

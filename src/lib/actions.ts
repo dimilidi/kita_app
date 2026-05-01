@@ -1738,12 +1738,7 @@ export async function saveZones(zones: Record<string, string[]>) {
       });
     });
 
-    const studentsInZones = Array.from(new Set(records.map((r) => r.studentId)));
-
     await prisma.$transaction([
-      prisma.studentLunchGroup.deleteMany({
-        where: { studentId: { in: studentsInZones } },
-      }),
       prisma.studentZone.deleteMany(),
       prisma.studentZone.createMany({
         data: records,
@@ -1792,12 +1787,7 @@ export async function saveTeacherZones(zones: Record<string, string[]>) {
       )
       .filter((z) => z.zoneId !== "teacherPool");
 
-    const teachersInZones = Array.from(new Set(records.map((r) => r.teacherId)));
-
     await prisma.$transaction([
-      prisma.teacherLunchGroup.deleteMany({
-        where: { teacherId: { in: teachersInZones } },
-      }),
       prisma.teacherZone.deleteMany(),
       ...(records.length > 0
         ? [
@@ -1820,8 +1810,6 @@ export async function saveTeacherLunchGroups(groups: Record<string, string[]>) {
       throw new Error("teacher lunch groups undefined or invalid");
     }
 
-    const { teacherZoneByTeacherId } = await getActiveActivityAssignmentsNow();
-
     const validGroupIds = new Set(
       (
         await (prisma as any).lunchGroupEntity.findMany({
@@ -1842,17 +1830,7 @@ export async function saveTeacherLunchGroups(groups: Record<string, string[]>) {
         (z) => z.groupId !== "teacherPool" && validGroupIds.has(z.groupId)
       );
 
-    const attemptedTeacherIds = new Set(records.map((r) => r.teacherId));
-    for (const teacherId of Array.from(attemptedTeacherIds)) {
-      if (teacherZoneByTeacherId.has(teacherId)) {
-        throw new Error("Cannot assign teacher to lunch during active activity");
-      }
-    }
-
     await prisma.$transaction([
-      prisma.teacherZone.deleteMany({
-        where: { teacherId: { in: Array.from(attemptedTeacherIds) } },
-      }),
       prisma.teacherLunchGroup.deleteMany(),
       ...(records.length > 0
         ? [
@@ -1875,8 +1853,6 @@ export async function saveLunchGroups(groups: Record<string, string[]>) {
       throw new Error("groups undefined or invalid");
     }
 
-    const { studentZoneByStudentId } = await getActiveActivityAssignmentsNow();
-
     const validGroupIds = new Set(
       (
         await (prisma as any).lunchGroupEntity.findMany({
@@ -1893,22 +1869,12 @@ export async function saveLunchGroups(groups: Record<string, string[]>) {
       )
       .filter((item) => validGroupIds.has(item.groupId));
 
-    const attemptedStudentIds = new Set(records.map((r) => r.studentId));
-    for (const studentId of Array.from(attemptedStudentIds)) {
-      if (studentZoneByStudentId.has(studentId)) {
-        throw new Error("Cannot assign student to lunch during active activity");
-      }
-    }
-
     if (records.length === 0) {
       await prisma.studentLunchGroup.deleteMany();
       return;
     }
 
     await prisma.$transaction([
-      prisma.studentZone.deleteMany({
-        where: { studentId: { in: Array.from(attemptedStudentIds) } },
-      }),
       prisma.studentLunchGroup.deleteMany(),
       prisma.studentLunchGroup.createMany({
         data: records as any,
