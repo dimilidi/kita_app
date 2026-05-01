@@ -13,6 +13,25 @@ import { useTranslations } from "@/i18n/TranslationsProvider";
 import Image from "next/image";
 import Link from "next/link";
 
+function groupEntriesForTeacher(item: {
+  classes?: { id: number; name: string }[];
+  lessons?: { class?: { id: number; name: string } | null }[];
+}): { id: number; name: string }[] {
+  const map = new Map<number, string>();
+  for (const c of item.classes ?? []) {
+    map.set(c.id, c.name);
+  }
+  for (const l of item.lessons ?? []) {
+    const c = l.class;
+    if (c) map.set(c.id, c.name);
+  }
+  return Array.from(map.entries())
+    .sort((a, b) =>
+      a[1].localeCompare(b[1], undefined, { sensitivity: "base" })
+    )
+    .map(([id, name]) => ({ id, name }));
+}
+
 export default function TeacherListClient({
   data,
   count,
@@ -31,19 +50,14 @@ export default function TeacherListClient({
   const columns = [
     { header: dict.teachers.columns.info, accessor: "info" },
     {
-      header: dict.teachers.columns.teacherId,
-      accessor: "teacherId",
-      className: "hidden md:table-cell",
-    },
-    {
       header: dict.teachers.columns.activities,
       accessor: "activities",
       className: "hidden md:table-cell",
     },
     {
-      header: dict.teachers.columns.areas,
-      accessor: "areas",
-      className: "hidden md:table-cell",
+      header: dict.teachers.columns.groups,
+      accessor: "groups",
+      className: "hidden md:table-cell min-w-[8rem] max-w-[14rem]",
     },
     {
       header: dict.teachers.columns.phone,
@@ -60,7 +74,9 @@ export default function TeacherListClient({
       : []),
   ];
 
-  const renderRow = (item: any) => (
+  const renderRow = (item: any) => {
+    const groupEntries = groupEntriesForTeacher(item);
+    return (
     <tr
       key={item.id}
       className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-kitaPurpleLight"
@@ -78,7 +94,6 @@ export default function TeacherListClient({
           <p className="text-xs text-gray-500">{item?.email}</p>
         </div>
       </td>
-      <td className="hidden md:table-cell">{item.username}</td>
       <td className="hidden md:table-cell">
         <div className="flex flex-wrap gap-1">
           {(item.lessons || []).map((lesson: any) => (
@@ -92,10 +107,20 @@ export default function TeacherListClient({
         </div>
       </td>
       <td className="hidden md:table-cell">
-        {(item.zones || [])
-          .map((teacherZone: any) => teacherZone.zone?.name)
-          .filter(Boolean)
-          .join(", ")}
+        {groupEntries.length > 0 ? (
+          <div className="flex flex-wrap gap-1">
+            {groupEntries.map((g) => (
+              <span
+                key={g.id}
+                className="px-2 py-1 text-xs rounded-md bg-emerald-50 text-emerald-900 border border-emerald-100"
+              >
+                {g.name}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <span className="text-gray-400">—</span>
+        )}
       </td>
       <td className="hidden md:table-cell">{item.phone}</td>
       <td className="hidden md:table-cell">{item.address}</td>
@@ -112,7 +137,8 @@ export default function TeacherListClient({
         </div>
       </td>
     </tr>
-  );
+    );
+  };
 
   return (
     <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">

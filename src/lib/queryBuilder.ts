@@ -165,7 +165,12 @@ export function buildTeacherFiltersWhere(sp: {
   if (sp.classId) {
     const id = parseInt(sp.classId, 10);
     if (Number.isFinite(id)) {
-      parts.push({ lessons: { some: { classId: id } } });
+      parts.push({
+        OR: [
+          { lessons: { some: { classId: id } } },
+          { classes: { some: { id } } },
+        ],
+      });
     }
   }
 

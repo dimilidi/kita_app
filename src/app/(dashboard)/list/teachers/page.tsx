@@ -18,9 +18,14 @@ const TeacherListPage = async ({
       where,
       orderBy,
       include: {
-        lessons: { select: { id: true, name: true } },
-        zones: { select: { zone: { select: { name: true } } } },
-        classes: true,
+        lessons: {
+          select: {
+            id: true,
+            name: true,
+            class: { select: { id: true, name: true } },
+          },
+        },
+        classes: { select: { id: true, name: true } },
       },
       take: limit,
       skip,
