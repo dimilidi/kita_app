@@ -69,6 +69,8 @@ model TeacherAttendance {
   date      DateTime
   present   Boolean
   teacherId String
+  /// Daily checkout time (HH:mm) when educator is picked up / checked out.
+  actualPickupTime String?
   teacher   Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@unique([teacherId, date])

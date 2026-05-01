@@ -5,14 +5,15 @@ import {
   markAttendancePickedUp,
   saveAttendanceDayDetail,
   saveDailyAttendance,
-  saveDailyAttendanceForLessonMany,
-  saveDailyAttendanceForAttendancePageFilterAll,
 } from "@/lib/actions";
 import Pagination from "@/components/Pagination";
-import { todayDateStrLocal } from "@/lib/attendanceDate";
 import WorkingDayDatePicker from "@/components/attendance/WorkingDayDatePicker";
+import SearchInput from "@/components/search/SearchInput";
+import FilterPanel from "@/components/filter/FilterPanel";
+import FilterDropdown from "@/components/filter/FilterDropdown";
+import ResetFiltersButton from "@/components/filter/ResetFiltersButton";
 import { useTranslations } from "@/i18n/TranslationsProvider";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useTransition, useState } from "react";
 import { toast } from "react-toastify";
 import type { AttendanceRow } from "./types";
@@ -35,7 +36,12 @@ export default function AttendancePageClient({
   rows: AttendanceRow[];
   count: number;
   page: number;
-  summary: { total: number; presentCount: number; absentCount: number };
+  summary: {
+    total: number;
+    absentCount: number;
+    checkedInCount: number;
+    checkedOutCount: number;
+  };
   classes: { id: number; name: string }[];
   canEdit: boolean;
   canRevertAbsent: boolean;
@@ -43,17 +49,28 @@ export default function AttendancePageClient({
   const dict = useTranslations();
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const actionsRef = useRef<HTMLDivElement | null>(null);
   const [localRows, setLocalRows] = useState<AttendanceRow[]>(rows);
-  const [globalPresentOverride, setGlobalPresentOverride] = useState<boolean | null>(null);
+  const [notesModalStudentId, setNotesModalStudentId] = useState<string | null>(null);
+  const [notesDraft, setNotesDraft] = useState("");
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
 
   useEffect(() => {
     setLocalRows(rows);
-    setGlobalPresentOverride(null);
   }, [rows]);
+
+  useEffect(() => {
+    if (!notesModalStudentId) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setNotesModalStudentId(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [notesModalStudentId]);
 
   useEffect(() => {
     if (!actionsOpen) return;
@@ -69,13 +86,15 @@ export default function AttendancePageClient({
   }, [actionsOpen]);
 
   const buildQuery = (next: { date?: string; classId?: string }) => {
-    const params = new URLSearchParams();
+    const params = new URLSearchParams(searchParams.toString());
     params.set("date", next.date ?? dateStr);
     params.set("classId", next.classId ?? classId);
+    // When scope changes, reset paging.
+    params.delete("page");
     return params.toString();
   };
 
-  const { total, presentCount, absentCount } = summary;
+  const { total, absentCount, checkedInCount, checkedOutCount } = summary;
 
   // Status is derived from existing DB fields (no new persisted status).
   type DerivedStatus = "absent" | "checked_in" | "checked_out";
@@ -88,20 +107,37 @@ export default function AttendancePageClient({
   // Keep summary cards responsive to optimistic local changes.
   // Summary values are for all filtered students (not just the current page),
   // so we apply a delta from the current page rows.
-  const basePagePresentCount = rows.reduce((acc, r) => acc + (r.present ? 1 : 0), 0);
-  const localPagePresentCount = localRows.reduce((acc, r) => acc + (r.present ? 1 : 0), 0);
-  const presentCountDisplayUnclamped =
-    globalPresentOverride === null
-      ? presentCount + (localPagePresentCount - basePagePresentCount)
-      : globalPresentOverride
-        ? total
-        : 0;
-  const presentCountDisplay = Math.max(0, Math.min(total, presentCountDisplayUnclamped));
-  const absentCountDisplay = total - presentCountDisplay;
+  const countStatuses = (rs: AttendanceRow[]) => {
+    let absent = 0;
+    let checkedOut = 0;
+    let checkedIn = 0;
+    for (const r of rs) {
+      const s = deriveStatus(r);
+      if (s === "absent") absent++;
+      else if (s === "checked_out") checkedOut++;
+      else checkedIn++;
+    }
+    return { absent, checkedIn, checkedOut };
+  };
+
+  const basePage = countStatuses(rows);
+  const localPage = countStatuses(localRows);
+
+  const absentCountDisplay = Math.max(
+    0,
+    Math.min(total, absentCount + (localPage.absent - basePage.absent))
+  );
+  const checkedInCountDisplay = Math.max(
+    0,
+    Math.min(total, checkedInCount + (localPage.checkedIn - basePage.checkedIn))
+  );
+  const checkedOutCountDisplay = Math.max(
+    0,
+    Math.min(total, checkedOutCount + (localPage.checkedOut - basePage.checkedOut))
+  );
 
   const onToggle = async (studentId: string, nextPresent: boolean) => {
     if (!canEdit) return;
-    setGlobalPresentOverride(null);
     // optimistic update
     setLocalRows((prev) =>
       prev.map((r) => (r.id === studentId ? { ...r, present: nextPresent } : r))
@@ -124,18 +160,30 @@ export default function AttendancePageClient({
     startTransition(() => router.refresh());
   };
 
-  const onSaveNoteBlur = async (studentId: string, note: string) => {
-    if (!canEdit) return;
-    const res = await saveAttendanceDayDetail({
-      studentId,
-      dateStr,
-      note: note.trim() ? note.trim() : null,
-    });
-    if (!res.success) {
-      toast(dict.attendancePage.detailSaveFailed);
-      return;
+  const onSaveNotesModal = async () => {
+    if (!notesModalStudentId || isSavingNotes) return;
+    setIsSavingNotes(true);
+    try {
+      const noteText = notesDraft.trim();
+      const res = await saveAttendanceDayDetail({
+        studentId: notesModalStudentId,
+        dateStr,
+        note: noteText ? noteText : null,
+      });
+      if (!res.success) {
+        toast(dict.attendancePage.detailSaveFailed);
+        return;
+      }
+      setLocalRows((prev) =>
+        prev.map((r) =>
+          r.id === notesModalStudentId ? { ...r, note: noteText ? noteText : null } : r
+        )
+      );
+      setNotesModalStudentId(null);
+      startTransition(() => router.refresh());
+    } finally {
+      setIsSavingNotes(false);
     }
-    startTransition(() => router.refresh());
   };
 
   const nowHHmm = () => {
@@ -251,9 +299,11 @@ export default function AttendancePageClient({
       doc.setFont("helvetica", "bold");
       doc.text(`${dict.attendancePage.totalChildren}: ${total}`, left, y);
       y += 12;
-      doc.text(`${dict.dashboard.present}: ${presentCount}`, left, y);
+      doc.text(`${dict.attendancePage.statusAbsent ?? "Absent"}: ${absentCountDisplay}`, left, y);
       y += 12;
-      doc.text(`${dict.dashboard.absent}: ${absentCount}`, left, y);
+      doc.text(`${dict.attendancePage.statusCheckedIn ?? "Checked-in"}: ${checkedInCountDisplay}`, left, y);
+      y += 12;
+      doc.text(`${dict.attendancePage.statusCheckedOut ?? "Checked-out"}: ${checkedOutCountDisplay}`, left, y);
       y += 12;
       const startY = y + 8;
 
@@ -262,7 +312,6 @@ export default function AttendancePageClient({
           dict.attendancePage.childName,
           dict.attendancePage.group,
           dict.attendancePage.status,
-          dict.forms.pickupTime,
           dict.attendancePage.notes,
         ],
       ];
@@ -270,12 +319,12 @@ export default function AttendancePageClient({
       const body = pdfRows.map((row) => [
         `${row.name} ${row.surname}`.trim(),
         row.className ?? "—",
-        // Keep the status cell clean:
-        // - present: we will draw a filled circle via didDrawCell (no unicode symbols)
-        // - absent: empty
-        row.present ? "1" : "",
-        row.displayPickupTime ?? "—",
-        row.note ?? "",
+        !row.present
+          ? "absent"
+          : row.actualPickupTime
+            ? `checked_out::${row.actualPickupTime}`
+            : "checked_in",
+        row.note?.trim() ? row.note : "",
       ]);
 
       // `jspdf-autotable` is commonly used as: autoTable(doc, options)
@@ -299,11 +348,10 @@ export default function AttendancePageClient({
         },
         headStyles: { fillColor: [248, 250, 252], textColor: [55, 65, 81] },
         columnStyles: {
-          0: { cellWidth: 150 },
-          1: { cellWidth: 70, halign: "right" },
-          2: { cellWidth: 52, halign: "center" },
-          3: { cellWidth: 110 },
-          4: { cellWidth: 120 },
+          0: { cellWidth: 160 },
+          1: { cellWidth: 72, halign: "right" },
+          2: { cellWidth: 140 },
+          3: { cellWidth: 140 },
         },
         margin: { left, right },
         didParseCell: (data: any) => {
@@ -312,16 +360,38 @@ export default function AttendancePageClient({
 
           const raw = data.cell?.raw;
           const text =
-            typeof raw === "string" ? raw : Array.isArray(raw) ? raw.join(" ") : String(raw ?? "");
-          const isPresent = text.trim() === "1";
+            typeof raw === "string"
+              ? raw
+              : Array.isArray(raw)
+                ? raw.join(" ")
+                : String(raw ?? "");
 
-          // Don't render any text in the cell; we'll draw the dot ourselves.
-          data.cell.text = [""];
-          if (isPresent) data.cell.styles.halign = "center";
+          const [kindRaw, timeRaw] = text.split("::");
+          const kind =
+            kindRaw === "checked_in" || kindRaw === "checked_out" || kindRaw === "absent"
+              ? (kindRaw as "checked_in" | "checked_out" | "absent")
+              : "absent";
+          const time =
+            kind === "checked_out" && typeof timeRaw === "string" && timeRaw.trim()
+              ? timeRaw.trim()
+              : null;
+
+          const label =
+            kind === "checked_in"
+              ? dict.attendancePage.statusCheckedIn ?? "Checked-in"
+              : kind === "checked_out"
+                ? dict.attendancePage.statusCheckedOut ?? "Checked-out"
+                : dict.attendancePage.statusAbsent ?? "Absent";
+
+          data.cell.text = time ? [label, time] : [label];
+          data.cell.styles.valign = "middle";
+          data.cell.styles.halign = "left";
+          // Make room for the colored dot + consistent left alignment.
+          data.cell.styles.cellPadding = { top: 4, right: 4, bottom: 4, left: 16 };
         },
         didDrawCell: (data: any) => {
           if (data.section !== "body") return;
-          if (!data.column || data.column.index !== 2) return;
+          if (!data.column || data.column.index !== 2) return; // status column
 
           const raw = data.cell?.raw;
           const text =
@@ -330,17 +400,29 @@ export default function AttendancePageClient({
               : Array.isArray(raw)
                 ? raw.join(" ")
                 : String(raw ?? "");
-          const isPresent = text.trim() === "1";
-          if (!isPresent) return;
+          const kindRaw = text.split("::")[0];
+          const kind =
+            kindRaw === "checked_in" || kindRaw === "checked_out" || kindRaw === "absent"
+              ? (kindRaw as "checked_in" | "checked_out" | "absent")
+              : "absent";
 
-          // Draw a filled circle in the status cell.
-          const { x, y, width, height } = data.cell;
-          const r = Math.max(3, Math.min(width, height) / 6);
-          const cx = x + width / 2;
-          const cy = y + height / 2;
+          const { x, y } = data.cell;
+          // Fixed-size indicator for consistent rows (independent of content/row height).
+          const r = 3.2;
+          const fontSize = Number(data.cell.styles?.fontSize) || 9;
+          // Align dot with first-line baseline consistently.
+          const cx = x + 9;
+          const cy = y + 4 + fontSize * 0.8;
 
-          doc.setFillColor(34, 197, 94); // green dot
-          doc.setDrawColor(34, 197, 94);
+          const rgb =
+            kind === "checked_in"
+              ? [34, 197, 94] // green
+              : kind === "checked_out"
+                ? [14, 165, 233] // blue (sky)
+                : [244, 63, 94]; // red (rose)
+
+          doc.setFillColor(rgb[0], rgb[1], rgb[2]);
+          doc.setDrawColor(rgb[0], rgb[1], rgb[2]);
           doc.circle(cx, cy, r, "F");
         },
         didDrawPage: (data: any) => {
@@ -388,9 +470,11 @@ export default function AttendancePageClient({
             {dict.attendancePage.subtitle}
           </p>
         </div>
-        <div className="flex flex-wrap gap-3 items-center">
+        <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
+          <SearchInput />
+
+          <div className="flex flex-wrap gap-3 items-center justify-end self-end">
           <label className="flex flex-col gap-1 text-sm">
-            <span className="text-gray-600">{dict.attendancePage.date}</span>
             <WorkingDayDatePicker
               value={dateStr}
               disabled={isPending}
@@ -402,42 +486,36 @@ export default function AttendancePageClient({
               }
             />
           </label>
-          <button
-            type="button"
-            className="self-end h-[42px] px-3 rounded-md border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50"
-            disabled={isPending}
-            onClick={() =>
-              startTransition(() =>
-                router.replace(
-                  `${pathname}?${buildQuery({ date: todayDateStrLocal() })}`
-                )
-              )
-            }
-          >
-            {dict.attendancePage.today}
-          </button>
-          <label className="flex flex-col gap-1 text-sm min-w-[12rem]">
-            <span className="text-gray-600">{dict.attendancePage.filterGroup}</span>
-            <select
-              className="border rounded-md px-3 py-2 text-sm bg-white"
-              value={classId}
-              disabled={isPending}
-              onChange={(e) =>
-                startTransition(() =>
-                  router.replace(
-                    `${pathname}?${buildQuery({ classId: e.target.value })}`
-                  )
-                )
-              }
-            >
-              <option value="all">{dict.attendancePage.allGroups}</option>
-              {classes.map((c) => (
-                <option key={c.id} value={String(c.id)}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
+
+          <FilterPanel title={dict.common.filters}>
+            <FilterDropdown
+              label={dict.attendancePage.filterGroup}
+              paramKey="classId"
+              allowClear={false}
+              options={[
+                { label: dict.attendancePage.allGroups, value: "all" },
+                ...classes.map((c) => ({ label: String(c.name), value: String(c.id) })),
+              ]}
+            />
+            <FilterDropdown
+              label={dict.attendancePage.status}
+              paramKey="status"
+              options={[
+                { label: dict.attendancePage.statusAbsent ?? "Absent", value: "absent" },
+                { label: dict.attendancePage.statusCheckedIn ?? "Checked-in", value: "checked_in" },
+                { label: dict.attendancePage.statusCheckedOut ?? "Checked-out", value: "checked_out" },
+              ]}
+            />
+            <FilterDropdown
+              label={dict.forms.sex}
+              paramKey="sex"
+              options={[
+                { label: dict.forms.male, value: "MALE" },
+                { label: dict.forms.female, value: "FEMALE" },
+              ]}
+            />
+          </FilterPanel>
+          <ResetFiltersButton label={dict.common.resetFilters ?? "Reset filters"} />
           {canEdit && (
             <div className="relative self-end" ref={actionsRef}>
               <button
@@ -516,27 +594,32 @@ export default function AttendancePageClient({
               )}
             </div>
           )}
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
           <p className="text-sm text-gray-500">{dict.attendancePage.totalChildren}</p>
           <p className="text-2xl font-semibold text-gray-900">{total}</p>
         </div>
-        <div className="bg-white rounded-lg border border-emerald-100 p-4 shadow-sm">
-          <p className="text-sm text-gray-500">{dict.dashboard.present}</p>
-          <p className="text-2xl font-semibold text-emerald-700">{presentCountDisplay}</p>
-        </div>
         <div className="bg-white rounded-lg border border-rose-100 p-4 shadow-sm">
-          <p className="text-sm text-gray-500">{dict.dashboard.absent}</p>
+          <p className="text-sm text-gray-500">{dict.attendancePage.statusAbsent ?? "Absent"}</p>
           <p className="text-2xl font-semibold text-rose-700">{absentCountDisplay}</p>
+        </div>
+        <div className="bg-white rounded-lg border border-emerald-100 p-4 shadow-sm">
+          <p className="text-sm text-gray-500">{dict.attendancePage.statusCheckedIn ?? "Checked-in"}</p>
+          <p className="text-2xl font-semibold text-emerald-700">{checkedInCountDisplay}</p>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
+          <p className="text-sm text-gray-500">{dict.attendancePage.statusCheckedOut ?? "Checked-out"}</p>
+          <p className="text-2xl font-semibold text-gray-800">{checkedOutCountDisplay}</p>
         </div>
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden print:overflow-visible">
         <div className="overflow-x-auto overscroll-x-contain print:overflow-visible [-webkit-overflow-scrolling:touch]">
-          <table className="w-full min-w-[44rem] text-sm">
+          <table className="w-full min-w-[32rem] text-sm">
             <thead>
               <tr className="bg-slate-50 border-b border-gray-200 text-left">
                 <th className="p-3 sm:p-4 font-medium text-gray-700 min-w-[9rem] align-top">
@@ -551,19 +634,13 @@ export default function AttendancePageClient({
                 <th className="p-3 sm:p-4 font-medium text-gray-700 min-w-[10rem] align-top">
                   {dict.common.actions ?? "Actions"}
                 </th>
-                <th className="p-3 sm:p-4 font-medium text-gray-700 min-w-[10rem] align-top">
-                  {dict.forms.pickupTime}
-                </th>
-                <th className="p-3 sm:p-4 font-medium text-gray-700 min-w-[12rem] align-top">
-                  {dict.attendancePage.notes}
-                </th>
               </tr>
             </thead>
             <tbody>
               {localRows.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-gray-500">
-                    {dict.attendancePage.noStudents}
+                  <td colSpan={4} className="p-8 text-center text-gray-500">
+                    {dict.attendancePage.noResultsFound ?? dict.attendancePage.noStudents}
                   </td>
                 </tr>
               ) : (
@@ -576,16 +653,17 @@ export default function AttendancePageClient({
                       : status === "checked_in"
                         ? (dict.attendancePage.statusCheckedIn ?? "Checked-in")
                         : (dict.attendancePage.statusCheckedOut ?? "Checked-out");
-                  const statusClass =
+                  const dotClass =
                     status === "absent"
-                      ? "border-rose-200 bg-rose-50 text-rose-700"
+                      ? "bg-rose-500"
                       : status === "checked_in"
-                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                        : "border-kitaSky/30 bg-kitaSkyLight text-gray-700";
+                        ? "bg-emerald-500"
+                        : "bg-sky-500";
 
                   const canCheckIn = !disabled && status === "absent";
                   const canCheckOut = !disabled && status === "checked_in";
                   const canSetAbsent = canRevertAbsent && !disabled && status !== "absent";
+                  const canNotes = canEdit && !!row.lessonId;
                   return (
                     <tr
                       key={`${row.id}-${dateStr}`}
@@ -597,69 +675,134 @@ export default function AttendancePageClient({
                       <td className="p-3 sm:p-4 text-gray-600">
                         {row.className}
                       </td>
-                      <td className="p-3 sm:p-4">
-                        <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClass}`}>
-                          {statusLabel}
-                        </span>
-                        {!row.lessonId && (
-                          <p className="text-xs text-amber-600 mt-1">
-                            {dict.attendancePage.noLessonShort}
-                          </p>
-                        )}
+                      <td className="p-3 sm:p-4 align-top">
+                        <div className="grid grid-cols-[12px_1fr] items-start gap-x-2.5 gap-y-0.5">
+                          <span
+                            className={`mt-[3px] h-2.5 w-2.5 rounded-full ${dotClass}`}
+                            aria-hidden
+                          />
+                          <span className="text-xs font-semibold text-gray-900 leading-snug">
+                            {statusLabel}
+                          </span>
+                          {status === "checked_out" && row.actualPickupTime ? (
+                            <>
+                              <span aria-hidden />
+                              <div className="flex items-center gap-1.5 text-[11px] tabular-nums text-gray-600 leading-snug">
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  className="w-3.5 h-3.5 text-gray-500"
+                                  aria-hidden
+                                >
+                                  <circle cx="12" cy="12" r="9" />
+                                  <path d="M12 7v5l3 2" />
+                                </svg>
+                                <span>{row.actualPickupTime}</span>
+                              </div>
+                            </>
+                          ) : null}
+                          {!row.lessonId ? (
+                            <>
+                              <span aria-hidden />
+                              <p className="text-xs text-amber-600 leading-snug">
+                                {dict.attendancePage.noLessonShort}
+                              </p>
+                            </>
+                          ) : null}
+                        </div>
                       </td>
                       <td className="p-3 sm:p-4 align-middle">
                         <div className="flex flex-wrap items-center gap-2">
                           <button
                             type="button"
-                            className="inline-flex items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-7 h-7 flex items-center justify-center rounded-full bg-kitaYellow hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:opacity-40"
                             disabled={!canCheckIn}
+                            title={dict.attendancePage.actionCheckIn ?? "Check in"}
+                            aria-label={dict.attendancePage.actionCheckIn ?? "Check in"}
                             onClick={() => onToggle(row.id, true)}
                           >
-                            {dict.attendancePage.actionCheckIn ?? "Check in"}
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              className="w-4 h-4 text-gray-800"
+                              aria-hidden
+                            >
+                              <path d="M20 6 9 17l-5-5" />
+                            </svg>
                           </button>
                           <button
                             type="button"
-                            className="inline-flex items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-7 h-7 flex items-center justify-center rounded-full bg-kitaSky hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:opacity-40"
                             disabled={!canCheckOut}
-                            title={dict.attendancePage.pickupMarkTooltip ?? undefined}
-                            aria-label={dict.attendancePage.pickupMarkTooltip ?? undefined}
+                            title={dict.attendancePage.actionCheckOut ?? "Check out"}
+                            aria-label={dict.attendancePage.actionCheckOut ?? "Check out"}
                             onClick={() => onMarkPickedUp(row.id)}
                           >
-                            {dict.attendancePage.actionCheckOut ?? "Check out"}
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              className="w-4 h-4 text-gray-800"
+                              aria-hidden
+                            >
+                              <circle cx="12" cy="12" r="9" />
+                              <path d="M12 7v5l3 2" />
+                            </svg>
                           </button>
                           {canRevertAbsent ? (
                             <button
                               type="button"
-                              className="inline-flex items-center justify-center rounded-md border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="w-7 h-7 flex items-center justify-center rounded-full bg-kitaPurpleLight hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:opacity-40"
                               disabled={!canSetAbsent}
+                              title={dict.attendancePage.actionSetAbsent ?? "Set absent"}
+                              aria-label={dict.attendancePage.actionSetAbsent ?? "Set absent"}
                               onClick={() => onToggle(row.id, false)}
                             >
-                              {dict.attendancePage.actionSetAbsent ?? "Set absent"}
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                className="w-4 h-4 text-gray-800"
+                                aria-hidden
+                              >
+                                <path d="M18 6 6 18M6 6l12 12" />
+                              </svg>
                             </button>
                           ) : null}
+                          <button
+                            type="button"
+                            className="w-7 h-7 flex items-center justify-center rounded-full bg-white ring-1 ring-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
+                            disabled={!canNotes || disabled}
+                            title={dict.attendancePage.notesTooltip ?? dict.attendancePage.notes}
+                            aria-label={dict.attendancePage.notesTooltip ?? dict.attendancePage.notes}
+                            onClick={() => {
+                              setNotesModalStudentId(row.id);
+                              setNotesDraft(row.note ?? "");
+                            }}
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              className="w-4 h-4 text-gray-800"
+                              aria-hidden
+                            >
+                              <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+                            </svg>
+                          </button>
                         </div>
-                      </td>
-                      <td className="p-3 sm:p-4 align-middle min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-medium text-xs text-gray-900 tabular-nums min-w-0 break-words">
-                            {row.actualPickupTime ?? "—"}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-3 sm:p-4 align-top min-w-0">
-                        {canEdit && row.lessonId ? (
-                          <textarea
-                            className="w-full min-h-[3rem] border rounded-md px-2 py-1 text-xs"
-                            defaultValue={row.note ?? ""}
-                            disabled={disabled}
-                            onBlur={(e) => onSaveNoteBlur(row.id, e.target.value)}
-                            placeholder={dict.attendancePage.notes}
-                          />
-                        ) : (
-                          <span className="text-xs text-gray-600 break-words">
-                            {row.note ?? "—"}
-                          </span>
-                        )}
                       </td>
                     </tr>
                   );
@@ -672,6 +815,50 @@ export default function AttendancePageClient({
           <Pagination page={page} count={count} />
         </div>
       </div>
+
+      {notesModalStudentId ? (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 print:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="attendance-notes-modal-title"
+          onClick={() => !isSavingNotes && setNotesModalStudentId(null)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl border border-gray-200 p-4 w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="attendance-notes-modal-title" className="text-sm font-semibold text-gray-900 mb-3">
+              {dict.attendancePage.notesModalTitle ?? dict.attendancePage.notes}
+            </h3>
+            <textarea
+              className="w-full min-h-[7rem] border border-gray-300 rounded-md px-3 py-2 text-sm ring-[1.5px] ring-transparent focus:ring-kitaSky focus:border-kitaSky outline-none"
+              value={notesDraft}
+              onChange={(e) => setNotesDraft(e.target.value)}
+              disabled={isSavingNotes}
+              placeholder={dict.attendancePage.notes}
+            />
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                type="button"
+                className="px-3 py-1.5 text-sm rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-60"
+                disabled={isSavingNotes}
+                onClick={() => setNotesModalStudentId(null)}
+              >
+                {dict.common.close}
+              </button>
+              <button
+                type="button"
+                className="px-3 py-1.5 text-sm rounded-md bg-kitaYellow hover:opacity-90 disabled:opacity-60"
+                disabled={isSavingNotes}
+                onClick={() => void onSaveNotesModal()}
+              >
+                {dict.common.save}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <style jsx global>{`
         @media print {

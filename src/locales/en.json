@@ -513,6 +513,9 @@
     "pickedUpLabel": "Picked up",
     "pickupMarkTooltip": "Mark child as picked up",
     "detailSaveFailed": "Could not save changes.",
-    "downloadPdf": "Download PDF"
+    "downloadPdf": "Download PDF",
+    "notesModalTitle": "Notes",
+    "notesTooltip": "Notes",
+    "noResultsFound": "No results found."
   }
 }

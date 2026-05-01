@@ -1968,17 +1968,18 @@ export async function upsertTeacherAttendance({
       const allTeacherIds = (
         await prisma.teacher.findMany({ select: { id: true } })
       ).map((t) => t.id);
-      await prisma.teacherAttendance.createMany({
+      await (prisma as any).teacherAttendance.createMany({
         data: allTeacherIds.map((id) => ({
           teacherId: id,
           date: range.start,
           present: false,
+          actualPickupTime: null,
         })),
         skipDuplicates: true,
       });
     }
 
-    await prisma.teacherAttendance.upsert({
+    await (prisma as any).teacherAttendance.upsert({
       where: {
         teacherId_date: {
           teacherId,
@@ -1989,8 +1990,10 @@ export async function upsertTeacherAttendance({
         teacherId,
         date: range.start,
         present,
+        actualPickupTime: null,
       },
-      update: { present },
+      // Any check-in/out cycle resets checkout time when toggling present explicitly.
+      update: { present, actualPickupTime: null },
     });
 
     revalidatePath("/list/teachers-attendance");
@@ -1999,6 +2002,62 @@ export async function upsertTeacherAttendance({
     return { success: true };
   } catch (e) {
     console.error("upsertTeacherAttendance", e);
+    return { success: false, error: "server" };
+  }
+}
+
+/** Marks an educator as checked out (once) for the calendar day. */
+export async function markTeacherAttendanceCheckedOut({
+  teacherId,
+  dateStr,
+  pickedUpAt,
+}: {
+  teacherId: string;
+  dateStr: string;
+  /** HH:mm (from client local time). */
+  pickedUpAt: string;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { userId, role } = getAuthData();
+    if (role !== "admin" && role !== "teacher") {
+      return { success: false, error: "forbidden" };
+    }
+    if (role === "teacher") {
+      if (!userId || teacherId !== userId) {
+        return { success: false, error: "forbidden" };
+      }
+    }
+
+    const range = parseDateStrToUtcRange(dateStr);
+    if (!range) return { success: false, error: "invalidDate" };
+    if (isWeekendDateStrUTC(dateStr)) return { success: false, error: "invalidDate" };
+    if (!/^\d{2}:\d{2}$/.test(pickedUpAt)) {
+      return { success: false, error: "invalidPickupTime" };
+    }
+
+    const exists = await prisma.teacher.findUnique({ where: { id: teacherId } });
+    if (!exists) return { success: false, error: "notFound" };
+
+    // Attendance record must exist (admins create daily rows on page load).
+    const row = await (prisma as any).teacherAttendance.findFirst({
+      where: { teacherId, date: { gte: range.start, lt: range.end } },
+      select: { id: true, present: true, actualPickupTime: true },
+    });
+    if (!row) return { success: false, error: "notFound" };
+    if (!row.present) return { success: false, error: "absent" };
+    if (row.actualPickupTime) return { success: false, error: "alreadyPickedUp" };
+
+    await (prisma as any).teacherAttendance.update({
+      where: { id: row.id },
+      data: { actualPickupTime: pickedUpAt },
+    });
+
+    revalidatePath("/list/teachers-attendance");
+    revalidatePath("/list/lunch");
+    revalidatePath("/list/areas/board");
+    return { success: true };
+  } catch (e) {
+    console.error("markTeacherAttendanceCheckedOut", e);
     return { success: false, error: "server" };
   }
 }

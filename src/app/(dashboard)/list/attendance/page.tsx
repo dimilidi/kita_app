@@ -10,23 +10,32 @@ export default async function AttendancePage({
 }) {
   const { page, ...rest } = searchParams;
   const classIdParam = rest.classId ?? "all";
+  const search = rest.search;
+  const sex = rest.sex;
+  const status = rest.status;
   const p = page ? parseInt(page, 10) : 1;
 
   // Prevent landing on weekend dates via URL.
   const requested = rest.date;
   const normalized = normalizeAttendanceDateStr(requested);
   if (requested && requested !== normalized) {
-    redirect(
-      `?date=${encodeURIComponent(normalized)}&classId=${encodeURIComponent(
-        classIdParam
-      )}${p ? `&page=${p}` : ""}`
-    );
+    const params = new URLSearchParams();
+    params.set("date", normalized);
+    params.set("classId", classIdParam);
+    if (search) params.set("search", search);
+    if (sex) params.set("sex", sex);
+    if (status) params.set("status", status);
+    if (p) params.set("page", String(p));
+    redirect(`?${params.toString()}`);
   }
 
   const data = await loadAttendancePageData({
     dateStr: rest.date,
     classIdParam,
     page: p,
+    search,
+    sex,
+    status,
   });
 
   return (

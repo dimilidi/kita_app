@@ -513,6 +513,9 @@
     "pickedUpLabel": "Abgeholt",
     "pickupMarkTooltip": "Kind als abgeholt markieren",
     "detailSaveFailed": "Änderungen konnten nicht gespeichert werden.",
-    "downloadPdf": "PDF herunterladen"
+    "downloadPdf": "PDF herunterladen",
+    "notesModalTitle": "Notizen",
+    "notesTooltip": "Notizen",
+    "noResultsFound": "Keine Treffer."
   }
 }

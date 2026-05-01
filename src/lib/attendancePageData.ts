@@ -11,6 +11,9 @@ import type { AttendanceRow } from "@/app/(dashboard)/list/attendance/types";
 type LoadOpts = {
   dateStr?: string;
   classIdParam: string;
+  search?: string;
+  sex?: string;
+  status?: string;
   page?: number;
   /** Load every row (e.g. PDF export); ignores pagination. */
   fetchAllRows?: boolean;
@@ -20,6 +23,14 @@ export async function loadAttendancePageData(opts: LoadOpts) {
   const { userId, role } = getAuthData();
   const dateStr = normalizeAttendanceDateStr(opts.dateStr);
   const classIdParam = opts.classIdParam ?? "all";
+  const rawSearch = typeof opts.search === "string" ? opts.search.trim() : "";
+  const sexFilter = opts.sex === "MALE" || opts.sex === "FEMALE" ? opts.sex : null;
+  const statusFilter =
+    opts.status === "absent" ||
+    opts.status === "checked_in" ||
+    opts.status === "checked_out"
+      ? (opts.status as "absent" | "checked_in" | "checked_out")
+      : null;
   const fetchAllRows = opts.fetchAllRows ?? false;
   const rawPage = opts.page;
   const parsed =
@@ -54,7 +65,15 @@ export async function loadAttendancePageData(opts: LoadOpts) {
     }
   }
 
-  const studentCount = await prisma.student.count({ where: studentWhere });
+  if (rawSearch) {
+    studentWhere.OR = [
+      { name: { contains: rawSearch, mode: "insensitive" } },
+      { surname: { contains: rawSearch, mode: "insensitive" } },
+    ];
+  }
+  if (sexFilter) {
+    studentWhere.sex = sexFilter as any;
+  }
 
   const classIdGroups = await prisma.student.groupBy({
     by: ["classId"],
@@ -116,29 +135,13 @@ export async function loadAttendancePageData(opts: LoadOpts) {
     });
   }
 
-  let presentCount = 0;
-  for (const s of allStudentsMinimal) {
-    const lessonId = lessonIdByClass.get(s.classId) ?? null;
-    const att =
-      lessonId !== null ? attendanceByKey.get(key(s.id, lessonId)) : undefined;
-    const present = att?.present ?? false;
-    if (present) presentCount++;
-  }
-  const absentCount = allStudentsMinimal.length - presentCount;
-
   const students = await prisma.student.findMany({
     where: studentWhere,
     include: { class: true },
     orderBy: [{ surname: "asc" }, { name: "asc" }],
-    ...(fetchAllRows
-      ? {}
-      : {
-          take: ITEM_PER_PAGE,
-          skip: ITEM_PER_PAGE * (safePage - 1),
-        }),
   });
 
-  const rows: AttendanceRow[] = students.map((s) => {
+  const rowsAll: AttendanceRow[] = students.map((s) => {
     const lessonId = lessonIdByClass.get(s.classId) ?? null;
     const att =
       lessonId !== null ? attendanceByKey.get(key(s.id, lessonId)) : undefined;
@@ -161,6 +164,30 @@ export async function loadAttendancePageData(opts: LoadOpts) {
       note: att?.note ?? null,
     };
   });
+
+  const filteredRows =
+    statusFilter == null
+      ? rowsAll
+      : rowsAll.filter((r) => {
+          const derived =
+            !r.present ? "absent" : r.actualPickupTime ? "checked_out" : "checked_in";
+          return derived === statusFilter;
+        });
+
+  const totalCount = filteredRows.length;
+  const absentCount = filteredRows.reduce((acc, r) => acc + (!r.present ? 1 : 0), 0);
+  const checkedOutCount = filteredRows.reduce(
+    (acc, r) => acc + (r.present && !!r.actualPickupTime ? 1 : 0),
+    0
+  );
+  const checkedInCount = totalCount - absentCount - checkedOutCount;
+
+  const pageRows = fetchAllRows
+    ? filteredRows
+    : filteredRows.slice(
+        ITEM_PER_PAGE * (safePage - 1),
+        ITEM_PER_PAGE * safePage
+      );
 
   let classesForFilter: { id: number; name: string }[] = [];
   if (role === "admin") {
@@ -188,13 +215,14 @@ export async function loadAttendancePageData(opts: LoadOpts) {
   return {
     dateStr,
     classIdParam,
-    rows,
-    count: studentCount,
+    rows: pageRows,
+    count: totalCount,
     page: safePage,
     summary: {
-      total: studentCount,
-      presentCount,
+      total: totalCount,
       absentCount,
+      checkedInCount,
+      checkedOutCount,
     },
     classesForFilter,
     canEdit,
