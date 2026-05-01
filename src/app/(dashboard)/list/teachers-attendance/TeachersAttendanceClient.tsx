@@ -285,10 +285,10 @@ export default function TeachersAttendanceClient({
             />
           </FilterPanel>
           <ResetFiltersButton label={dict.common.resetFilters ?? "Reset filters"} />
-          <div className="relative self-end" ref={actionsRef}>
+          <div className="relative flex items-center" ref={actionsRef}>
             <button
               type="button"
-              className="h-[42px] w-[42px] rounded-md border border-gray-300 bg-white flex items-center justify-center hover:bg-gray-50"
+              className="h-[36px] w-[36px] rounded-full border border-gray-300 bg-white flex items-center justify-center hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
               onClick={() => setActionsOpen((v) => !v)}
               aria-label={dict.common.actions ?? "Actions"}
               title={dict.common.actions ?? "Actions"}

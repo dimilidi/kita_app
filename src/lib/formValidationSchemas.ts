@@ -36,8 +36,6 @@ export const teacherSchema = z.object({
   bloodType: z.string().min(1, { message: "forms.required" }),
   birthday: z.coerce.date({ message: "forms.required" }),
   sex: z.enum(["MALE", "FEMALE"], { message: "forms.required" }),
-  // Kindergarten domain: play areas (zones)
-  zoneIds: z.array(z.string()).optional(),
 });
 
 // export type TeacherSchema = z.infer<typeof teacherSchema>;
@@ -182,7 +180,6 @@ export const zoneSchema = z.object({
   name: z.string().min(1, { message: "forms.required" }),
   capacity: z.preprocess(emptyToUndefined, z.coerce.number().int().positive().optional()),
   description: z.preprocess(emptyToUndefined, z.string().optional()),
-  color: z.preprocess(emptyToUndefined, z.string().optional()),
 });
 
 export type ZoneInput = z.input<typeof zoneSchema>;

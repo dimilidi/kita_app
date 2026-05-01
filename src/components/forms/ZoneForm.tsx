@@ -103,14 +103,6 @@ export default function ZoneForm({
           )}
         </div>
 
-        <InputField
-          label={dict.forms.colorHint}
-          name="color"
-          defaultValue={data?.color ?? ""}
-          register={register}
-          error={errors?.color}
-        />
-
         {data?.id && (
           <InputField
             label="id"

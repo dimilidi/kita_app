@@ -11,14 +11,12 @@ import SortDropdown from "@/components/sort/SortDropdown";
 import SortPanel from "@/components/sort/SortPanel";
 import { buildPlayAreaPdfDocument } from "@/lib/pdf/buildPlayAreaPdfDoc";
 import type { PlayAreaPdfLabels } from "@/lib/pdf/buildPlayAreaPdfDoc";
-import type { PlayAreaPdfSection } from "@/types/playAreas";
 import { DEFAULT_LOCALE } from "@/i18n/lang";
 import { useTranslations } from "@/i18n/TranslationsProvider";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
-import { flushSync } from "react-dom";
 import { toast } from "react-toastify";
 
 import { fetchPlayAreasExportSections } from "./export-actions";
@@ -56,20 +54,16 @@ const getLangFromPathname = (pathname: string) => {
 
 export default function AreaListClient({
   data,
-  exportSections,
   count,
   page,
   role,
 }: {
   data: AreaRow[];
-  exportSections: PlayAreaPdfSection[];
   count: number;
   page: number;
   role: string;
 }) {
   const dict = useTranslations();
-  /** Shared PDF column labels / brand with Lunch Groups (`lunchGroups.detail`). */
-  const lgd = dict.lunchGroups.detail ?? {};
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const lang = getLangFromPathname(pathname);
@@ -94,20 +88,10 @@ export default function AreaListClient({
 
   const [actionsOpen, setActionsOpen] = useState(false);
   const [isPdfBusy, setIsPdfBusy] = useState(false);
-  const [isPrintPreparing, setIsPrintPreparing] = useState(false);
-  /** Fresh full export before print/PDF (ignores UI pagination); reset when filters change. */
-  const [resolvedExportSections, setResolvedExportSections] = useState<
-    PlayAreaPdfSection[] | null
-  >(null);
 
   const actionsRef = useRef<HTMLDivElement>(null);
 
   useClickOutside(actionsRef, actionsOpen, () => setActionsOpen(false));
-
-  const listQueryKey = useMemo(
-    () => searchParams.toString(),
-    [searchParams]
-  );
 
   const filterParams = useMemo(() => {
     const sp: Record<string, string | undefined> = {};
@@ -115,32 +99,11 @@ export default function AreaListClient({
       sp[key] = value;
     });
     return sp;
-  }, [listQueryKey]);
+  }, [searchParams]);
 
-  useEffect(() => {
-    setResolvedExportSections(null);
-  }, [listQueryKey]);
-
-  /** Print/PDF use full filtered list from server (same as `/list/areas` data + lessons/activities merge). */
-  const sectionsForExport = resolvedExportSections ?? exportSections;
-
-  const onPrint = async () => {
+  const onPrint = () => {
     setActionsOpen(false);
-    setIsPrintPreparing(true);
-    try {
-      const sections = await fetchPlayAreasExportSections(filterParams);
-      flushSync(() => setResolvedExportSections(sections));
-      window.print();
-    } catch (e) {
-      console.error("Play areas print export fetch failed:", e);
-      toast(
-        `${dict.forms.somethingWentWrong}${
-          e instanceof Error ? `: ${e.message}` : ""
-        }`
-      );
-    } finally {
-      setIsPrintPreparing(false);
-    }
+    window.print();
   };
 
   const onDownloadPdf = async () => {
@@ -170,6 +133,26 @@ export default function AreaListClient({
     }
   };
 
+  const printStyles = (
+    <style jsx global>{`
+      @media print {
+        thead {
+          display: table-header-group;
+        }
+        tr,
+        td,
+        th {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        body {
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+      }
+    `}</style>
+  );
+
   const colBase =
     "p-3 align-top w-1/4 max-w-[25%] box-border";
   const columns = [
@@ -191,7 +174,7 @@ export default function AreaListClient({
     {
       header: dict.common.actions,
       accessor: "action",
-      className: colBase,
+      className: `${colBase} print:hidden`,
     },
   ];
 
@@ -209,7 +192,7 @@ export default function AreaListClient({
       <td className="p-3 w-1/4 max-w-[25%] box-border text-center tabular-nums">
         {item._count?.lessons ?? 0}
       </td>
-      <td className="p-3 w-1/4 max-w-[25%] box-border">
+      <td className="p-3 w-1/4 max-w-[25%] box-border print:hidden">
         <div className="flex items-center gap-2">
           {role === "admin" && (
             <>
@@ -230,12 +213,14 @@ export default function AreaListClient({
   return (
     <>
       <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">
+        <h1 className="text-lg font-semibold mb-2 md:mb-0 xl:mb-0">
+          {dict.areasList.titleAll}
+        </h1>
         <div className="print:hidden">
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
               <div className="min-w-0 flex-1">
-                <h1 className="text-lg font-semibold">{dict.areasList.titleAll}</h1>
-                <p className="text-xs text-gray-600 mt-2 max-w-3xl leading-relaxed">
+                <p className="text-xs text-gray-600 mt-2 max-w-3xl leading-relaxed xl:mt-0">
                   {dict.areasList.intro}
                 </p>
               </div>
@@ -298,15 +283,14 @@ export default function AreaListClient({
               <div className="relative flex items-center" ref={actionsRef}>
                 <button
                   type="button"
-                  className={`h-9 w-9 rounded-md border border-gray-300 bg-white flex items-center justify-center hover:bg-gray-50 ${
-                    isPdfBusy || isPrintPreparing
-                      ? "opacity-60 cursor-not-allowed"
-                      : ""
+                  className={`h-[36px] w-[36px] rounded-full border border-gray-300 bg-white flex items-center justify-center hover:bg-gray-50 ${
+                    isPdfBusy ? "opacity-60 cursor-not-allowed" : ""
                   }`}
                   onClick={() => setActionsOpen((v) => !v)}
                   aria-label={dict.common.actions}
+                  title={dict.common.actions}
                   aria-expanded={actionsOpen}
-                  disabled={isPdfBusy || isPrintPreparing}
+                  disabled={isPdfBusy}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -324,8 +308,8 @@ export default function AreaListClient({
                     <button
                       type="button"
                       className="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 disabled:opacity-60"
-                      onClick={() => void onPrint()}
-                      disabled={isPdfBusy || isPrintPreparing}
+                      onClick={() => onPrint()}
+                      disabled={isPdfBusy}
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -345,7 +329,7 @@ export default function AreaListClient({
                       type="button"
                       className="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                       onClick={() => void onDownloadPdf()}
-                      disabled={isPdfBusy || isPrintPreparing}
+                      disabled={isPdfBusy}
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -368,138 +352,25 @@ export default function AreaListClient({
               {role === "admin" && <FormModal table="zone" type="create" />}
             </div>
           </div>
+        </div>
 
-          {data.length === 0 ? (
-            <div className="mt-6 text-sm text-gray-500">
-              {dict.common.noResults}
-            </div>
-          ) : null}
-
-          <div className="overflow-x-auto mt-4">
-            <Table
-              columns={columns}
-              renderRow={renderRow}
-              data={data}
-              tableClassName="w-full min-w-[720px] table-fixed border-collapse"
-            />
+        {data.length === 0 ? (
+          <div className="mt-6 text-sm text-gray-500">
+            {dict.common.noResults}
           </div>
+        ) : null}
+
+        <div className="overflow-x-auto mt-4">
+          <Table
+            columns={columns}
+            renderRow={renderRow}
+            data={data}
+            tableClassName="w-full min-w-[720px] table-fixed border-collapse"
+          />
+        </div>
+        <div className="print:hidden">
           <Pagination page={page} count={count} />
         </div>
-      </div>
-
-      <div className="hidden print:block print:w-full print:max-w-none print:[overflow:visible]">
-        {sectionsForExport.length === 0 ? (
-          <div className="print:p-8">
-            <div className="flex justify-between items-start gap-4 mb-4">
-              <h1 className="text-xl font-bold text-gray-900">
-                {dict.common.noResults}
-              </h1>
-              <p className="text-sm text-gray-600 shrink-0">{dateLong}</p>
-            </div>
-            <div className="mb-6 flex items-center gap-2">
-              <img
-                src="/logo.jpg"
-                alt=""
-                className="h-[18px] w-[18px] object-contain"
-              />
-              <span className="font-bold text-base text-gray-900">
-                {lgd.pdfBrandName}
-              </span>
-            </div>
-          </div>
-        ) : (
-          sectionsForExport.map((sec, sectionIdx) => (
-            <div
-              key={sec.areaName + sectionIdx}
-              className="print:p-8 max-w-none"
-              style={
-                sectionIdx > 0 ? { breakBefore: "page" as const } : undefined
-              }
-            >
-              <div className="flex justify-between items-start gap-4 mb-4">
-                <h1 className="text-xl font-bold text-gray-900">
-                  {sec.areaName}
-                </h1>
-                <p className="text-sm text-gray-600 shrink-0">{dateLong}</p>
-              </div>
-              <div className="mb-4 flex items-center gap-2">
-                <img
-                  src="/logo.jpg"
-                  alt=""
-                  className="h-[18px] w-[18px] object-contain"
-                />
-                <span className="font-bold text-base text-gray-900">
-                  {lgd.pdfBrandName}
-                </span>
-              </div>
-
-              <h2 className="text-sm font-semibold text-gray-900 mt-4 mb-1">
-                {dict.areasList.pdfSectionEducators}
-              </h2>
-              <p className="text-sm text-gray-800 mb-4">
-                {sec.educatorNames.length > 0
-                  ? sec.educatorNames.join(", ")
-                  : "—"}
-              </p>
-
-              <h2 className="text-sm font-semibold text-gray-900 mb-1">
-                {dict.areasList.pdfSectionActivities}
-              </h2>
-              <p className="text-sm text-gray-800 mb-4">
-                {sec.activityNames.length > 0
-                  ? sec.activityNames.join(", ")
-                  : "—"}
-              </p>
-
-              <h2 className="text-sm font-semibold text-gray-900 mb-2">
-                {dict.areasList.pdfSectionChildren}
-              </h2>
-              <table className="w-full text-sm border-collapse border border-gray-400">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="border border-gray-400 p-2 w-12 text-center font-semibold">
-                      {lgd.pdfColNum}
-                    </th>
-                    <th className="border border-gray-400 p-2 text-left font-semibold">
-                      {lgd.pdfColChildName}
-                    </th>
-                    <th className="border border-gray-400 p-2 text-left font-semibold">
-                      {lgd.pdfColGroup}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sec.children.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={3}
-                        className="border border-gray-400 p-2 text-gray-500 text-center"
-                      >
-                        —
-                      </td>
-                    </tr>
-                  ) : (
-                    sec.children.map((c, i) => (
-                      <tr key={`${c.name}-${i}`} className="even:bg-gray-50">
-                        <td className="border border-gray-400 p-2 text-center tabular-nums">
-                          {i + 1}
-                        </td>
-                        <td className="border border-gray-400 p-2">{c.name}</td>
-                        <td className="border border-gray-400 p-2">
-                          {c.className}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-              <p className="mt-4 text-base font-semibold">
-                {lgd.pdfTotal}: {sec.children.length} /{" "}
-                {sec.capacity != null ? sec.capacity : "—"}
-              </p>
-            </div>
-          ))
-        )}
       </div>
     </>
   );

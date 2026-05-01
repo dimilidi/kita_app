@@ -9,14 +9,8 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useTransition,
-} from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 import PlayAreaCard, { TeacherLite } from "@/components/PlayAreaCard";
 import PlayPoolCard from "@/components/PlayPoolCard";
 import Child from "@/components/Child";
@@ -27,8 +21,6 @@ import { StudentWithClass } from "@/types/student";
 import { Zone } from "@prisma/client";
 import { useTranslations } from "@/i18n/TranslationsProvider";
 import { toast } from "react-toastify";
-import { todayDateStrLocal } from "@/lib/attendanceDate";
-import WorkingDayDatePicker from "@/components/attendance/WorkingDayDatePicker";
 
 type ZoneId = string;
 
@@ -43,8 +35,6 @@ type Props = {
   zoneActivityNames?: Record<string, string[]>;
   /** Teacher ids locked by an active Lesson right now. */
   lockedTeacherIds?: string[];
-  /** YYYY-MM-DD; same query + normalization as Lunch Board (`?date=`). */
-  attendanceDateStr: string;
   /** True when any educator-attendance row exists — only educators marked present load into the board. */
   teacherAttendanceFilterActive?: boolean;
   /** Visual only: students whose scheduled lunch slot matches current time. */
@@ -109,14 +99,12 @@ export default function PlayBoard({
   initialTeacherZones: initialTeacherZonesProp,
   zoneActivityNames = {},
   lockedTeacherIds = [],
-  attendanceDateStr,
   teacherAttendanceFilterActive = false,
   lunchNowByStudentId = {},
   essraumZoneId = null,
   highlightEssraum = false,
 }: Props) {
   const pathname = usePathname();
-  const router = useRouter();
   const localeSegments = pathname.split("/").filter(Boolean);
   const locale =
     localeSegments[0] === "en" || localeSegments[0] === "de"
@@ -125,8 +113,6 @@ export default function PlayBoard({
 
   const dict = useTranslations();
   const lgd = dict.lunchGroups.detail ?? {};
-
-  const [dateNavPending, startDateNavTransition] = useTransition();
 
   const zoneIds = useMemo(() => zones.map((z) => z.id), [zones]);
   const studentIds = useMemo(() => students.map((s) => s.id), [students]);
@@ -197,12 +183,10 @@ export default function PlayBoard({
     activeParsed?.kind === "teacher" ? getTeacher(activeParsed.id) : null;
 
   const boardDateLong = useMemo(() => {
-    const ok = /^\d{4}-\d{2}-\d{2}$/.test(attendanceDateStr);
-    const d = ok ? new Date(`${attendanceDateStr}T12:00:00`) : new Date();
-    return d.toLocaleDateString(locale === "de" ? "de-DE" : "en-GB", {
+    return new Date().toLocaleDateString(locale === "de" ? "de-DE" : "en-GB", {
       dateStyle: "long",
     });
-  }, [attendanceDateStr, locale]);
+  }, [locale]);
 
   /** Full-board print: every zone with current placements (matches play areas list/PDF layout). */
   const playPrintSections = useMemo(() => {
@@ -338,45 +322,11 @@ export default function PlayBoard({
           <h1 className="hidden md:block text-lg font-semibold">
             {dict.playBoard.boardTitle}
           </h1>
-          <p className="mt-1 text-xs text-gray-600">
-            <Link
-              href={`/${locale}/list/attendance?date=${encodeURIComponent(attendanceDateStr)}`}
-              className="font-medium text-gray-800 underline-offset-2 hover:underline"
-            >
-              {dict.lunch.attendanceDayLabel}: {attendanceDateStr}
-            </Link>
-          </p>
           {teacherAttendanceFilterActive ? (
             <p className="mt-1 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-2 py-1 inline-block">
               {dict.lunch.teacherAttendanceBoardNote}
             </p>
           ) : null}
-          <div className="mt-2 flex flex-wrap items-end gap-2">
-            <WorkingDayDatePicker
-              value={attendanceDateStr}
-              disabled={dateNavPending}
-              ariaLabel={dict.forms?.date ?? "Date"}
-              onChange={(next) =>
-                startDateNavTransition(() => {
-                  router.replace(`${pathname}?date=${encodeURIComponent(next)}`);
-                })
-              }
-            />
-            <button
-              type="button"
-              className="self-end h-[34px] px-2 rounded-md border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
-              disabled={dateNavPending}
-              onClick={() =>
-                startDateNavTransition(() => {
-                  router.replace(
-                    `${pathname}?date=${encodeURIComponent(todayDateStrLocal())}`
-                  );
-                })
-              }
-            >
-              {dict.attendancePage?.today ?? "Today"}
-            </button>
-          </div>
         </div>
         <div className="flex shrink-0 items-center gap-3 flex-wrap justify-end">
           <Link

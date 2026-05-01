@@ -592,12 +592,10 @@ export default function AttendancePageClient({
           </FilterPanel>
           <ResetFiltersButton label={dict.common.resetFilters ?? "Reset filters"} />
           {canEdit && (
-            <div className="relative self-end" ref={actionsRef}>
+            <div className="relative flex items-center" ref={actionsRef}>
               <button
                 type="button"
-                className={`h-[42px] w-[42px] rounded-md border border-gray-300 bg-white flex items-center justify-center hover:bg-gray-50 ${
-                  isDownloadingPdf ? "opacity-60 cursor-not-allowed" : ""
-                }`}
+                className="h-[36px] w-[36px] rounded-full border border-gray-300 bg-white flex items-center justify-center hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
                 onClick={() => setActionsOpen((v) => !v)}
                 aria-label={dict.common.actions}
                 title={dict.common.actions}

@@ -425,9 +425,7 @@ export default function LunchGroupsManager({
             <div className="relative flex items-center" ref={actionsRef}>
               <button
                 type="button"
-                className={`h-9 w-9 rounded-md border border-gray-300 bg-white flex items-center justify-center hover:bg-gray-50 ${
-                  isDownloadingPdf ? "opacity-60 cursor-not-allowed" : ""
-                }`}
+                className="h-[36px] w-[36px] rounded-full border border-gray-300 bg-white flex items-center justify-center hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
                 onClick={() => setActionsOpen((v) => !v)}
                 aria-label={dict.common.actions}
                 aria-expanded={actionsOpen}

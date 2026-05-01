@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import InputField from "../InputField";
 import Image from "next/image";
-import { Dispatch, SetStateAction, useEffect, useMemo, useState } from "react";
+import { Dispatch, SetStateAction, useMemo, useState } from "react";
 import { TeacherInput, teacherSchema, TeacherSchema } from "@/lib/formValidationSchemas";
 import { createTeacherDirect, updateTeacherDirect } from "@/lib/actions";
 import { useRouter } from "next/navigation";
@@ -16,13 +16,12 @@ const TeacherForm = ({
   type,
   data,
   setOpen,
-  relatedData,
   variant = "admin",
 }: {
   type: "create" | "update";
   data?: any;
   setOpen: Dispatch<SetStateAction<boolean>>;
-  relatedData?: any;
+  relatedData?: unknown;
   variant?: "admin" | "self";
 }) => {
   const dict = useTranslations();
@@ -37,10 +36,6 @@ const TeacherForm = ({
           ? data.birthday.split("T")[0]
           : undefined;
 
-    const zoneIds = Array.isArray(data?.zones)
-      ? (data.zones.map((z: any) => z.zoneId).filter(Boolean) as string[])
-      : [];
-
     return {
       username: data?.username ?? "",
       email: data?.email ?? "",
@@ -53,7 +48,6 @@ const TeacherForm = ({
       birthday,
       sex: data?.sex ?? "MALE",
       id: data?.id ?? undefined,
-      zoneIds,
     } as Partial<TeacherInput>;
     // Only re-create defaults when switching the edited teacher.
   }, [data?.id]);
@@ -61,9 +55,7 @@ const TeacherForm = ({
   const {
     register,
     handleSubmit,
-    setValue,
     setError,
-    watch,
     formState: { errors },
   } = useForm<TeacherInput, any, TeacherSchema>({
     resolver: zodResolver(teacherSchema),
@@ -108,17 +100,6 @@ const TeacherForm = ({
       setLoading(false);
     }
   });
-
-  const { zones } = relatedData as {
-    zones: { id: string; name: string }[];
-  };
-
-  const selectedZoneIds = watch("zoneIds") ?? [];
-  const [zoneToAdd, setZoneToAdd] = useState<string>("");
-
-  const zoneNameById = useMemo(() => {
-    return new Map(zones.map((z) => [z.id, z.name]));
-  }, [zones]);
 
   return (
     <form className="flex flex-col gap-8" onSubmit={onSubmit}>
@@ -242,71 +223,6 @@ const TeacherForm = ({
           {errors.sex?.message && (
             <p className="text-xs text-red-400">
               {errors.sex.message.toString()}
-            </p>
-          )}
-        </div>
-        <div className={variant === "self" ? "hidden" : "flex flex-col gap-2 w-full md:w-1/4"}>
-          <label className="text-xs text-gray-500">
-            {dict.forms.playArea ??  "Play Areas"}
-          </label>
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <select
-                className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
-                value={zoneToAdd}
-                onChange={(e) => setZoneToAdd(e.target.value)}
-              >
-                <option value="">{dict.forms.none}</option>
-                {zones
-                  .filter((z) => !selectedZoneIds.includes(z.id))
-                  .map((zone) => (
-                    <option value={zone.id} key={zone.id}>
-                      {zone.name}
-                    </option>
-                  ))}
-              </select>
-              <button
-                type="button"
-                className="bg-kitaYellow px-3 py-2 rounded-md text-sm whitespace-nowrap"
-                onClick={() => {
-                  if (!zoneToAdd) return;
-                  setValue("zoneIds", [...selectedZoneIds, zoneToAdd], {
-                    shouldValidate: true,
-                    shouldDirty: true,
-                  });
-                  setZoneToAdd("");
-                }}
-              >
-                {dict.common.save}
-              </button>
-            </div>
-
-            {/* Selected zones */}
-            {selectedZoneIds.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {selectedZoneIds.map((id) => (
-                  <button
-                    key={id}
-                    type="button"
-                    className="text-xs bg-kitaSkyLight px-2 py-1 rounded-md break-words"
-                    onClick={() => {
-                      setValue(
-                        "zoneIds",
-                        selectedZoneIds.filter((x: string) => x !== id),
-                        { shouldValidate: true, shouldDirty: true }
-                      );
-                    }}
-                    title={dict.common.delete}
-                  >
-                    {zoneNameById.get(id) ?? id} ×
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          {errors.zoneIds?.message && (
-            <p className="text-xs text-red-400">
-              {errors.zoneIds.message.toString()}
             </p>
           )}
         </div>

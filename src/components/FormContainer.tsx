@@ -44,13 +44,6 @@ const FormContainer = async ({
         });
         relatedData = { teachers: classTeachers, grades: classGrades };
         break;
-      case "teacher":
-        const teacherZones = await prisma.zone.findMany({
-          select: { id: true, name: true },
-          orderBy: { name: "asc" },
-        });
-        relatedData = { zones: teacherZones };
-        break;
       case "student":
         const studentGrades = await prisma.grade.findMany({
           select: { id: true, level: true },

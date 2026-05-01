@@ -200,12 +200,6 @@ export const createTeacher = async (
         bloodType: data.bloodType,
         sex: data.sex,
         birthday: data.birthday,
-        zones: {
-          create: (data.zoneIds ?? []).map((zoneId) => ({
-            id: randomUUID(),
-            zoneId,
-          })),
-        },
       },
     });
 
@@ -295,13 +289,6 @@ export const updateTeacher = async (
         sex: data.sex,
         birthday: data.birthday,
         ...(data.img !== undefined && { img: data.img }),
-        zones: {
-          deleteMany: {},
-          create: (data.zoneIds ?? []).map((zoneId) => ({
-            id: randomUUID(),
-            zoneId,
-          })),
-        },
       },
     });
     // revalidatePath("/list/teachers");
@@ -1614,7 +1601,6 @@ export const createZone = async (
         name: data.name.trim(),
         capacity: data.capacity ?? null,
         description: data.description?.trim() || null,
-        color: data.color?.trim() || null,
       },
     });
     return { success: true, error: false };
@@ -1639,7 +1625,6 @@ export const updateZone = async (
         name: data.name.trim(),
         capacity: data.capacity ?? null,
         description: data.description?.trim() || null,
-        color: data.color?.trim() || null,
       },
     });
     return { success: true, error: false };

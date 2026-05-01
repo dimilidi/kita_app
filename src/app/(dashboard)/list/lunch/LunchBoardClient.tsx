@@ -779,44 +779,6 @@ export default function LunchBoardClient({
               {dict.lunch.teacherAttendanceBoardNote}
             </p>
           ) : null}
-          <div className="mt-2 flex flex-wrap items-end gap-2">
-            <WorkingDayDatePicker
-              value={attendanceDateStr}
-              disabled={dateNavPending}
-              ariaLabel={dict.forms.date}
-              onChange={(next) =>
-                startDateNavTransition(() => {
-                  const current = new URLSearchParams(
-                    typeof window !== "undefined" ? window.location.search : ""
-                  );
-                  const params = new URLSearchParams();
-                  params.set("date", next);
-                  const search = current.get("search");
-                  if (search) params.set("search", search);
-                  router.replace(`${pathname}?${params.toString()}`);
-                })
-              }
-            />
-            <button
-              type="button"
-              className="self-end h-[34px] px-2 rounded-md border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
-              disabled={dateNavPending}
-              onClick={() =>
-                startDateNavTransition(() => {
-                  const current = new URLSearchParams(
-                    typeof window !== "undefined" ? window.location.search : ""
-                  );
-                  const params = new URLSearchParams();
-                  params.set("date", todayDateStrLocal());
-                  const search = current.get("search");
-                  if (search) params.set("search", search);
-                  router.replace(`${pathname}?${params.toString()}`);
-                })
-              }
-            >
-              {dict.attendancePage?.today ?? "Today"}
-            </button>
-          </div>
         </div>
         <div className="flex shrink-0 items-center gap-3 flex-wrap justify-end">
           {!canEditDate ? (
@@ -851,6 +813,24 @@ export default function LunchBoardClient({
           >
             {dict.lunch.tischsprueche}
           </Link>
+
+          <WorkingDayDatePicker
+            value={attendanceDateStr}
+            disabled={dateNavPending}
+            ariaLabel={dict.forms.date}
+            onChange={(next) =>
+              startDateNavTransition(() => {
+                const current = new URLSearchParams(
+                  typeof window !== "undefined" ? window.location.search : ""
+                );
+                const params = new URLSearchParams();
+                params.set("date", next);
+                const search = current.get("search");
+                if (search) params.set("search", search);
+                router.replace(`${pathname}?${params.toString()}`);
+              })
+            }
+          />
 
           <div className="relative" ref={actionsRef}>
             <button
