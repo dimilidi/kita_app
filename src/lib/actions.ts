@@ -24,6 +24,7 @@ import { auth, clerkClient } from "@clerk/nextjs/server";
 import { getAuthData } from "./utils";
 import { randomUUID } from "crypto";
 import type { AttendanceRow } from "@/app/(dashboard)/list/attendance/types";
+import nodemailer from "nodemailer";
 
 /** For client components that need server-auth-derived id/role (e.g. Profile link). */
 export async function getAuthDataAction(): Promise<{ userId: string | null; role: string | null }> {
@@ -869,6 +870,165 @@ export async function saveDailyAttendance({
     console.log(err);
     return { success: false, error: "server" };
   }
+}
+
+/** Parent-only: mark their own child absent for the calendar day (present=false, clears pickup). */
+export async function reportChildAbsenceByParent({
+  studentId,
+  dateStr,
+}: {
+  studentId: string;
+  dateStr: string;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { userId, role } = getAuthData();
+    if (!userId || role !== "parent") {
+      return { success: false, error: "forbidden" };
+    }
+    const range = parseDateStrToUtcRange(dateStr);
+    if (!range) return { success: false, error: "invalidDate" };
+    if (isWeekendDateStrUTC(dateStr)) return { success: false, error: "invalidDate" };
+    const { start, end } = range;
+
+    const student = await prisma.student.findUnique({
+      where: { id: studentId },
+      select: { id: true, parentId: true, classId: true },
+    });
+    if (!student) return { success: false, error: "notFound" };
+    if (student.parentId !== userId) return { success: false, error: "forbidden" };
+
+    const lesson = await prisma.lesson.findFirst({
+      where: { classId: student.classId },
+      orderBy: { startTime: "asc" },
+      select: { id: true },
+    });
+    if (!lesson) return { success: false, error: "noLesson" };
+
+    // Ensure daily snapshot exists for class.
+    const classStudentIds: string[] = (
+      await prisma.student.findMany({
+        where: { classId: student.classId },
+        select: { id: true },
+      })
+    ).map((s: { id: string }) => s.id);
+    const existingForDay = await prisma.attendance.findMany({
+      where: {
+        lessonId: lesson.id,
+        date: { gte: start, lt: end },
+        studentId: { in: classStudentIds },
+      },
+      select: { studentId: true },
+    });
+    const existingIds = new Set(existingForDay.map((r) => r.studentId));
+    const missingIds = classStudentIds.filter((id) => !existingIds.has(id));
+    if (missingIds.length > 0) {
+      await prisma.attendance.createMany({
+        data: missingIds.map((id) => ({
+          studentId: id,
+          lessonId: lesson.id,
+          date: start,
+          present: false,
+        })),
+      });
+    }
+
+    const existing = await prisma.attendance.findFirst({
+      where: { studentId, lessonId: lesson.id, date: { gte: start, lt: end } },
+      orderBy: { id: "desc" },
+      select: { id: true },
+    });
+    if (!existing) return { success: false, error: "notFound" };
+
+    await prisma.attendance.update({
+      where: { id: existing.id },
+      data: { present: false, actualPickupTime: null },
+    });
+
+    revalidatePath("/parent");
+    revalidatePath("/list/attendance");
+    return { success: true };
+  } catch (e) {
+    console.error("reportChildAbsenceByParent", e);
+    return { success: false, error: "server" };
+  }
+}
+
+/** Parent-only: send a message to kindergarten via email (simple, non-chat). */
+export async function sendParentMessageToKindergartenEmail(payload: {
+  studentId: string;
+  subject?: string;
+  message: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const { userId, role } = getAuthData();
+    if (!userId || role !== "parent") {
+      return { ok: false, error: "forbidden" };
+    }
+
+    const student = await prisma.student.findUnique({
+      where: { id: payload.studentId },
+      select: { id: true, name: true, surname: true, parentId: true },
+    });
+    if (!student) return { ok: false, error: "not_found" };
+    if (student.parentId !== userId) return { ok: false, error: "forbidden" };
+
+    const parent = await prisma.parent.findUnique({
+      where: { id: userId },
+      select: { id: true, name: true, surname: true, email: true },
+    });
+    if (!parent) return { ok: false, error: "forbidden" };
+
+    const message = (payload.message ?? "").trim();
+    if (message.length === 0) return { ok: false, error: "empty" };
+
+    const subjectRaw = (payload.subject ?? "").trim();
+    const subject =
+      subjectRaw.length > 0
+        ? subjectRaw
+        : `Message from parent: ${parent.name} ${parent.surname} (${student.name} ${student.surname})`;
+
+    const host = process.env.SMTP_HOST;
+    const port = parseInt(process.env.SMTP_PORT ?? "", 10);
+    const user = process.env.SMTP_USER;
+    const pass = process.env.SMTP_PASS;
+    const from = process.env.SMTP_FROM ?? user ?? "";
+    if (!host || !Number.isFinite(port) || !user || !pass || !from) {
+      return { ok: false, error: "email_not_configured" };
+    }
+
+    const ts = new Date();
+    const text = [
+      `Parent: ${parent.name} ${parent.surname}`,
+      `Parent email: ${parent.email ?? "—"}`,
+      `Child: ${student.name} ${student.surname}`,
+      `Timestamp: ${ts.toISOString()}`,
+      "",
+      message,
+    ].join("\n");
+
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      auth: { user, pass },
+    });
+
+    await transporter.sendMail({
+      from,
+      to: "l.i.d@abv.bg",
+      subject,
+      text,
+    });
+
+    return { ok: true };
+  } catch (e) {
+    console.error("sendParentMessageToKindergartenEmail", e);
+    return { ok: false, error: "server" };
+  }
+
+  // Fail closed: never return undefined.
+  // (Should be unreachable, but keeps the client contract stable.)
+  return { ok: false, error: "unknown" };
 }
 
 /**
