@@ -12,8 +12,12 @@ import {
   TeacherSchema,
   ZoneSchema,
 } from "./formValidationSchemas";
-import { parseDateStrToUtcRange } from "./attendanceDate";
-import { isWeekendDateStrUTC } from "./attendanceDate";
+import {
+  isWeekendDateStrUTC,
+  parseDateStrToUtcRange,
+  todayDateStrLocal,
+} from "./attendanceDate";
+import { teacherMayEditStudentAttendance } from "./teacherAttendanceScope";
 import { announcementAccessWhere } from "./announcementVisibility";
 import { getUnreadAnnouncementCount } from "./announcementUnread";
 import { getUnreadStaffChatCount } from "./staffChatUnread";
@@ -737,6 +741,10 @@ export const deleteAttendance = async (
   currentState: CurrentState,
   data: FormData
 ) => {
+  const { role } = getAuthData();
+  if (role === "teacher") {
+    return { success: false, error: true };
+  }
   const id = data.get("id") as string;
   try {
     await prisma.attendance.delete({ where: { id: parseInt(id) } });
@@ -779,13 +787,11 @@ export async function saveDailyAttendance({
     }
 
     if (role === "teacher") {
-      const teachesHere = await prisma.lesson.findFirst({
-        where: {
-          classId: student.classId,
-          teacherId: userId!,
-        },
-      });
-      if (!teachesHere) {
+      const allowed = await teacherMayEditStudentAttendance(
+        userId!,
+        student.classId
+      );
+      if (!allowed) {
         return { success: false, error: "forbidden" };
       }
     }
@@ -1018,6 +1024,83 @@ export async function sendParentMessageToKindergartenEmail(payload: {
   return { ok: false, error: "unknown" };
 }
 
+/** Teacher → educator email (UI: educator list only). Uses recipient email server-side only. */
+export async function sendPeerEducatorEmail(payload: {
+  recipientTeacherId: string;
+  subject?: string;
+  message: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const { userId, role } = getAuthData();
+    if (!userId || role !== "teacher") {
+      return { ok: false, error: "forbidden" };
+    }
+    if (userId === payload.recipientTeacherId) {
+      return { ok: false, error: "self" };
+    }
+
+    const body = (payload.message ?? "").trim();
+    if (body.length === 0) return { ok: false, error: "empty" };
+
+    const recipient = await prisma.teacher.findUnique({
+      where: { id: payload.recipientTeacherId },
+      select: { name: true, surname: true, email: true },
+    });
+    if (!recipient) return { ok: false, error: "not_found" };
+    const toAddr = recipient.email?.trim();
+    if (!toAddr) return { ok: false, error: "no_recipient_email" };
+
+    const sender = await prisma.teacher.findUnique({
+      where: { id: userId },
+      select: { name: true, surname: true, email: true },
+    });
+    if (!sender) return { ok: false, error: "forbidden" };
+
+    const host = process.env.SMTP_HOST;
+    const port = parseInt(process.env.SMTP_PORT ?? "", 10);
+    const smtpUser = process.env.SMTP_USER;
+    const pass = process.env.SMTP_PASS;
+    const from = process.env.SMTP_FROM ?? smtpUser ?? "";
+    if (!host || !Number.isFinite(port) || !smtpUser || !pass || !from) {
+      return { ok: false, error: "email_not_configured" };
+    }
+
+    const subjectRaw = (payload.subject ?? "").trim();
+    const subject =
+      subjectRaw.length > 0
+        ? subjectRaw
+        : `Message from ${sender.name} ${sender.surname}`;
+
+    const text = [
+      `From: ${sender.name} ${sender.surname}`,
+      sender.email ? `Sender email: ${sender.email}` : "Sender email: not on file",
+      `To: ${recipient.name} ${recipient.surname}`,
+      `Timestamp: ${new Date().toISOString()}`,
+      "",
+      body,
+    ].join("\n");
+
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      auth: { user: smtpUser, pass },
+    });
+
+    await transporter.sendMail({
+      from,
+      to: toAddr,
+      subject,
+      text,
+    });
+
+    return { ok: true };
+  } catch (e) {
+    console.error("sendPeerEducatorEmail", e);
+    return { ok: false, error: "server" };
+  }
+}
+
 /**
  * Bulk set attendance for many students for a specific lesson on a given day.
  * Uses `updateMany` for existing rows and `createMany` for missing rows.
@@ -1055,13 +1138,29 @@ export async function saveDailyAttendanceForLessonMany({
 
     const lesson = await prisma.lesson.findUnique({
       where: { id: lessonId },
-      select: { id: true, teacherId: true },
+      select: { id: true, classId: true },
     });
     if (!lesson) {
       return { success: false, error: "noLesson" };
     }
-    if (role === "teacher" && lesson.teacherId !== userId) {
-      return { success: false, error: "forbidden" };
+    if (role === "teacher") {
+      const allowed = await teacherMayEditStudentAttendance(
+        userId!,
+        lesson.classId
+      );
+      if (!allowed) {
+        return { success: false, error: "forbidden" };
+      }
+      const students = await prisma.student.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, classId: true },
+      });
+      if (students.length !== ids.length) {
+        return { success: false, error: "forbidden" };
+      }
+      if (students.some((s) => s.classId !== lesson.classId)) {
+        return { success: false, error: "forbidden" };
+      }
     }
 
     // Ensure complete daily snapshot for these students: missing rows default to present=false.
@@ -1130,7 +1229,7 @@ export async function saveDailyAttendanceForAttendancePageFilterAll({
 }): Promise<{ success: boolean; error?: string; updated?: number }> {
   try {
     const { role } = getAuthData();
-    if (role !== "admin" && role !== "teacher") {
+    if (role !== "admin") {
       return { success: false, error: "forbidden" };
     }
 
@@ -1262,13 +1361,11 @@ export async function saveAttendanceDayDetail({
     }
 
     if (role === "teacher") {
-      const teachesHere = await prisma.lesson.findFirst({
-        where: {
-          classId: student.classId,
-          teacherId: userId!,
-        },
-      });
-      if (!teachesHere) {
+      const allowed = await teacherMayEditStudentAttendance(
+        userId!,
+        student.classId
+      );
+      if (!allowed) {
         return { success: false, error: "forbidden" };
       }
     }
@@ -1367,14 +1464,11 @@ export async function markAttendancePickedUp({
     }
 
     if (role === "teacher") {
-      const teachesHere = await prisma.lesson.findFirst({
-        where: {
-          classId: student.classId,
-          teacherId: userId!,
-        },
-        select: { id: true },
-      });
-      if (!teachesHere) {
+      const allowed = await teacherMayEditStudentAttendance(
+        userId!,
+        student.classId
+      );
+      if (!allowed) {
         return { success: false, error: "forbidden" };
       }
     }
@@ -2067,6 +2161,9 @@ export async function upsertTeacherAttendance({
     if (isWeekendDateStrUTC(dateStr)) {
       return { success: false, error: "invalidDate" };
     }
+    if (role === "teacher" && dateStr < todayDateStrLocal()) {
+      return { success: false, error: "pastDate" };
+    }
     const exists = await prisma.teacher.findUnique({ where: { id: teacherId } });
     if (!exists) {
       return { success: false, error: "notFound" };
@@ -2108,6 +2205,7 @@ export async function upsertTeacherAttendance({
     });
 
     revalidatePath("/list/teachers-attendance");
+    revalidatePath("/teacher");
     revalidatePath("/list/lunch");
     revalidatePath("/list/areas/board");
     return { success: true };
@@ -2142,6 +2240,9 @@ export async function markTeacherAttendanceCheckedOut({
     const range = parseDateStrToUtcRange(dateStr);
     if (!range) return { success: false, error: "invalidDate" };
     if (isWeekendDateStrUTC(dateStr)) return { success: false, error: "invalidDate" };
+    if (role === "teacher" && dateStr < todayDateStrLocal()) {
+      return { success: false, error: "pastDate" };
+    }
     if (!/^\d{2}:\d{2}$/.test(pickedUpAt)) {
       return { success: false, error: "invalidPickupTime" };
     }
@@ -2164,6 +2265,7 @@ export async function markTeacherAttendanceCheckedOut({
     });
 
     revalidatePath("/list/teachers-attendance");
+    revalidatePath("/teacher");
     revalidatePath("/list/lunch");
     revalidatePath("/list/areas/board");
     return { success: true };

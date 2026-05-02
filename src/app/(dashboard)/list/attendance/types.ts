@@ -11,4 +11,6 @@ export type AttendanceRow = {
   actualPickupTime: string | null;
   displayPickupTime: string | null;
   note: string | null;
+  /** Teacher role: whether this educator may edit this child (supervisor or teaches an activity in the group). */
+  canEditAttendance?: boolean;
 };

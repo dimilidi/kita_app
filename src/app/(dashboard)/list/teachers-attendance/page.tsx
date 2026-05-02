@@ -2,6 +2,7 @@ import {
   isWeekendDateStrUTC,
   normalizeAttendanceDateStr,
   parseDateStrToUtcRange,
+  todayDateStrLocal,
 } from "@/lib/attendanceDate";
 import { DEFAULT_LOCALE } from "@/i18n/lang";
 import prisma from "@/lib/prisma";
@@ -19,10 +20,26 @@ export default async function TeachersAttendancePage({
     redirect(`/${DEFAULT_LOCALE}`);
   }
 
-  // Prevent landing on weekend dates via URL.
+  const todayStr = todayDateStrLocal();
   const requested = searchParams.date;
-  const dateStr = normalizeAttendanceDateStr(requested);
-  if (requested && requested !== dateStr) {
+  const viewerIsAdmin = role === "admin";
+
+  // Teachers always use today (local); ignore date in URL.
+  if (role === "teacher" && requested) {
+    const params = new URLSearchParams();
+    const search = searchParams.search;
+    const status = searchParams.status;
+    if (search) params.set("search", search);
+    if (status) params.set("status", status);
+    const q = params.toString();
+    redirect(q ? `?${q}` : "/list/teachers-attendance");
+  }
+
+  const dateStr =
+    role === "teacher" ? todayStr : normalizeAttendanceDateStr(requested);
+
+  // Prevent landing on weekend dates via URL (admins only).
+  if (viewerIsAdmin && requested && requested !== dateStr) {
     const params = new URLSearchParams();
     params.set("date", dateStr);
     const search = searchParams.search;
@@ -31,8 +48,11 @@ export default async function TeachersAttendancePage({
     if (status) params.set("status", status);
     redirect(`?${params.toString()}`);
   }
-  const canEdit = !isWeekendDateStrUTC(dateStr);
-  const viewerIsAdmin = role === "admin";
+
+  /** Admin: any working day. Teacher: self-service only on the current calendar day (local). */
+  const canEdit =
+    !isWeekendDateStrUTC(dateStr) &&
+    (viewerIsAdmin || dateStr === todayStr);
   const rawSearch = typeof searchParams.search === "string" ? searchParams.search.trim() : "";
   const statusFilter =
     searchParams.status === "absent" ||
@@ -46,16 +66,13 @@ export default async function TeachersAttendancePage({
     name: string;
     surname: string;
     img: string | null;
-  }[];
+  }[] = [];
   const attendanceByTeacher: Record<
     string,
     { present: boolean; actualPickupTime: string | null }
   > = {};
 
-  if (viewerIsAdmin) {
-    // Ensure a complete daily record exists for all teachers for this day
-    // (missing rows default to present=false). This keeps charts consistent:
-    // present = count(true), absent = count(false), no missing rows.
+  if (viewerIsAdmin || role === "teacher") {
     const range = parseDateStrToUtcRange(dateStr);
     if (range) {
       const ids: string[] = (
@@ -94,33 +111,6 @@ export default async function TeachersAttendancePage({
       orderBy: [{ name: "asc" }, { surname: "asc" }],
       select: { id: true, name: true, surname: true, img: true },
     });
-  } else {
-    if (!userId) {
-      teachers = [];
-    } else {
-      const me = await prisma.teacher.findUnique({
-        where: { id: userId },
-        select: { id: true, name: true, surname: true, img: true },
-      });
-      teachers = me ? [me] : [];
-      const dayRange = parseDateStrToUtcRange(dateStr);
-      const row =
-        dayRange != null
-          ? await (prisma as any).teacherAttendance.findFirst({
-              where: {
-                teacherId: userId,
-                date: { gte: dayRange.start, lt: dayRange.end },
-              },
-              select: { teacherId: true, present: true, actualPickupTime: true },
-            })
-          : null;
-      if (row) {
-        attendanceByTeacher[row.teacherId] = {
-          present: row.present,
-          actualPickupTime: row.actualPickupTime ?? null,
-        };
-      }
-    }
   }
 
   const filteredTeachers =
@@ -151,6 +141,8 @@ export default async function TeachersAttendancePage({
       attendanceByTeacher={attendanceByTeacher}
       canEdit={canEdit}
       viewerIsAdmin={viewerIsAdmin}
+      showDatePicker={viewerIsAdmin}
+      editableTeacherId={viewerIsAdmin ? null : userId ?? null}
     />
   );
 }

@@ -37,3 +37,19 @@ export function isWeekendDateStrUTC(dateStr: string): boolean {
   const dow = range.start.getUTCDay(); // 0=Sun ... 6=Sat
   return dow === 0 || dow === 6;
 }
+
+/** `YYYY-MM-DD` interpreted in the local calendar; e.g. en-GB: "Monday, 4 May 2026". */
+export function formatCalendarDateStrLong(dateStr: string, intlLocale: string) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+  if (!m) return dateStr;
+  const y = parseInt(m[1], 10);
+  const mo = parseInt(m[2], 10) - 1;
+  const d = parseInt(m[3], 10);
+  const dt = new Date(y, mo, d);
+  return new Intl.DateTimeFormat(intlLocale, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(dt);
+}

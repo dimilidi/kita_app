@@ -3,6 +3,7 @@ import {
   normalizeAttendanceDateStr,
   parseDateStrToUtcRange,
 } from "@/lib/attendanceDate";
+import { teacherMayEditStudentAttendance } from "@/lib/teacherAttendanceScope";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { getAuthData } from "@/lib/utils";
 import { Prisma } from "@prisma/client";
@@ -38,21 +39,24 @@ export async function loadAttendancePageData(opts: LoadOpts) {
   const safePage =
     Number.isNaN(parsed) || parsed < 1 ? 1 : parsed;
 
-  const studentWhere: Prisma.StudentWhereInput = {};
+  const scopeParts: Prisma.StudentWhereInput[] = [];
 
   switch (role) {
     case "admin":
       break;
     case "teacher":
-      studentWhere.class = {
-        lessons: { some: { teacherId: userId! } },
-      };
+      scopeParts.push({
+        OR: [
+          { class: { supervisorId: userId! } },
+          { class: { lessons: { some: { teacherId: userId! } } } },
+        ],
+      });
       break;
     case "student":
-      studentWhere.id = userId!;
+      scopeParts.push({ id: userId! });
       break;
     case "parent":
-      studentWhere.parentId = userId!;
+      scopeParts.push({ parentId: userId! });
       break;
     default:
       break;
@@ -61,19 +65,28 @@ export async function loadAttendancePageData(opts: LoadOpts) {
   if (classIdParam && classIdParam !== "all") {
     const cid = parseInt(classIdParam, 10);
     if (!Number.isNaN(cid)) {
-      studentWhere.classId = cid;
+      scopeParts.push({ classId: cid });
     }
   }
 
   if (rawSearch) {
-    studentWhere.OR = [
-      { name: { contains: rawSearch, mode: "insensitive" } },
-      { surname: { contains: rawSearch, mode: "insensitive" } },
-    ];
+    scopeParts.push({
+      OR: [
+        { name: { contains: rawSearch, mode: "insensitive" } },
+        { surname: { contains: rawSearch, mode: "insensitive" } },
+      ],
+    });
   }
   if (sexFilter) {
-    studentWhere.sex = sexFilter as any;
+    scopeParts.push({ sex: sexFilter as "MALE" | "FEMALE" });
   }
+
+  const studentWhere: Prisma.StudentWhereInput =
+    scopeParts.length === 0
+      ? {}
+      : scopeParts.length === 1
+        ? scopeParts[0]!
+        : { AND: scopeParts };
 
   const classIdGroups = await prisma.student.groupBy({
     by: ["classId"],
@@ -141,6 +154,17 @@ export async function loadAttendancePageData(opts: LoadOpts) {
     orderBy: [{ surname: "asc" }, { name: "asc" }],
   });
 
+  const teacherAllowByClassId = new Map<number, boolean>();
+  if (role === "teacher" && userId) {
+    const uniqueClassIds = Array.from(new Set(students.map((s) => s.classId)));
+    for (const cid of uniqueClassIds) {
+      teacherAllowByClassId.set(
+        cid,
+        await teacherMayEditStudentAttendance(userId, cid)
+      );
+    }
+  }
+
   const rowsAll: AttendanceRow[] = students.map((s) => {
     const lessonId = lessonIdByClass.get(s.classId) ?? null;
     const att =
@@ -162,6 +186,12 @@ export async function loadAttendancePageData(opts: LoadOpts) {
       actualPickupTime: actualPickup,
       displayPickupTime,
       note: att?.note ?? null,
+      canEditAttendance:
+        role === "admin"
+          ? true
+          : role === "teacher"
+            ? teacherAllowByClassId.get(s.classId) ?? false
+            : undefined,
     };
   });
 
@@ -197,7 +227,12 @@ export async function loadAttendancePageData(opts: LoadOpts) {
     });
   } else if (role === "teacher") {
     classesForFilter = await prisma.class.findMany({
-      where: { lessons: { some: { teacherId: userId! } } },
+      where: {
+        OR: [
+          { supervisorId: userId! },
+          { lessons: { some: { teacherId: userId! } } },
+        ],
+      },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     });

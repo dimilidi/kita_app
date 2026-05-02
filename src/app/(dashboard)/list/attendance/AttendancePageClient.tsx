@@ -719,7 +719,13 @@ export default function AttendancePageClient({
               ) : (
                 localRows.map((row) => {
                   const isParentView = viewerRole === "parent";
-                  const disabled = !canEdit || !row.lessonId || isPending;
+                  const teacherRowDenied =
+                    viewerRole === "teacher" && row.canEditAttendance !== true;
+                  const disabled =
+                    !canEdit ||
+                    !row.lessonId ||
+                    isPending ||
+                    teacherRowDenied;
                   const status = deriveStatus(row);
                   const statusLabel =
                     status === "absent"
@@ -737,7 +743,8 @@ export default function AttendancePageClient({
                   const canCheckIn = !disabled && status === "absent";
                   const canCheckOut = !disabled && status === "checked_in";
                   const canSetAbsent = canRevertAbsent && !disabled && status !== "absent";
-                  const canNotes = canEdit && !!row.lessonId;
+                  const canNotes =
+                    canEdit && !!row.lessonId && !teacherRowDenied;
                   const canParentReportAbsence = isParentView && status === "absent";
                   return (
                     <tr

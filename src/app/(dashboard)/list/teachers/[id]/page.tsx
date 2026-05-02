@@ -6,7 +6,7 @@ import { getCurrentPlacementNow } from "@/lib/currentPlacementNow";
 import prisma from "@/lib/prisma";
 import Image from "next/image";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getAuthData } from "@/lib/utils";
 import { cookies } from "next/headers";
 import { DEFAULT_LOCALE, Locale } from "@/i18n/lang";
@@ -18,6 +18,11 @@ const SingleTeacherPage = async ({
   params: { id: string };
 }) => {
   const { role, userId } = getAuthData();
+  /** Teachers may only open their own profile; others list routes redirect to roster. */
+  if (role === "teacher" && (!userId || id !== userId)) {
+    redirect("/list/teachers");
+  }
+
   const cookieLang = cookies().get("NEXT_LANG")?.value as Locale | undefined;
   const lang = cookieLang ?? DEFAULT_LOCALE;
   const dict = getDictionary(lang) as any;
@@ -151,14 +156,14 @@ const SingleTeacherPage = async ({
                 <h1 className="text-xl font-semibold break-words">
                   {teacher.name} {teacher.surname}
                 </h1>
-                {(role === "admin" || (role === "teacher" && userId === teacher.id)) && (
+                {role === "admin" ? (
                   <FormContainer
                     table="teacher"
                     type="update"
                     data={teacher}
-                    variant={role === "admin" ? "admin" : "self"}
+                    variant="admin"
                   />
-                )}
+                ) : null}
               </div>
 
               {/* <p className="text-sm text-gray-500">

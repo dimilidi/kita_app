@@ -18,12 +18,18 @@ export default function TeachersAttendanceClient({
   attendanceByTeacher: attendanceInitial,
   canEdit,
   viewerIsAdmin,
+  showDatePicker = true,
+  editableTeacherId = null,
 }: {
   dateStr: string;
   teachers: TeacherLite[];
   attendanceByTeacher: Record<string, { present: boolean; actualPickupTime: string | null }>;
   canEdit: boolean;
   viewerIsAdmin: boolean;
+  /** Hidden for teachers (today only). */
+  showDatePicker?: boolean;
+  /** When set (educator role), only this teacher row gets check-in/out actions. */
+  editableTeacherId?: string | null;
 }) {
   const dict = useTranslations();
   const ta = dict.teacherAttendancePage;
@@ -58,6 +64,10 @@ export default function TeachersAttendanceClient({
     return "checked_in";
   };
 
+  /** Who may trigger mutations: admins for any row; teachers only on their own row (others still see buttons, disabled). */
+  const mayMutateRow = (teacherId: string) =>
+    viewerIsAdmin || (editableTeacherId != null && teacherId === editableTeacherId);
+
   const summary = useMemo(() => {
     let absent = 0;
     let checkedIn = 0;
@@ -78,6 +88,7 @@ export default function TeachersAttendanceClient({
 
   const onToggle = async (teacherId: string, nextPresent: boolean) => {
     if (!canEdit) return;
+    if (!viewerIsAdmin && teacherId !== editableTeacherId) return;
     setLocalAttendance((prev) => ({
       ...prev,
       [teacherId]: { present: nextPresent, actualPickupTime: null },
@@ -104,6 +115,7 @@ export default function TeachersAttendanceClient({
 
   const onCheckOut = async (teacherId: string) => {
     if (!canEdit) return;
+    if (!viewerIsAdmin && teacherId !== editableTeacherId) return;
     const pickedUpAt = nowHHmm();
     setLocalAttendance((prev) => ({
       ...prev,
@@ -261,18 +273,20 @@ export default function TeachersAttendanceClient({
         <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
           <SearchInput />
           <div className="flex flex-wrap gap-3 items-center justify-end self-end">
-          <label className="flex flex-col gap-1 text-sm">
-            <WorkingDayDatePicker
-              value={dateStr}
-              disabled={isPending}
-              ariaLabel={ta.date}
-              onChange={(next) =>
-                startTransition(() =>
-                  router.replace(`${pathname}?date=${encodeURIComponent(next)}`)
-                )
-              }
-            />
-          </label>
+          {showDatePicker ? (
+            <label className="flex flex-col gap-1 text-sm">
+              <WorkingDayDatePicker
+                value={dateStr}
+                disabled={isPending}
+                ariaLabel={ta.date}
+                onChange={(next) =>
+                  startTransition(() =>
+                    router.replace(`${pathname}?date=${encodeURIComponent(next)}`)
+                  )
+                }
+              />
+            </label>
+          ) : null}
           <FilterPanel title={dict.common.filters}>
             <FilterDropdown
               label={ta.status}
@@ -404,10 +418,12 @@ export default function TeachersAttendanceClient({
                 teachers.map((t) => {
                   const a = localAttendance[t.id] ?? { present: false, actualPickupTime: null };
                   const status = deriveStatus(t.id);
+                  const rowMayMutate = mayMutateRow(t.id);
                   const disabled = !canEdit || isPending;
-                  const canCheckIn = !disabled && status === "absent";
-                  const canCheckOut = !disabled && status === "checked_in";
-                  const canSetAbsent = viewerIsAdmin && !disabled && status !== "absent";
+                  const canCheckIn = rowMayMutate && !disabled && status === "absent";
+                  const canCheckOut = rowMayMutate && !disabled && status === "checked_in";
+                  const canSetAbsent =
+                    viewerIsAdmin && rowMayMutate && !disabled && status !== "absent";
                   const dotClass =
                     status === "absent"
                       ? "bg-rose-500"

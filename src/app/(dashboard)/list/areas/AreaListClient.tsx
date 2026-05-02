@@ -153,8 +153,15 @@ export default function AreaListClient({
     `}</style>
   );
 
-  const colBase =
-    "p-3 align-top w-1/4 max-w-[25%] box-border";
+  /** Teachers: no Actions column (read-only). Admins and other roles: keep table layout as before. */
+  const showActionsCol = role !== "teacher";
+  const colBase = showActionsCol
+    ? "p-3 align-top w-1/4 max-w-[25%] box-border"
+    : "p-3 align-top w-1/3 max-w-[33.333%] box-border";
+  const tdData = showActionsCol
+    ? "w-1/4 max-w-[25%]"
+    : "w-1/3 max-w-[33.333%]";
+
   const columns = [
     {
       header: dict.areasList.columns.name,
@@ -171,11 +178,15 @@ export default function AreaListClient({
       accessor: "lessons",
       className: `${colBase} text-center tabular-nums`,
     },
-    {
-      header: dict.common.actions,
-      accessor: "action",
-      className: `${colBase} print:hidden`,
-    },
+    ...(showActionsCol
+      ? [
+          {
+            header: dict.common.actions,
+            accessor: "action",
+            className: `${colBase} print:hidden`,
+          },
+        ]
+      : []),
   ];
 
   const renderRow = (item: AreaRow) => (
@@ -183,25 +194,27 @@ export default function AreaListClient({
       key={item.id}
       className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-kitaPurpleLight"
     >
-      <td className="p-3 font-medium min-w-0 w-1/4 max-w-[25%] box-border">
+      <td className={`p-3 font-medium min-w-0 box-border ${tdData}`}>
         {item.name}
       </td>
-      <td className="p-3 w-1/4 max-w-[25%] box-border text-center tabular-nums">
+      <td className={`p-3 box-border text-center tabular-nums ${tdData}`}>
         {item.capacity != null ? item.capacity : "—"}
       </td>
-      <td className="p-3 w-1/4 max-w-[25%] box-border text-center tabular-nums">
+      <td className={`p-3 box-border text-center tabular-nums ${tdData}`}>
         {item._count?.lessons ?? 0}
       </td>
-      <td className="p-3 w-1/4 max-w-[25%] box-border print:hidden">
-        <div className="flex items-center gap-2">
-          {role === "admin" && (
-            <>
-              <FormModal table="zone" type="update" data={item} />
-              <FormModal table="zone" type="delete" id={item.id} />
-            </>
-          )}
-        </div>
-      </td>
+      {showActionsCol ? (
+        <td className={`p-3 box-border print:hidden ${tdData}`}>
+          <div className="flex items-center gap-2">
+            {role === "admin" && (
+              <>
+                <FormModal table="zone" type="update" data={item} />
+                <FormModal table="zone" type="delete" id={item.id} />
+              </>
+            )}
+          </div>
+        </td>
+      ) : null}
     </tr>
   );
 
@@ -365,7 +378,11 @@ export default function AreaListClient({
             columns={columns}
             renderRow={renderRow}
             data={data}
-            tableClassName="w-full min-w-[720px] table-fixed border-collapse"
+            tableClassName={
+              showActionsCol
+                ? "w-full min-w-[720px] table-fixed border-collapse"
+                : "w-full min-w-[540px] table-fixed border-collapse"
+            }
           />
         </div>
         <div className="print:hidden">

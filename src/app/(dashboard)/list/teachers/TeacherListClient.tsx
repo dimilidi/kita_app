@@ -9,9 +9,13 @@ import Table from "@/components/Table";
 import SearchInput from "@/components/search/SearchInput";
 import SortDropdown from "@/components/sort/SortDropdown";
 import SortPanel from "@/components/sort/SortPanel";
+import { sendPeerEducatorEmail } from "@/lib/actions";
 import { useTranslations } from "@/i18n/TranslationsProvider";
+import { Mail } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
+import { toast } from "react-toastify";
 
 function groupEntriesForTeacher(item: {
   classes?: { id: number; name: string }[];
@@ -46,98 +50,237 @@ export default function TeacherListClient({
   relatedData?: any;
 }) {
   const dict = useTranslations();
+  const tc = dict.teachers;
 
-  const columns = [
-    { header: dict.teachers.columns.info, accessor: "info" },
-    {
-      header: dict.teachers.columns.activities,
-      accessor: "activities",
-      className: "hidden md:table-cell",
-    },
-    {
-      header: dict.teachers.columns.groups,
-      accessor: "groups",
-      className: "hidden md:table-cell min-w-[8rem] max-w-[14rem]",
-    },
-    {
-      header: dict.teachers.columns.phone,
-      accessor: "phone",
-      className: "hidden lg:table-cell",
-    },
-    {
-      header: dict.teachers.columns.address,
-      accessor: "address",
-      className: "hidden lg:table-cell",
-    },
-    ...(role === "admin"
-      ? [{ header: dict.common.actions, accessor: "action" }]
-      : []),
-  ];
+  const isAdmin = role === "admin";
+  const isTeacher = role === "teacher";
+
+  const [contactId, setContactId] = useState<string | null>(null);
+  const [contactSubject, setContactSubject] = useState("");
+  const [contactMsg, setContactMsg] = useState("");
+  const [contactSending, setContactSending] = useState(false);
+
+  const columns = isAdmin
+    ? [
+        { header: dict.teachers.columns.info, accessor: "info" },
+        {
+          header: dict.teachers.columns.teacherId,
+          accessor: "teacherId",
+          className: "hidden md:table-cell",
+        },
+        {
+          header: dict.teachers.columns.activities,
+          accessor: "activities",
+          className: "hidden md:table-cell",
+        },
+        {
+          header: dict.teachers.columns.areas,
+          accessor: "areas",
+          className: "hidden md:table-cell",
+        },
+        {
+          header: dict.teachers.columns.phone,
+          accessor: "phone",
+          className: "hidden lg:table-cell",
+        },
+        {
+          header: dict.teachers.columns.address,
+          accessor: "address",
+          className: "hidden lg:table-cell",
+        },
+        { header: dict.common.actions, accessor: "action" },
+      ]
+    : [
+        { header: dict.teachers.columns.info, accessor: "info" },
+        {
+          header: dict.teachers.columns.activities,
+          accessor: "activities",
+          className: "hidden md:table-cell",
+        },
+        {
+          header: dict.teachers.columns.groups,
+          accessor: "groups",
+          className: "hidden md:table-cell min-w-[8rem] max-w-[14rem]",
+        },
+        { header: dict.common.actions, accessor: "action" },
+      ];
 
   const renderRow = (item: any) => {
     const groupEntries = groupEntriesForTeacher(item);
-    return (
-    <tr
-      key={item.id}
-      className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-kitaPurpleLight"
-    >
-      <td className="flex items-center gap-4 p-4">
-        <Image
-          src={item.img || "/noAvatar.png"}
-          alt=""
-          width={40}
-          height={40}
-          className="md:hidden xl:block w-10 h-10 rounded-full object-cover"
-        />
-        <div className="flex flex-col">
-          <h3 className="font-semibold">{item.name}</h3>
-          <p className="text-xs text-gray-500">{item?.email}</p>
-        </div>
-      </td>
-      <td className="hidden md:table-cell">
-        <div className="flex flex-wrap gap-1">
-          {(item.lessons || []).map((lesson: any) => (
-            <span
-              key={lesson.id}
-              className="px-2 py-1 text-xs rounded-md bg-blue-100 text-blue-700"
+
+    if (isAdmin) {
+      return (
+        <tr
+          key={item.id}
+          className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-kitaPurpleLight"
+        >
+          <td className="flex items-center gap-4 p-4">
+            <Image
+              src={item.img || "/noAvatar.png"}
+              alt=""
+              width={40}
+              height={40}
+              className="md:hidden xl:block w-10 h-10 rounded-full object-cover shrink-0"
+            />
+            <div className="flex flex-col min-w-0">
+              <h3 className="font-semibold">
+                {item.name} {item.surname}
+              </h3>
+              <p className="text-xs text-gray-500 break-all">{item?.email}</p>
+            </div>
+          </td>
+          <td className="hidden md:table-cell align-top p-4">{item.username}</td>
+          <td className="hidden md:table-cell align-top p-4">
+            <div className="flex flex-wrap gap-1">
+              {(item.lessons || []).map((lesson: any) => (
+                <span
+                  key={lesson.id}
+                  className="px-2 py-1 text-xs rounded-md bg-blue-100 text-blue-700"
+                >
+                  {lesson.name}
+                </span>
+              ))}
+            </div>
+          </td>
+          <td className="hidden md:table-cell align-top p-4">
+            {(item.zones || [])
+              .map((z: { zone?: { name: string } | null }) => z.zone?.name)
+              .filter(Boolean)
+              .join(", ") || "—"}
+          </td>
+          <td className="hidden lg:table-cell align-top p-4">{item.phone ?? "—"}</td>
+          <td className="hidden lg:table-cell align-top p-4 max-w-[14rem] whitespace-normal break-words">
+            {item.address ?? "—"}
+          </td>
+          <td className="p-4 align-middle">
+            <div className="flex items-center gap-2">
+              <Link href={`/list/teachers/${item.id}`}>
+                <button
+                  type="button"
+                  className="w-7 h-7 flex items-center justify-center rounded-full bg-kitaSky"
+                  aria-label="View details"
+                >
+                  <Image src="/view.png" alt="" width={16} height={16} />
+                </button>
+              </Link>
+              <FormModal table="teacher" type="delete" id={item.id} />
+            </div>
+          </td>
+        </tr>
+      );
+    }
+
+    if (isTeacher) {
+      return (
+        <tr
+          key={item.id}
+          className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-kitaPurpleLight"
+        >
+          <td className="p-4">
+            <div className="flex items-center gap-4">
+              <Image
+                src={item.img || "/noAvatar.png"}
+                alt=""
+                width={40}
+                height={40}
+                className="hidden sm:block w-10 h-10 rounded-full object-cover shrink-0"
+              />
+              <div className="flex flex-col min-w-0">
+                <h3 className="font-semibold">
+                  {item.name} {item.surname}
+                </h3>
+              </div>
+            </div>
+          </td>
+          <td className="hidden md:table-cell">
+            <div className="flex flex-wrap gap-1">
+              {(item.lessons || []).map((lesson: any) => (
+                <span
+                  key={lesson.id}
+                  className="px-2 py-1 text-xs rounded-md bg-blue-100 text-blue-700"
+                >
+                  {lesson.name}
+                </span>
+              ))}
+            </div>
+          </td>
+          <td className="hidden md:table-cell">
+            {groupEntries.length > 0 ? (
+              <div className="flex flex-wrap gap-1">
+                {groupEntries.map((g) => (
+                  <span
+                    key={g.id}
+                    className="px-2 py-1 text-xs rounded-md bg-emerald-50 text-emerald-900 border border-emerald-100"
+                  >
+                    {g.name}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <span className="text-gray-400">—</span>
+            )}
+          </td>
+          <td>
+            <button
+              type="button"
+              className="w-7 h-7 flex items-center justify-center rounded-full bg-white ring-1 ring-gray-200 hover:bg-gray-50"
+              title={tc.messageIconTitle ?? "Send Message"}
+              aria-label={tc.messageIconTitle ?? "Send Message"}
+              onClick={() => {
+                setContactId(item.id);
+                setContactSubject("");
+                setContactMsg("");
+              }}
             >
-              {lesson.name}
-            </span>
-          ))}
-        </div>
-      </td>
-      <td className="hidden md:table-cell">
-        {groupEntries.length > 0 ? (
-          <div className="flex flex-wrap gap-1">
-            {groupEntries.map((g) => (
-              <span
-                key={g.id}
-                className="px-2 py-1 text-xs rounded-md bg-emerald-50 text-emerald-900 border border-emerald-100"
-              >
-                {g.name}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <span className="text-gray-400">—</span>
-        )}
-      </td>
-      <td className="hidden md:table-cell">{item.phone}</td>
-      <td className="hidden md:table-cell">{item.address}</td>
-      <td>
-        <div className="flex items-center gap-2">
-          <Link href={`/list/teachers/${item.id}`}>
-            <button className="w-7 h-7 flex items-center justify-center rounded-full bg-kitaSky">
-              <Image src="/view.png" alt="" width={16} height={16} />
+              <Mail className="w-4 h-4 text-gray-800" aria-hidden />
             </button>
-          </Link>
-          {role === "admin" && (
-            <FormModal table="teacher" type="delete" id={item.id} />
-          )}
-        </div>
-      </td>
-    </tr>
+          </td>
+        </tr>
+      );
+    }
+
+    return (
+      <tr key={item.id} className="border-b border-gray-200">
+        <td colSpan={columns.length} className="p-4 text-gray-400 text-sm">
+          —
+        </td>
+      </tr>
     );
+  };
+
+  const onSendContact = async () => {
+    if (!contactId || contactSending) return;
+    const msg = contactMsg.trim();
+    if (!msg) {
+      toast.error(tc.contactEmpty ?? "Please enter a message.");
+      return;
+    }
+    setContactSending(true);
+    try {
+      const res = await sendPeerEducatorEmail({
+        recipientTeacherId: contactId,
+        subject: contactSubject.trim() || undefined,
+        message: msg,
+      });
+      if (res.ok) {
+        toast.success(tc.contactSuccess ?? "Message sent.");
+        setContactId(null);
+        setContactSubject("");
+        setContactMsg("");
+        return;
+      }
+      if (res.error === "self") {
+        toast.error(tc.contactSelf ?? "You cannot message yourself.");
+      } else if (res.error === "no_recipient_email") {
+        toast.error(tc.contactNoEmail ?? "This educator has no email on file.");
+      } else if (res.error === "email_not_configured") {
+        toast.error(tc.contactNotConfigured ?? "Email sending is not configured.");
+      } else {
+        toast.error(tc.contactError ?? "Could not send message.");
+      }
+    } finally {
+      setContactSending(false);
+    }
   };
 
   return (
@@ -193,9 +336,9 @@ export default function TeacherListClient({
 
             <ResetFiltersButton label={dict.common.resetFilters} />
 
-            {role === "admin" && (
+            {isAdmin ? (
               <FormModal table="teacher" type="create" relatedData={relatedData} />
-            )}
+            ) : null}
           </div>
         </div>
       </div>
@@ -205,7 +348,69 @@ export default function TeacherListClient({
       ) : null}
       <Table columns={columns} renderRow={renderRow} data={data} />
       <Pagination page={page} count={count} />
+
+      {isTeacher && contactId ? (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 print:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="educator-contact-modal-title"
+          onClick={() => !contactSending && setContactId(null)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl border border-gray-200 p-4 w-full max-w-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3
+              id="educator-contact-modal-title"
+              className="text-sm font-semibold text-gray-900 mb-3"
+            >
+              {tc.contactModalTitle ?? "Message educator"}
+            </h3>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">
+              {tc.contactSubjectLabel ?? "Subject (optional)"}
+            </label>
+            <input
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm ring-[1.5px] ring-transparent focus:ring-kitaSky focus:border-kitaSky outline-none mb-3"
+              value={contactSubject}
+              onChange={(e) => setContactSubject(e.target.value)}
+              disabled={contactSending}
+              placeholder={tc.contactSubjectLabel ?? "Subject (optional)"}
+            />
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">
+              {tc.contactMessageLabel ?? "Message"}
+            </label>
+            <textarea
+              className="w-full min-h-[7rem] border border-gray-300 rounded-md px-3 py-2 text-sm ring-[1.5px] ring-transparent focus:ring-kitaSky focus:border-kitaSky outline-none"
+              value={contactMsg}
+              onChange={(e) => setContactMsg(e.target.value)}
+              disabled={contactSending}
+              placeholder={tc.contactMessageLabel ?? "Message"}
+              required
+            />
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                type="button"
+                className="px-3 py-1.5 text-sm rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-60"
+                disabled={contactSending}
+                onClick={() => setContactId(null)}
+              >
+                {dict.common.close}
+              </button>
+              <button
+                type="button"
+                className="px-3 py-1.5 text-sm rounded-md bg-kitaYellow hover:opacity-90 disabled:opacity-60"
+                disabled={contactSending || !contactMsg.trim()}
+                onClick={() => void onSendContact()}
+              >
+                {contactSending
+                  ? tc.contactSending ?? dict.dashboard?.sending ?? "Sending…"
+                  : tc.contactSend ?? dict.dashboard?.send ?? "Send"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
-
