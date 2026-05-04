@@ -14,11 +14,13 @@ import {
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Dispatch, SetStateAction, useEffect, useState } from "react";
-import { useFormState } from "react-dom";
+import { Dispatch, FormEvent, SetStateAction, useState } from "react";
 import { toast } from "react-toastify";
 import { FormContainerProps } from "./FormContainer";
-import { useTranslations } from "@/i18n/TranslationsProvider";
+import {
+  useTranslations,
+  type Dictionary,
+} from "@/i18n/TranslationsProvider";
 
 
 const deleteActionMap = {
@@ -31,7 +33,80 @@ const deleteActionMap = {
   event: deleteEvent,
   announcement: deleteAnnouncement,
   zone: deleteZone,
-};
+} as const;
+
+type DeleteTable = keyof typeof deleteActionMap;
+
+const DELETE_FORM_INITIAL_STATE = { success: false, error: false };
+
+function DeleteConfirmationForm({
+  table,
+  id,
+  label,
+  onClose,
+  dict,
+}: {
+  table: DeleteTable;
+  id: string | number;
+  label: string;
+  onClose: () => void;
+  dict: Dictionary;
+}) {
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setPending(true);
+    try {
+      const formData = new FormData(e.currentTarget);
+      const result = await deleteActionMap[table](
+        DELETE_FORM_INITIAL_STATE,
+        formData
+      );
+      if (result.success) {
+        const deletedTemplate =
+          dict.common.deleted ?? "{label} has been deleted!";
+        toast.success(deletedTemplate.replace("{label}", label));
+        onClose();
+        router.refresh();
+      } else {
+        if (table === "zone" && "inUse" in result && result.inUse) {
+          toast.error(dict.areasList.deleteInUse);
+        } else if ("message" in result && typeof result.message === "string" && result.message) {
+          toast.error(result.message);
+        } else {
+          toast.error(dict.forms.somethingWentWrong);
+        }
+      }
+    } catch {
+      toast.error(dict.forms.somethingWentWrong);
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="p-4 flex flex-col gap-4"
+      aria-busy={pending}
+    >
+      <input type="hidden" name="id" value={String(id)} readOnly />
+      <span className="text-center font-medium">
+        {dict.common.deleteConfirm}
+        {label}
+      </span>
+      <button
+        type="submit"
+        disabled={pending}
+        className="bg-red-700 text-white py-2 px-4 rounded-md border-none w-max self-center disabled:opacity-60"
+      >
+        {pending ? dict.common.loading : dict.common.delete}
+      </button>
+    </form>
+  );
+}
 
 // USE LAZY LOADING
 
@@ -158,56 +233,6 @@ const FormModal = ({
 
   const [open, setOpen] = useState(false);
 
-  // NOTE: Avoid defining an inline component for the form.
-  // Inline component identities change between renders and can cause remounts
-  // (which resets react-hook-form state).
-  const DeleteForm = () => {
-    const [state, formAction] = useFormState(deleteActionMap[table], {
-      success: false,
-      error: false,
-    });
-
-    const router = useRouter();
-
-    useEffect(() => {
-      if (state.success) {
-        const deletedTemplate =
-          dict.common.deleted ?? "{label} has been deleted!";
-        toast(deletedTemplate.replace("{label}", label));
-        setOpen(false);
-        router.refresh();
-      }
-    }, [state, router, label, dict]);
-
-    useEffect(() => {
-      if (type !== "delete" || !state?.error) {
-        return;
-      }
-      if (table === "zone" && "inUse" in state && state.inUse) {
-        toast(dict.areasList.deleteInUse);
-      } else {
-        toast(dict.forms.somethingWentWrong);
-      }
-    }, [state, type, table, dict]);
-
-    if (type !== "delete" || !id) {
-      return dict.common.formNotFound ?? "Form not found!";
-    }
-
-    return (
-      <form action={formAction} className="p-4 flex flex-col gap-4">
-        <input type="text | number" name="id" value={id} hidden />
-        <span className="text-center font-medium">
-          {dict.common.deleteConfirm}
-          {label}
-        </span>
-        <button className="bg-red-700 text-white py-2 px-4 rounded-md border-none w-max self-center">
-          {dict.common.delete}
-        </button>
-      </form>
-    );
-  };
-
   return (
     <>
       <button
@@ -220,7 +245,17 @@ const FormModal = ({
         <div className="w-screen h-screen absolute left-0 top-0 bg-black bg-opacity-60 z-50 flex items-center justify-center">
           <div className="bg-white p-4 rounded-md relative w-[90%] md:w-[70%] lg:w-[60%] xl:w-[50%] 2xl:w-[40%]">
             {type === "delete" ? (
-              <DeleteForm />
+              id != null && id !== "" ? (
+                <DeleteConfirmationForm
+                  table={table}
+                  id={id}
+                  label={label}
+                  onClose={() => setOpen(false)}
+                  dict={dict}
+                />
+              ) : (
+                dict.common.formNotFound ?? "Form not found!"
+              )
             ) : type === "create" || type === "update" ? (
               forms[table](setOpen, type, data, relatedData, variant)
             ) : (

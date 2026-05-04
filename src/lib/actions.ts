@@ -24,6 +24,7 @@ import { getUnreadStaffChatCount } from "./staffChatUnread";
 import { loadAttendancePageData } from "./attendancePageData";
 import { getActiveActivityAssignmentsNow } from "./activeActivityNow";
 import prisma from "./prisma";
+import { Prisma } from "@prisma/client";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { getAuthData } from "./utils";
 import { randomUUID } from "crypto";
@@ -120,6 +121,46 @@ type CurrentState = {
   message?: string;
   inUse?: boolean;
 };
+
+/** Normalize `FormData` id for Clerk user ids (string) or numeric ids from UI. */
+function normalizeFormDataId(data: FormData): string {
+  const raw = data.get("id");
+  if (raw === null || raw === undefined) return "";
+  if (typeof raw === "string") return raw.trim();
+  return String(raw);
+}
+
+function stringifyDeleteError(err: unknown): string {
+  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    const meta =
+      err.meta !== undefined && err.meta !== null
+        ? ` meta=${JSON.stringify(err.meta)}`
+        : "";
+    return `${err.code}: ${err.message}${meta}`;
+  }
+  if (err instanceof Error) return err.message;
+  try {
+    return JSON.stringify(err);
+  } catch {
+    return String(err);
+  }
+}
+
+function clerkErrorMessage(err: unknown): string {
+  const e = err as {
+    errors?: Array<{ message?: string; longMessage?: string }>;
+    message?: string;
+  };
+  if (e?.errors?.[0]) {
+    return (
+      e.errors[0].longMessage ||
+      e.errors[0].message ||
+      (err instanceof Error ? err.message : String(err))
+    );
+  }
+  if (err instanceof Error) return err.message;
+  return String(err);
+}
 
 export const createClass = async (
   currentState: CurrentState,
@@ -326,21 +367,114 @@ export const deleteTeacher = async (
   currentState: CurrentState,
   data: FormData
 ) => {
-  const id = data.get("id") as string;
-  try {
-    await clerkClient.users.deleteUser(id);
+  const idRaw = data.get("id");
+  const id = normalizeFormDataId(data);
+  const action = "deleteTeacher";
 
-    await prisma.teacher.delete({
-      where: {
-        id: id,
-      },
+  console.error(`[${action}] FormData id (raw):`, idRaw, `typeof:`, typeof idRaw);
+  console.error(`[${action}] FormData id (normalized string):`, id, `length:`, id.length);
+
+  if (!id) {
+    const msg = "Missing id in FormData (name=id).";
+    console.error(`[${action}]`, msg);
+    return { success: false, error: true, message: msg };
+  }
+
+  try {
+    const existing = await prisma.teacher.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    console.error(`[${action}] prisma.teacher.findUnique:`, existing ? "found" : "not found");
+
+    if (!existing) {
+      console.error(`[${action}] No Teacher row for id; attempting Clerk deleteUser only.`);
+      try {
+        await clerkClient.users.deleteUser(id);
+        return { success: true, error: false };
+      } catch (clerkErr) {
+        console.error(`[${action}] Clerk deleteUser (no DB row):`, clerkErr);
+        return {
+          success: false,
+          error: true,
+          message: clerkErrorMessage(clerkErr),
+        };
+      }
+    }
+
+    console.error(`[${action}] Starting $transaction: clear FKs, remove lessons, then delete Teacher row…`);
+
+    await prisma.$transaction(async (tx) => {
+      const cleared = await tx.class.updateMany({
+        where: { supervisorId: id },
+        data: { supervisorId: null },
+      });
+      console.error(`[${action}] class.updateMany supervisorId -> null, count:`, cleared.count);
+
+      const lessons = await tx.lesson.findMany({
+        where: { teacherId: id },
+        select: { id: true },
+      });
+      const lessonIds = lessons.map((l) => l.id);
+      console.error(`[${action}] lessons for teacher:`, lessonIds.length, lessonIds);
+
+      if (lessonIds.length > 0) {
+        const att = await tx.attendance.deleteMany({
+          where: { lessonId: { in: lessonIds } },
+        });
+        console.error(`[${action}] attendance.deleteMany for those lessons, count:`, att.count);
+      }
+
+      const delLessons = await tx.lesson.deleteMany({ where: { teacherId: id } });
+      console.error(`[${action}] lesson.deleteMany, count:`, delLessons.count);
+
+      const tz = await tx.teacherZone.deleteMany({ where: { teacherId: id } });
+      console.error(`[${action}] teacherZone.deleteMany, count:`, tz.count);
+
+      const ar = await tx.announcementRead.deleteMany({ where: { userId: id } });
+      const mr = await tx.messageReaction.deleteMany({ where: { userId: id } });
+      const scr = await tx.staffChatRead.deleteMany({ where: { userId: id } });
+      const msg = await tx.message.deleteMany({ where: { senderId: id } });
+      console.error(
+        `[${action}] userOrbit: announcementRead`,
+        ar.count,
+        `messageReaction`,
+        mr.count,
+        `staffChatRead`,
+        scr.count,
+        `message (sender)`,
+        msg.count
+      );
+
+      const tDel = await tx.teacher.delete({ where: { id } });
+      console.error(`[${action}] teacher.delete executed for id:`, tDel.id);
     });
 
-    // revalidatePath("/list/teachers");
+    console.error(`[${action}] DB transaction committed; calling Clerk deleteUser…`);
+
+    try {
+      await clerkClient.users.deleteUser(id);
+    } catch (clerkErr) {
+      console.error(`[${action}] Clerk deleteUser failed AFTER DB row removed:`, clerkErr);
+      return {
+        success: false,
+        error: true,
+        message: `Removed from the database, but Clerk sign-in could not be deleted: ${clerkErrorMessage(clerkErr)}`,
+      };
+    }
+
+    revalidatePath("/list/teachers");
     return { success: true, error: false };
   } catch (err) {
-    console.log(err);
-    return { success: false, error: true };
+    console.error(`[${action}] FAILED (full error):`, err);
+    if (err instanceof Prisma.PrismaClientKnownRequestError) {
+      console.error(`[${action}] Prisma known error code:`, err.code, `meta:`, err.meta);
+    }
+    return {
+      success: false,
+      error: true,
+      message: stringifyDeleteError(err),
+    };
   }
 };
 
@@ -502,21 +636,103 @@ export const deleteStudent = async (
   currentState: CurrentState,
   data: FormData
 ) => {
-  const id = data.get("id") as string;
-  try {
-    await clerkClient.users.deleteUser(id);
+  const idRaw = data.get("id");
+  const id = normalizeFormDataId(data);
+  const action = "deleteStudent";
 
-    await prisma.student.delete({
-      where: {
-        id: id,
-      },
+  console.error(`[${action}] FormData id (raw):`, idRaw, `typeof:`, typeof idRaw);
+  console.error(`[${action}] FormData id (normalized string):`, id, `length:`, id.length);
+
+  if (!id) {
+    const msg = "Missing id in FormData (name=id).";
+    console.error(`[${action}]`, msg);
+    return { success: false, error: true, message: msg };
+  }
+
+  try {
+    const existing = await prisma.student.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    console.error(`[${action}] prisma.student.findUnique:`, existing ? "found" : "not found");
+
+    if (!existing) {
+      console.error(`[${action}] No Student row for id; attempting Clerk deleteUser only.`);
+      try {
+        await clerkClient.users.deleteUser(id);
+        return { success: true, error: false };
+      } catch (clerkErr) {
+        console.error(`[${action}] Clerk deleteUser (no DB row):`, clerkErr);
+        return {
+          success: false,
+          error: true,
+          message: clerkErrorMessage(clerkErr),
+        };
+      }
+    }
+
+    console.error(`[${action}] Starting $transaction: remove dependent rows, then Student…`);
+
+    await prisma.$transaction(async (tx) => {
+      const att = await tx.attendance.deleteMany({ where: { studentId: id } });
+      console.error(`[${action}] attendance.deleteMany, count:`, att.count);
+
+      const zh = await tx.zoneHistory.deleteMany({ where: { studentId: id } });
+      console.error(`[${action}] zoneHistory.deleteMany, count:`, zh.count);
+
+      const sz = await tx.studentZone.deleteMany({ where: { studentId: id } });
+      console.error(`[${action}] studentZone.deleteMany, count:`, sz.count);
+
+      const slv = await tx.studentLunchVote.deleteMany({ where: { studentId: id } });
+      console.error(`[${action}] studentLunchVote.deleteMany, count:`, slv.count);
+
+      const slg = await tx.studentLunchGroup.deleteMany({ where: { studentId: id } });
+      console.error(`[${action}] studentLunchGroup.deleteMany, count:`, slg.count);
+
+      const ar = await tx.announcementRead.deleteMany({ where: { userId: id } });
+      const mr = await tx.messageReaction.deleteMany({ where: { userId: id } });
+      const scr = await tx.staffChatRead.deleteMany({ where: { userId: id } });
+      const msg = await tx.message.deleteMany({ where: { senderId: id } });
+      console.error(
+        `[${action}] userOrbit: announcementRead`,
+        ar.count,
+        `messageReaction`,
+        mr.count,
+        `staffChatRead`,
+        scr.count,
+        `message (sender)`,
+        msg.count
+      );
+
+      const sDel = await tx.student.delete({ where: { id } });
+      console.error(`[${action}] student.delete executed for id:`, sDel.id);
     });
 
-    // revalidatePath("/list/students");
+    console.error(`[${action}] DB transaction committed; calling Clerk deleteUser…`);
+
+    try {
+      await clerkClient.users.deleteUser(id);
+    } catch (clerkErr) {
+      console.error(`[${action}] Clerk deleteUser failed AFTER DB row removed:`, clerkErr);
+      return {
+        success: false,
+        error: true,
+        message: `Removed from the database, but Clerk sign-in could not be deleted: ${clerkErrorMessage(clerkErr)}`,
+      };
+    }
+
+    revalidatePath("/list/students");
     return { success: true, error: false };
   } catch (err) {
-    console.log(err);
-    return { success: false, error: true };
+    console.error(`[${action}] FAILED (full error):`, err);
+    if (err instanceof Prisma.PrismaClientKnownRequestError) {
+      console.error(`[${action}] Prisma known error code:`, err.code, `meta:`, err.meta);
+    }
+    return {
+      success: false,
+      error: true,
+      message: stringifyDeleteError(err),
+    };
   }
 };
 
