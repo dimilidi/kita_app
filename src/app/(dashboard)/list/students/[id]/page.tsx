@@ -1,9 +1,11 @@
 import Announcements from "@/components/Announcements";
 import BigCalendarContainer from "@/components/BigCalenderContainer";
 import FormContainer from "@/components/FormContainer";
-import Performance, { FavouriteActivitySlice } from "@/components/Performance";
+import type { FavouriteActivitySlice } from "@/components/Performance";
 import SiblingShortcuts from "@/components/SiblingShortcuts";
 import StudentAttendanceCard from "@/components/StudentAttendanceCard";
+import TeacherPlannedAreaCard from "@/components/TeacherPlannedAreaCard";
+import { getEffectivePlacementNow } from "@/lib/effectivePlacementNow";
 import prisma from "@/lib/prisma";
 import { getAuthData } from "@/lib/utils";
 import { clerkClient } from "@clerk/nextjs/server";
@@ -85,23 +87,52 @@ const SingleStudentPage = async ({
     orderBy: [{ surname: "asc" }, { name: "asc" }],
   });
 
+  const [zoneHistory, effective, zonesForNames] = await Promise.all([
+    prisma.zoneHistory.findMany({
+      where: { studentId: student.id },
+      select: { movedAt: true, zoneId: true },
+      orderBy: { movedAt: "asc" },
+    }),
+    getEffectivePlacementNow(),
+    prisma.zone.findMany({ select: { id: true, name: true } }),
+  ]);
+
+  const zoneNameById = new Map(zonesForNames.map((z) => [z.id, z.name]));
+  const loc = effective.student.get(student.id) ?? { kind: "none" as const };
+
+  const dDash = dict.dashboard;
+  const badgePlay = dDash.currentAreaBadgePlayArea ?? "Play area";
+  const badgeActivity = dDash.currentAreaBadgeActivity ?? "Activity";
+  const badgePool = dDash.currentZonePool ?? "Pool";
+
+  let currentZoneDisplay: string;
+  let currentBadgeLabel: string;
+
+  if (loc.kind === "none") {
+    currentZoneDisplay = badgePool;
+    currentBadgeLabel = badgePool;
+  } else if (loc.kind === "activity") {
+    const zn = loc.zoneId
+      ? zoneNameById.get(loc.zoneId) ?? loc.zoneId
+      : "—";
+    currentZoneDisplay = zn;
+    currentBadgeLabel = badgeActivity;
+  } else if (loc.kind === "zone") {
+    const zn = loc.zoneId
+      ? zoneNameById.get(loc.zoneId) ?? loc.zoneId
+      : "—";
+    currentZoneDisplay = zn;
+    currentBadgeLabel = badgePlay;
+  } else {
+    currentZoneDisplay = badgePool;
+    currentBadgeLabel = badgePool;
+  }
+
   // Pie chart slices: time spent per play area (zone) from ZoneHistory.
-  const zoneHistory = await prisma.zoneHistory.findMany({
-    where: { studentId: student.id },
-    select: { movedAt: true, zoneId: true },
-    orderBy: { movedAt: "asc" },
-  });
 
   let favouriteActivities: FavouriteActivitySlice[] = [];
 
   if (zoneHistory.length > 0) {
-    const zoneIds = Array.from(new Set(zoneHistory.map((z) => z.zoneId)));
-    const zones = await prisma.zone.findMany({
-      where: { id: { in: zoneIds } },
-      select: { id: true, name: true },
-    });
-    const zoneNameById = new Map(zones.map((z) => [z.id, z.name]));
-
     const byZoneId = new Map<string, { name: string; value: number }>();
     const now = new Date();
 
@@ -114,7 +145,8 @@ const SingleStudentPage = async ({
         end.getTime() - current.movedAt.getTime();
       if (durationMs <= 0) continue;
 
-      const zoneName = zoneNameById.get(current.zoneId) ?? current.zoneId;
+      const zoneName =
+        zoneNameById.get(current.zoneId) ?? current.zoneId;
       const prev = byZoneId.get(current.zoneId);
       if (prev) {
         prev.value += durationMs;
@@ -315,7 +347,21 @@ const SingleStudentPage = async ({
             <SiblingShortcuts siblings={siblings} />
           </div>
         </div>
-        <Performance activities={favouriteActivities} />
+        <TeacherPlannedAreaCard
+          plannedActivities={favouriteActivities}
+          currentAreaLabel={currentZoneDisplay}
+          currentBadgeLabel={currentBadgeLabel}
+          strings={{
+            plannedTitle:
+              dDash.timeByArea ?? dDash.timeByPlayArea ?? "Time by Area",
+            plannedMenuLabel:
+              dDash.timeByArea ?? dDash.timeByPlayArea ?? "Time by Area",
+            currentTitle: dDash.currentArea ?? "Current Area",
+            overflowAria:
+              dDash.chartMenu?.overflowAria ?? "Options",
+            noPlanned: dDash.noAreaData ?? "No area data",
+          }}
+        />
         <Announcements />
       </div>
     </div>
