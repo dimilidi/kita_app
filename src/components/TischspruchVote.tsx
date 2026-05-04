@@ -1,4 +1,7 @@
+"use client";
+
 import clsx from "clsx";
+import { useTranslations } from "@/i18n/TranslationsProvider";
 
 type TischspruchVoteProps = {
   options: { id: number; title: string; text: string }[];
@@ -19,6 +22,9 @@ const TischspruchVote = ({
   hideHeading = false,
   compact = false,
 }: TischspruchVoteProps) => {
+  const dict = useTranslations();
+  const l = dict.lunch;
+
   if (options.length === 0) {
     return (
       <div
@@ -27,7 +33,7 @@ const TischspruchVote = ({
           compact ? "px-2 py-1.5 text-[10px]" : "mt-3 rounded-xl p-2 text-xs"
         )}
       >
-        No Tischsprueche available.
+        {l.tischspruecheEmpty}
       </div>
     );
   }
@@ -47,7 +53,7 @@ const TischspruchVote = ({
     >
       {!hideHeading && (
         <div className={clsx("text-center font-semibold", compact ? "mb-1 text-[11px]" : "mb-2")}>
-          🍽️ Tischspruch
+          🍽️ {l.tischspruchSection}
         </div>
       )}
 
@@ -75,7 +81,7 @@ const TischspruchVote = ({
                   {option.title}
                 </div>
                 <div className={clsx(compact ? "mt-0.5 text-[10px]" : "mt-1 text-[11px]")}>
-                  Votes: {votes[option.id] ?? 0}
+                  {l.tischspruchVoteLabel}: {votes[option.id] ?? 0}
                 </div>
               </button>
             </div>
@@ -89,7 +95,7 @@ const TischspruchVote = ({
           compact ? "mt-1 text-[10px] leading-tight" : "mt-2 text-sm"
         )}
       >
-        Winner: {winner.title}
+        {l.tischspruchWinner}: {winner.title}
       </div>
     </div>
   );

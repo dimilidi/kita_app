@@ -1,0 +1,382 @@
+//// ------------------------------------------------------
+//// THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+//// ------------------------------------------------------
+
+Table Admin {
+  id String [pk]
+  username String [unique, not null]
+}
+
+Table Student {
+  id String [pk]
+  username String [unique, not null]
+  name String [not null]
+  surname String [not null]
+  email String [note: 'Mirrors Parent.email (siblings can share), so must NOT be unique.']
+  phone String [unique]
+  address String [not null]
+  img String
+  bloodType String [not null]
+  sex UserSex [not null]
+  createdAt DateTime [default: `now()`, not null]
+  parentId String [not null]
+  classId Int [not null]
+  gradeId Int [not null]
+  birthday DateTime [not null]
+  bringTime String [note: 'Default agreed drop-off time (HH:mm), optional']
+  pickupTime String [note: 'Default agreed pickup time (HH:mm), optional']
+  attendances Attendance [not null]
+  class Class [not null]
+  grade Grade [not null]
+  parent Parent [not null]
+  lunchGroup StudentLunchGroup
+  lunchVote StudentLunchVote
+  studentZone StudentZone
+  zoneHistory ZoneHistory [not null]
+}
+
+Table Teacher {
+  id String [pk]
+  username String [unique, not null]
+  name String [not null]
+  surname String [not null]
+  email String [unique]
+  phone String [unique]
+  address String [not null]
+  img String
+  bloodType String [not null]
+  sex UserSex [not null]
+  createdAt DateTime [default: `now()`, not null]
+  birthday DateTime [not null]
+  classes Class [not null]
+  lessons Lesson [not null]
+  zones TeacherZone [not null]
+  teacherLunchGroups TeacherLunchGroup [not null]
+  teacherAttendances TeacherAttendance [not null]
+}
+
+Table TeacherAttendance {
+  id Int [pk, increment]
+  date DateTime [not null]
+  present Boolean [not null]
+  teacherId String [not null]
+  actualPickupTime String [note: 'Daily checkout time (HH:mm) when educator is picked up / checked out.']
+  teacher Teacher [not null]
+
+  indexes {
+    (teacherId, date) [unique]
+  }
+
+  Note: 'Daily present/absent for an educator (calendar day, UTC range); used to filter Lunch/Play boards.'
+}
+
+Table Parent {
+  id String [pk]
+  username String [unique, not null]
+  name String [not null]
+  surname String [not null]
+  email String [unique]
+  phone String [unique, not null]
+  address String [not null]
+  createdAt DateTime [default: `now()`, not null]
+  students Student [not null]
+}
+
+Table Grade {
+  id Int [pk, increment]
+  level Int [unique, not null]
+  classess Class [not null]
+  students Student [not null]
+}
+
+Table Class {
+  id Int [pk, increment]
+  name String [unique, not null]
+  capacity Int [not null]
+  supervisorId String
+  gradeId Int [not null]
+  announcements Announcement [not null]
+  grade Grade [not null]
+  supervisor Teacher
+  events Event [not null]
+  lessons Lesson [not null]
+  students Student [not null]
+}
+
+Table Lesson {
+  id Int [pk, increment]
+  name String [not null]
+  day Day [not null]
+  startTime DateTime [not null]
+  endTime DateTime [not null]
+  zoneId String [not null]
+  classId Int [not null]
+  teacherId String [not null]
+  attendances Attendance [not null]
+  class Class [not null]
+  zone Zone [not null]
+  teacher Teacher [not null]
+}
+
+Table Attendance {
+  id Int [pk, increment]
+  date DateTime [not null]
+  present Boolean [not null]
+  studentId String [not null]
+  lessonId Int [not null]
+  actualPickupTime String [note: 'Daily override for pickup time (HH:mm). If null, use Student.pickupTime.']
+  note String
+  lesson Lesson [not null]
+  student Student [not null]
+}
+
+Table Event {
+  id Int [pk, increment]
+  title String [not null]
+  description String [not null]
+  startTime DateTime [not null]
+  endTime DateTime [not null]
+  classId Int
+  class Class
+}
+
+Table Announcement {
+  id Int [pk, increment]
+  title String [not null]
+  description String [not null]
+  date DateTime [not null]
+  classId Int
+  class Class
+  reads AnnouncementRead [not null]
+}
+
+Table AnnouncementRead {
+  id Int [pk, increment]
+  userId String [not null]
+  announcementId Int [not null]
+  readAt DateTime [default: `now()`, not null]
+  announcement Announcement [not null]
+
+  indexes {
+    (userId, announcementId) [unique]
+  }
+
+  Note: 'Marks which announcements a user has seen (Clerk user id matches Student/Teacher/Parent/Admin id).'
+}
+
+Table Message {
+  id String [pk]
+  content String [not null, default: '']
+  senderId String [not null]
+  createdAt DateTime [default: `now()`, not null]
+  editedAt DateTime
+  attachments MessageAttachment [not null]
+  reactions MessageReaction [not null]
+
+  Note: 'Staff group chat (single room): admins + educators only.'
+}
+
+Table MessageAttachment {
+  id String [pk]
+  messageId String [not null]
+  url String [not null]
+  fileName String [not null]
+  mimeType String [not null]
+  sizeBytes Int [not null]
+  message Message [not null]
+}
+
+Table MessageReaction {
+  id String [pk]
+  messageId String [not null]
+  userId String [not null]
+  emoji String [not null]
+  message Message [not null]
+
+  indexes {
+    (messageId, userId, emoji) [unique]
+  }
+}
+
+Table StaffChatRead {
+  userId String [pk]
+  lastReadAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+
+  Note: 'Tracks when a staff chat user last opened the Messages page.'
+}
+
+Table Zone {
+  id String [pk]
+  name String [unique, not null]
+  capacity Int
+  description String
+  color String
+  lessons Lesson [not null]
+  activities Activity [not null]
+  students StudentZone [not null]
+  teachers TeacherZone [not null]
+  history ZoneHistory [not null]
+}
+
+Table StudentZone {
+  studentId String [pk]
+  zoneId String [not null]
+  movedAt DateTime [default: `now()`, not null]
+  student Student [not null]
+  zone Zone [not null]
+}
+
+Table StudentLunchGroup {
+  studentId String [pk]
+  group LunchGroup
+  movedAt DateTime [default: `now()`, not null]
+  groupId String
+  lunchGroup LunchGroupEntity
+  student Student [not null]
+}
+
+Table Tischspruch {
+  id Int [pk, increment]
+  title String [unique, not null]
+  createdAt DateTime [default: `now()`, not null]
+  text String [not null, default: '']
+  votes StudentLunchVote [not null]
+}
+
+Table StudentLunchVote {
+  studentId String [pk]
+  tischspruchId Int [not null]
+  group LunchGroup
+  updatedAt DateTime [not null]
+  groupId String
+  lunchGroup LunchGroupEntity
+  student Student [not null]
+  tischspruch Tischspruch [not null]
+}
+
+Table LunchGroupEntity {
+  id String [pk]
+  name String [unique, not null]
+  color String
+  capacity Int [default: 15]
+  createdAt DateTime [default: `now()`, not null]
+  assignments StudentLunchGroup [not null]
+  votes StudentLunchVote [not null]
+  teacherAssignments TeacherLunchGroup [not null]
+}
+
+Table TeacherLunchGroup {
+  id String [pk]
+  teacherId String [unique, not null]
+  groupId String [not null]
+  teacher Teacher [not null]
+  lunchGroup LunchGroupEntity [not null]
+}
+
+Table TeacherZone {
+  id String [pk]
+  teacherId String [not null]
+  zoneId String [not null]
+  teacher Teacher [not null]
+  zone Zone [not null]
+
+  indexes {
+    (teacherId, zoneId) [unique]
+  }
+}
+
+Table ZoneHistory {
+  id String [pk]
+  studentId String [not null]
+  movedAt DateTime [default: `now()`, not null]
+  zoneId String [not null]
+  student Student [not null]
+  zone Zone [not null]
+}
+
+Table Activity {
+  id Int [pk, increment]
+  name String [not null]
+  zoneId String [not null]
+  zone Zone [not null]
+}
+
+Enum LunchGroup {
+  green
+  yellow
+  red
+}
+
+Enum UserSex {
+  MALE
+  FEMALE
+}
+
+Enum Day {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+}
+
+Ref: Student.classId > Class.id
+
+Ref: Student.gradeId > Grade.id
+
+Ref: Student.parentId > Parent.id
+
+Ref: TeacherAttendance.teacherId > Teacher.id [delete: Cascade]
+
+Ref: Class.gradeId > Grade.id
+
+Ref: Class.supervisorId > Teacher.id
+
+Ref: Lesson.classId > Class.id
+
+Ref: Lesson.zoneId > Zone.id
+
+Ref: Lesson.teacherId > Teacher.id
+
+Ref: Attendance.lessonId > Lesson.id
+
+Ref: Attendance.studentId > Student.id
+
+Ref: Event.classId > Class.id
+
+Ref: Announcement.classId > Class.id
+
+Ref: AnnouncementRead.announcementId > Announcement.id [delete: Cascade]
+
+Ref: MessageAttachment.messageId > Message.id [delete: Cascade]
+
+Ref: MessageReaction.messageId > Message.id [delete: Cascade]
+
+Ref: StudentZone.studentId - Student.id
+
+Ref: StudentZone.zoneId > Zone.id
+
+Ref: StudentLunchGroup.groupId > LunchGroupEntity.id [delete: Cascade]
+
+Ref: StudentLunchGroup.studentId - Student.id
+
+Ref: StudentLunchVote.groupId > LunchGroupEntity.id [delete: Cascade]
+
+Ref: StudentLunchVote.studentId - Student.id
+
+Ref: StudentLunchVote.tischspruchId > Tischspruch.id [delete: Cascade]
+
+Ref: TeacherLunchGroup.teacherId > Teacher.id [delete: Cascade]
+
+Ref: TeacherLunchGroup.groupId > LunchGroupEntity.id [delete: Cascade]
+
+Ref: TeacherZone.teacherId > Teacher.id
+
+Ref: TeacherZone.zoneId > Zone.id
+
+Ref: ZoneHistory.studentId > Student.id
+
+Ref: ZoneHistory.zoneId > Zone.id
+
+Ref: Activity.zoneId > Zone.id

@@ -52,14 +52,30 @@ function isSubmenuParentActive(
   return false;
 }
 
-function isSubmenuChildActive(
-  pathname: string,
-  href: string,
-  exact?: boolean
-): boolean {
-  if (exact) return pathname === href;
-  return pathname === href || pathname.startsWith(`${href}/`);
+/** Normalizes path for prefix matching (trailing slash, query stripped). */
+function normalizePathForMatch(path: string): string {
+  const noQuery = path.split("?")[0] ?? path;
+  if (noQuery.length <= 1) return noQuery;
+  return noQuery.endsWith("/") ? noQuery.slice(0, -1) : noQuery;
 }
+
+/** Active when `exact` or when current path is a subpath of `href` (e.g. list + detail). */
+function isNavActive(pathname: string, href: string, exact?: boolean): boolean {
+  const p = normalizePathForMatch(pathname);
+  const h = normalizePathForMatch(href);
+  if (exact) return p === h;
+  return p === h || p.startsWith(`${h}/`);
+}
+
+const navLinkRow =
+  "flex items-center justify-center lg:justify-start gap-4 py-2 md:px-2 rounded-md transition-colors duration-150";
+const navLinkIdle = `${navLinkRow} text-gray-500 hover:bg-kitaSkyLight`;
+const navLinkActive = `${navLinkRow} bg-kitaSkyLight font-semibold text-gray-900 ring-1 ring-inset ring-sky-200/80`;
+
+const navSubLinkRow =
+  "flex items-center justify-center lg:justify-start py-2 md:px-2 rounded-md text-sm transition-colors duration-150";
+const navSubLinkIdle = `${navSubLinkRow} text-gray-500 hover:bg-kitaSkyLight`;
+const navSubLinkActive = `${navSubLinkRow} bg-kitaSkyLight font-semibold text-gray-900 ring-1 ring-inset ring-sky-200/80`;
 
 const getLangFromPathname = (pathname: string) => {
   const segments = pathname.split("/").filter(Boolean);
@@ -127,6 +143,7 @@ const Menu = () => {
           icon: "/home.png",
           label: dict.menu.home,
           href: `/${lang}/`,
+          exact: true,
           visible: ["admin", "teacher", "student", "parent"],
         },
         {
@@ -285,10 +302,8 @@ const Menu = () => {
                         prev === item.submenuId ? null : item.submenuId
                       )
                     }
-                    className={`flex items-center justify-center lg:justify-start gap-4 py-2 md:px-2 rounded-md hover:bg-lamaSkyLight w-full text-left ${
-                      parentActive
-                        ? "bg-lamaSkyLight font-medium text-gray-700"
-                        : "text-gray-500"
+                    className={`w-full text-left ${
+                      parentActive ? navLinkActive : navLinkIdle
                     }`}
                   >
                     <Image src={item.icon} alt="" width={20} height={20} />
@@ -313,7 +328,7 @@ const Menu = () => {
                           return true;
                         })
                         .map((child) => {
-                          const childActive = isSubmenuChildActive(
+                          const childActive = isNavActive(
                             pathname,
                             child.href,
                             "exact" in child ? child.exact : undefined
@@ -322,11 +337,10 @@ const Menu = () => {
                             <Link
                               key={child.href}
                               href={child.href}
-                              className={`flex items-center justify-center lg:justify-start py-2 md:px-2 rounded-md hover:bg-lamaSkyLight text-sm ${
-                                childActive
-                                  ? "bg-lamaSkyLight font-medium text-gray-700"
-                                  : "text-gray-500"
-                              }`}
+                              aria-current={childActive ? "page" : undefined}
+                              className={
+                                childActive ? navSubLinkActive : navSubLinkIdle
+                              }
                             >
                               {child.label}
                             </Link>
@@ -339,11 +353,15 @@ const Menu = () => {
             }
 
             if ("isProfile" in item && item.isProfile) {
+              const profileActive = isNavActive(pathname, item.href);
               return (
                 <a
                   key="profile"
                   href={item.href}
-                  className="flex w-full min-h-[2.5rem] items-center justify-center lg:justify-start gap-4 text-gray-500 py-2 md:px-2 rounded-md hover:bg-lamaSkyLight"
+                  aria-current={profileActive ? "page" : undefined}
+                  className={`w-full min-h-[2.5rem] ${
+                    profileActive ? navLinkActive : navLinkIdle
+                  }`}
                 >
                   <Image src={item.icon} alt="" width={20} height={20} />
                   <span className="hidden lg:block">{item.label}</span>
@@ -351,11 +369,18 @@ const Menu = () => {
               );
             }
 
+            const mainActive = isNavActive(
+              pathname,
+              item.href,
+              "exact" in item && item.exact === true
+            );
+
             return (
               <Link
                 href={item.href}
                 key={item.label}
-                className="flex items-center justify-center lg:justify-start gap-4 text-gray-500 py-2 md:px-2 rounded-md hover:bg-lamaSkyLight"
+                aria-current={mainActive ? "page" : undefined}
+                className={mainActive ? navLinkActive : navLinkIdle}
               >
                 <Image src={item.icon} alt="" width={20} height={20} />
                 <span className="hidden lg:block">{item.label}</span>
