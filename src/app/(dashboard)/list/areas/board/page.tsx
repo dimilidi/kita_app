@@ -3,7 +3,10 @@ import PlayBoard from "../../../play/PlayBoard";
 import { Prisma } from "@prisma/client";
 import { getEffectivePlacementNow } from "@/lib/effectivePlacementNow";
 import { getCurrentPlacementNow } from "@/lib/currentPlacementNow";
-import { todayDateStrLocal } from "@/lib/attendanceDate";
+import {
+  parseDateStrToUtcRange,
+  todayDateStrLocal,
+} from "@/lib/attendanceDate";
 import {
   filterTeachersForBoard,
   getTeacherAttendanceByDate,
@@ -27,7 +30,10 @@ export default async function PlayBoardPage() {
     .filter(([, p]) => p.type === "activity")
     .map(([id]) => id);
 
-  const students: StudentWithClass[] = await prisma.student.findMany({
+  const attendanceDayStr = todayDateStrLocal();
+  const dayRange = parseDateStrToUtcRange(attendanceDayStr);
+
+  const studentsAll: StudentWithClass[] = await prisma.student.findMany({
     include: {
       class: true,
     },
@@ -35,6 +41,55 @@ export default async function PlayBoardPage() {
       name: "asc",
     },
   });
+
+  // Filter play-board student catalog to only "checked-in" kids for the day.
+  // If there are no attendance rows for today yet, keep previous behavior (show all).
+  const students = await (async () => {
+    if (!dayRange) return studentsAll;
+
+    const studentIdsForAttendance = studentsAll.map((s) => s.id);
+    const classIds = Array.from(new Set(studentsAll.map((s) => s.classId)));
+
+    const lessonsByClass =
+      classIds.length > 0
+        ? await prisma.lesson.findMany({
+            where: { classId: { in: classIds } },
+            orderBy: { startTime: "asc" },
+            select: { id: true, classId: true },
+          })
+        : [];
+
+    const lessonIdByClass = new Map<number, number>();
+    for (const l of lessonsByClass) {
+      if (!lessonIdByClass.has(l.classId)) lessonIdByClass.set(l.classId, l.id);
+    }
+
+    const lessonIds = classIds
+      .map((cid) => lessonIdByClass.get(cid))
+      .filter((id): id is number => id !== undefined);
+
+    const attendanceRows =
+      lessonIds.length > 0 && studentIdsForAttendance.length > 0
+        ? await prisma.attendance.findMany({
+            where: {
+              date: { gte: dayRange.start, lt: dayRange.end },
+              lessonId: { in: lessonIds },
+              studentId: { in: studentIdsForAttendance },
+            },
+            select: { studentId: true, present: true, actualPickupTime: true },
+          })
+        : [];
+
+    // Strict rule: no attendance rows for today => no students shown in the board/pool.
+    if (attendanceRows.length === 0) return [];
+
+    const checkedInStudentIds = new Set(
+      attendanceRows
+        .filter((r) => r.present && !r.actualPickupTime)
+        .map((r) => r.studentId)
+    );
+    return studentsAll.filter((s) => checkedInStudentIds.has(s.id));
+  })();
 
   const zonesFull = await prisma.zone.findMany({
     orderBy: { name: "asc" },
@@ -96,10 +151,13 @@ export default async function PlayBoardPage() {
     orderBy: { name: "asc" },
   });
 
-  const attendanceDayStr = todayDateStrLocal();
   const teacherAttendanceRows =
     await getTeacherAttendanceByDate(attendanceDayStr);
-  const teachers = filterTeachersForBoard(teachersAll, teacherAttendanceRows);
+  // Strict rule: no teacher-attendance rows for today => no teachers shown in the board/pool.
+  const teachers =
+    teacherAttendanceRows.length === 0
+      ? []
+      : filterTeachersForBoard(teachersAll, teacherAttendanceRows);
 
   const initialZones: Record<string, string[]> = {};
 
@@ -158,7 +216,7 @@ export default async function PlayBoardPage() {
         initialTeacherZones={initialTeacherZones}
         zoneActivityNames={zoneActivityNames}
         lockedTeacherIds={lockedTeacherIds}
-        teacherAttendanceFilterActive={teacherAttendanceRows.length > 0}
+        teacherAttendanceFilterActive={true}
         lunchNowByStudentId={lunchNowByStudentId}
         essraumZoneId={essraumZoneId}
         highlightEssraum={highlightEssraum}

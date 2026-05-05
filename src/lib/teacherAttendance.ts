@@ -9,7 +9,7 @@ export async function getTeacherAttendanceByDate(dateStr: string) {
     where: {
       date: { gte: range.start, lt: range.end },
     },
-    select: { teacherId: true, present: true },
+    select: { teacherId: true, present: true, actualPickupTime: true },
   });
 }
 
@@ -25,17 +25,22 @@ export async function getTeacherAttendanceRowForTeacher(
       teacherId,
       date: { gte: range.start, lt: range.end },
     },
-    select: { teacherId: true, present: true },
+    select: { teacherId: true, present: true, actualPickupTime: true },
   });
 }
 
-/** When any teacher-attendance rows exist for the day, boards only show teachers marked present. */
+/** When any teacher-attendance rows exist for the day, boards only show teachers checked-in. */
 export function filterTeachersForBoard<
   T extends { id: string },
->(teachers: T[], attendanceRows: { teacherId: string; present: boolean }[]): T[] {
+>(
+  teachers: T[],
+  attendanceRows: { teacherId: string; present: boolean; actualPickupTime: string | null }[]
+): T[] {
   if (attendanceRows.length === 0) return teachers;
   const presentIds = new Set(
-    attendanceRows.filter((r) => r.present).map((r) => r.teacherId)
+    attendanceRows
+      .filter((r) => r.present && !r.actualPickupTime)
+      .map((r) => r.teacherId)
   );
   return teachers.filter((t) => presentIds.has(t.id));
 }

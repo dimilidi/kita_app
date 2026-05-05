@@ -34,17 +34,17 @@ export default async function LunchPage({
           where: {
             date: { gte: dayRange.start, lt: dayRange.end },
           },
-          select: { studentId: true, present: true },
+          select: { studentId: true, present: true, actualPickupTime: true },
         })
       : [];
 
-  /** No rows for this day → show all students (same as before attendance exists). */
-  const useAttendanceFilter = attendanceForDate.length > 0;
-  const presentStudentIds = useAttendanceFilter
-    ? new Set(
-        attendanceForDate.filter((a) => a.present).map((a) => a.studentId)
-      )
-    : null;
+  // Strict rule: if there are no attendance rows for this date, show no students.
+  // Otherwise only include students checked-in (present=true && actualPickupTime=null).
+  const presentStudentIds = new Set(
+    attendanceForDate
+      .filter((a) => a.present && !a.actualPickupTime)
+      .map((a) => a.studentId)
+  );
 
   const query: Prisma.StudentWhereInput = {};
   const { search } = searchParams;
@@ -56,9 +56,7 @@ export default async function LunchPage({
     ];
   }
 
-  if (presentStudentIds !== null) {
-    query.id = { in: Array.from(presentStudentIds) };
-  }
+  query.id = { in: Array.from(presentStudentIds) };
 
   const students = await prisma.student.findMany({
     where: query,
@@ -123,7 +121,11 @@ export default async function LunchPage({
   const teacherAttendanceRows =
     dayRange != null ? await getTeacherAttendanceByDate(dateStr) : [];
 
-  const teachersBase = filterTeachersForBoard(teachersAll, teacherAttendanceRows);
+  // Strict rule: if there are no teacher-attendance rows for this date, show no teachers.
+  const teachersBase =
+    teacherAttendanceRows.length === 0
+      ? []
+      : filterTeachersForBoard(teachersAll, teacherAttendanceRows);
   const teachers = teachersBase.map((t) => {
     const p = placementNow.get(t.id) ?? { type: "pool", locked: false };
     if (p.type === "activity") {
@@ -135,7 +137,7 @@ export default async function LunchPage({
     }
     return t;
   });
-  const teacherAttendanceFilterActive = teacherAttendanceRows.length > 0;
+  const teacherAttendanceFilterActive = true;
 
   const teacherLunchRows = await prisma.teacherLunchGroup.findMany();
 
@@ -187,7 +189,7 @@ export default async function LunchPage({
         initialVotes={initialVotes}
         initialTischsprueche={tischsprueche}
         attendanceDateStr={dateStr}
-        attendanceFilterActive={useAttendanceFilter}
+        attendanceFilterActive={true}
         teacherAttendanceFilterActive={teacherAttendanceFilterActive}
       />
     </div>
