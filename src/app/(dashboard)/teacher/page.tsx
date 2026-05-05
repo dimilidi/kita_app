@@ -1,5 +1,6 @@
 import Announcements from "@/components/Announcements";
 import BigCalendarContainer from "@/components/BigCalenderContainer";
+import DashboardEvents from "@/components/DashboardEvents";
 import TeacherTodayAttendanceCardClient from "@/components/teacher/TeacherTodayAttendanceCardClient";
 import {
   formatCalendarDateStrLong,
@@ -81,6 +82,7 @@ const TeacherPage = async () => {
         </div>
       </div>
       <div className="w-full xl:w-1/3 flex flex-col gap-8">
+        <DashboardEvents />
         <Announcements />
       </div>
     </div>
