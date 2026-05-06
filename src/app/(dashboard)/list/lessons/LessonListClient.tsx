@@ -26,9 +26,66 @@ export default function LessonListClient({
 }) {
   const dict = useTranslations();
 
+  const formatDate = (value?: string | Date | null) => {
+    if (!value) return "—";
+    const d = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(d.getTime())) return "—";
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = String(d.getFullYear());
+    return `${dd}.${mm}.${yyyy}`;
+  };
+
+  const formatTime = (start?: string | Date | null, end?: string | Date | null) => {
+    const toDate = (v?: string | Date | null) => {
+      if (!v) return null;
+      const d = v instanceof Date ? v : new Date(v);
+      return Number.isNaN(d.getTime()) ? null : d;
+    };
+    const s = toDate(start);
+    const e = toDate(end);
+    const fmt = (d: Date) =>
+      d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+
+    if (s && e) return `${fmt(s)}–${fmt(e)}`;
+    if (s) return fmt(s);
+    return "—";
+  };
+
+  const formatEducators = (item: any) => {
+    if (Array.isArray(item?.educators) && item.educators.length > 0) {
+      const names = item.educators
+        .map((t: any) => `${t?.name ?? ""} ${t?.surname ?? ""}`.trim())
+        .filter(Boolean);
+      return names.length > 0 ? names.join(", ") : "—";
+    }
+    const t = item?.teacher;
+    const single = `${t?.name ?? ""} ${t?.surname ?? ""}`.trim();
+    return single || "—";
+  };
+
   const columns = [
-    { header: dict.forms.activity, accessor: "name" },
-    { header: dict.forms.playArea, accessor: "playAreaName" },
+    { header: dict.forms.activity, accessor: "name", className: "p-4" },
+    {
+      header: dict.forms.playArea,
+      accessor: "playAreaName",
+      className: "hidden md:table-cell",
+    },
+    {
+      header: dict.lessons?.columns?.educators ?? dict.forms.educator,
+      accessor: "educators",
+      className: "hidden lg:table-cell",
+    },
+    {
+      header: dict.lessons?.columns?.date ?? "Date",
+      accessor: "date",
+      className: "hidden md:table-cell",
+    },
+    {
+      header: dict.lessons?.columns?.time ?? "Time",
+      accessor: "time",
+      className: "hidden md:table-cell",
+    },
     ...(role === "admin"
       ? [{ header: dict.common.actions, accessor: "action" }]
       : []),
@@ -40,7 +97,20 @@ export default function LessonListClient({
       className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-kitaPurpleLight"
     >
       <td className="flex items-center gap-4 p-4">{item.name}</td>
-      <td>{item.playAreaName}</td>
+      <td className="hidden md:table-cell">{item.playAreaName}</td>
+      <td className="hidden lg:table-cell">
+        <span className="truncate inline-block max-w-[18rem]" title={formatEducators(item)}>
+          {formatEducators(item)}
+        </span>
+      </td>
+      <td className="hidden md:table-cell">
+        <span className="whitespace-nowrap">{formatDate(item.startTime)}</span>
+      </td>
+      <td className="hidden md:table-cell">
+        <span className="whitespace-nowrap">
+          {formatTime(item.startTime, item.endTime)}
+        </span>
+      </td>
       {role === "admin" ? (
         <td>
           <div className="flex items-center gap-2">
@@ -87,6 +157,14 @@ export default function LessonListClient({
                   value: String(t.id),
                 }))}
               />
+              <FilterDropdown
+                label={dict.forms.day}
+                paramKey="day"
+                options={["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"].map((d) => ({
+                  label: dict.forms?.days?.[d] || d,
+                  value: d,
+                }))}
+              />
             </FilterPanel>
 
             <SortPanel title={dict.common.sortBy}>
@@ -96,7 +174,8 @@ export default function LessonListClient({
                   { label: dict.forms.playArea, value: "zone" },
                   { label: dict.lessons.columns.class, value: "class" },
                   { label: dict.forms.educator, value: "teacher" },
-                  { label: dict.forms.day, value: "day" },
+                  { label: dict.lessons?.columns?.date ?? "Date", value: "startTime" },
+                  { label: dict.lessons?.columns?.time ?? "Time", value: "startTime" },
                 ]}
                 defaultSort="name"
                 defaultOrder="asc"

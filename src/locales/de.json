@@ -322,7 +322,10 @@
     "columns": {
       "subjectName": "Aktivität",
       "class": "Gruppe",
-      "teacher": "Erzieher"
+      "teacher": "Erzieher",
+      "educators": "Erzieher",
+      "date": "Datum",
+      "time": "Zeit"
     }
   },
   "exams": {

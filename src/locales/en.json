@@ -322,7 +322,10 @@
     "columns": {
       "subjectName": "Activity",
       "class": "Group",
-      "teacher": "Educator"
+      "teacher": "Educator",
+      "educators": "Educators",
+      "date": "Date",
+      "time": "Time"
     }
   },
   "exams": {

@@ -496,6 +496,13 @@ export function buildLessonFiltersWhere(sp: {
     if (Number.isFinite(id)) parts.push({ classId: id });
   }
 
+  if (sp.day) {
+    const d = sp.day.trim().toUpperCase();
+    if (["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"].includes(d)) {
+      parts.push({ day: d as any });
+    }
+  }
+
   /** Dropdown uses `lessonTeacherId` (cleared on reset). `teacherId` kept for profile shortcuts (scope). */
   const educatorId = trimSearch(sp.lessonTeacherId) ?? sp.teacherId;
   if (educatorId) parts.push({ teacherId: educatorId });
@@ -516,6 +523,8 @@ export function buildLessonOrderBy(
       return [{ teacher: { surname: order } }, { teacher: { name: order } }];
     case "day":
       return [{ day: order }];
+    case "startTime":
+      return [{ startTime: order }];
     case "name":
     default:
       return [{ name: order }];
