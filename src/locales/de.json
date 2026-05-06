@@ -298,6 +298,7 @@
     "titleAll": "Alle Spielbereiche",
     "intro": "Im offenen Konzept bewegen sich die Kinder frei in der Einrichtung – entsprechend ihren Bedürfnissen und Wünschen – und erkunden jeden Spielbereich. Es gibt keine festen Gruppen, die einem Raum zugeordnet sind.",
     "openBoard": "Spieltafel öffnen",
+    "createPlayArea": "Spielbereich erstellen",
     "descriptionPlaceholder": "Kurze Notiz für das Team (optional)",
     "deleteInUse": "Dieser Spielbereich wird noch genutzt (Aktivitäten, Zuordnungen oder Verlauf) und kann nicht gelöscht werden.",
     "columns": {

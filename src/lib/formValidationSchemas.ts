@@ -178,7 +178,10 @@ const emptyToUndefined = (v: unknown) =>
 export const zoneSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, { message: "forms.required" }),
-  capacity: z.preprocess(emptyToUndefined, z.coerce.number().int().positive().optional()),
+  capacity: z.preprocess(
+    emptyToUndefined,
+    z.coerce.number({ message: "forms.required" }).int().positive()
+  ),
   description: z.preprocess(emptyToUndefined, z.string().optional()),
 });
 

@@ -298,6 +298,7 @@
     "titleAll": "All play areas",
     "intro": "In our open concept, children move freely through the kindergarten according to their needs and wishes, exploring each play area. There are no fixed groups assigned to one room.",
     "openBoard": "Open play board",
+    "createPlayArea": "Create Play Area",
     "descriptionPlaceholder": "Short note for staff (optional)",
     "deleteInUse": "This play area is still used by activities, placements, or history and cannot be deleted.",
     "columns": {

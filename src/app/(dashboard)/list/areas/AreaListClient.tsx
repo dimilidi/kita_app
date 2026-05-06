@@ -20,6 +20,7 @@ import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { toast } from "react-toastify";
 
 import { fetchPlayAreasExportSections } from "./export-actions";
+import ZoneForm from "@/components/forms/ZoneForm";
 
 type AreaRow = {
   id: string;
@@ -154,7 +155,7 @@ export default function AreaListClient({
   );
 
   /** Teachers: no Actions column (read-only). Admins and other roles: keep table layout as before. */
-  const showActionsCol = role !== "teacher";
+  const showActionsCol = role === "admin";
   const colBase = showActionsCol
     ? "p-3 align-top w-1/4 max-w-[25%] box-border"
     : "p-3 align-top w-1/3 max-w-[33.333%] box-border";
@@ -189,6 +190,8 @@ export default function AreaListClient({
       : []),
   ];
 
+  const [createOpen, setCreateOpen] = useState(false);
+
   const renderRow = (item: AreaRow) => (
     <tr
       key={item.id}
@@ -206,12 +209,8 @@ export default function AreaListClient({
       {showActionsCol ? (
         <td className={`p-3 box-border print:hidden ${tdData}`}>
           <div className="flex items-center gap-2">
-            {role === "admin" && (
-              <>
-                <FormModal table="zone" type="update" data={item} />
-                <FormModal table="zone" type="delete" id={item.id} />
-              </>
-            )}
+            <FormModal table="zone" type="update" data={item} />
+            <FormModal table="zone" type="delete" id={item.id} />
           </div>
         </td>
       ) : null}
@@ -362,7 +361,17 @@ export default function AreaListClient({
                 )}
               </div>
 
-              {role === "admin" && <FormModal table="zone" type="create" />}
+              {role === "admin" ? (
+                <button
+                  type="button"
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-kitaYellow hover:opacity-90"
+                  onClick={() => setCreateOpen(true)}
+                  aria-label={dict.areasList.createPlayArea}
+                  title={dict.areasList.createPlayArea}
+                >
+                  <Image src="/create.png" alt="" width={14} height={14} />
+                </button>
+              ) : null}
             </div>
           </div>
         </div>
@@ -389,6 +398,20 @@ export default function AreaListClient({
           <Pagination page={page} count={count} />
         </div>
       </div>
+
+      {createOpen ? (
+        <div className="w-screen h-screen absolute left-0 top-0 bg-black bg-opacity-60 z-50 flex items-center justify-center print:hidden">
+          <div className="bg-white p-4 rounded-md relative w-[90%] md:w-[70%] lg:w-[60%] xl:w-[50%] 2xl:w-[40%]">
+            <ZoneForm type="create" setOpen={setCreateOpen} />
+            <div
+              className="absolute top-4 right-4 cursor-pointer"
+              onClick={() => setCreateOpen(false)}
+            >
+              <Image src="/close.png" alt="" width={14} height={14} />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }
