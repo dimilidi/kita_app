@@ -163,6 +163,13 @@ const SingleTeacherPage = async ({
                     data={teacher}
                     variant="admin"
                   />
+                ) : role === "teacher" && userId && teacher.id === userId ? (
+                  <FormContainer
+                    table="teacher"
+                    type="update"
+                    data={teacher}
+                    variant="self"
+                  />
                 ) : null}
               </div>
 

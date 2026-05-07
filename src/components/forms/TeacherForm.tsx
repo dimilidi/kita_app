@@ -160,14 +160,6 @@ const TeacherForm = ({
           register={register}
           error={errors.address}
         />
-        {variant === "self" ? (
-          <InputField
-            label={dict.forms.email}
-            name="email"
-            register={register}
-            error={errors?.email}
-          />
-        ) : null}
         <InputField
           label={dict.forms.bloodGroup}
           name="bloodType"
