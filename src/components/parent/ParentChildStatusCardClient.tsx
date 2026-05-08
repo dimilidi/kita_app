@@ -1,14 +1,20 @@
 "use client";
 
 import { sendParentMessageToKindergartenEmail } from "@/lib/actions";
-import { usePathname } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { CalendarX, MessageCircle } from "lucide-react";
+import { useMemo, useState } from "react";
 import { toast } from "react-toastify";
+
+export type ParentAttendanceUiStatus =
+  | "absent"
+  | "checked_in"
+  | "checked_out"
+  | "no_record";
 
 type Props = {
   lang: "en" | "de";
   student: { id: string; name: string; surname: string };
-  attendanceStatus: "absent" | "checked_in" | "checked_out";
+  attendanceStatus: ParentAttendanceUiStatus;
   pickupTime: string | null;
   playAreaLabel: string | null;
   lunchGroupLabel: string | null;
@@ -20,6 +26,7 @@ type Props = {
     statusAbsent: string;
     statusCheckedIn: string;
     statusCheckedOut: string;
+    statusNoAttendanceToday: string;
     reportAbsence: string;
     sendMessage: string;
     absenceModalTitle: string;
@@ -46,8 +53,6 @@ export default function ParentChildStatusCardClient({
   lunchGroupLabel,
   strings,
 }: Props) {
-  const pathname = usePathname();
-  const [isPending, startTransition] = useTransition();
   const [absenceOpen, setAbsenceOpen] = useState(false);
   const [absenceNote, setAbsenceNote] = useState("");
   const [absenceSending, setAbsenceSending] = useState(false);
@@ -62,17 +67,20 @@ export default function ParentChildStatusCardClient({
         return strings.statusCheckedOut;
       case "checked_in":
         return strings.statusCheckedIn;
+      case "no_record":
+        return strings.statusNoAttendanceToday;
       default:
         return strings.statusAbsent;
     }
   }, [attendanceStatus, strings]);
 
+  /** checked_in = green, absent = red, checked_out / no_record = gray */
   const dotClass =
     attendanceStatus === "absent"
       ? "bg-rose-500"
       : attendanceStatus === "checked_in"
         ? "bg-emerald-500"
-        : "bg-sky-500";
+        : "bg-gray-400";
 
   const todayStr = () => new Date().toLocaleDateString("en-CA");
 
@@ -100,10 +108,6 @@ export default function ParentChildStatusCardClient({
       toast(strings.absenceReportedSuccess);
       setAbsenceOpen(false);
       setAbsenceNote("");
-      // Keep page stable; no attendance data is modified.
-      if (pathname) {
-        // noop, but preserves existing behavior if parent expects refresh later
-      }
     } finally {
       setAbsenceSending(false);
     }
@@ -133,8 +137,10 @@ export default function ParentChildStatusCardClient({
     }
   };
 
-  const closeLabel =
-    lang === "de" ? "Schließen" : "Close";
+  const closeLabel = lang === "de" ? "Schließen" : "Close";
+
+  const iconBtnBase =
+    "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition hover:bg-gray-50 hover:border-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kitaSky focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
 
   return (
     <div className="rounded-md bg-white border border-gray-200 p-4 shadow-sm">
@@ -148,21 +154,23 @@ export default function ParentChildStatusCardClient({
         <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
-            className="rounded-md bg-kitaYellow px-3 py-2 text-xs font-medium text-gray-900 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`${iconBtnBase} bg-kitaYellow/90 border-kitaYellow hover:bg-kitaYellow`}
             onClick={() => setAbsenceOpen(true)}
-            disabled={isPending}
+            disabled={absenceSending}
             title={strings.reportAbsence}
+            aria-label={strings.reportAbsence}
           >
-            {strings.reportAbsence}
+            <CalendarX className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
           </button>
           <button
             type="button"
-            className="rounded-md border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className={iconBtnBase}
             title={strings.sendMessage}
+            aria-label={strings.sendMessage}
             onClick={() => setMessageOpen(true)}
-            disabled={isPending}
+            disabled={sending}
           >
-            {strings.sendMessage}
+            <MessageCircle className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
           </button>
         </div>
       </div>
@@ -212,7 +220,9 @@ export default function ParentChildStatusCardClient({
               {strings.absenceModalTitle}
             </h3>
             <p className="text-xs text-gray-600 mb-3">
-              <span className="font-medium text-gray-800">{student.name} {student.surname}</span>
+              <span className="font-medium text-gray-800">
+                {student.name} {student.surname}
+              </span>
               {" — "}
               <span className="tabular-nums">{todayStr()}</span>
             </p>
@@ -264,7 +274,9 @@ export default function ParentChildStatusCardClient({
               {strings.messageModalTitle}
             </h3>
             <p className="text-xs text-gray-600 mb-3">
-              <span className="font-medium text-gray-800">{student.name} {student.surname}</span>
+              <span className="font-medium text-gray-800">
+                {student.name} {student.surname}
+              </span>
             </p>
             <label className="block text-xs font-medium text-gray-600 mb-1.5">
               {strings.messageSubjectLabel}
@@ -311,4 +323,3 @@ export default function ParentChildStatusCardClient({
     </div>
   );
 }
-
