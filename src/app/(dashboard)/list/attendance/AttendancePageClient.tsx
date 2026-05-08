@@ -740,7 +740,8 @@ export default function AttendancePageClient({
                         ? "bg-emerald-500"
                         : "bg-sky-500";
 
-                  const canCheckIn = !disabled && status === "absent";
+                  // Admins can re-check-in after checkout (creates a new attendance row for today).
+                  const canCheckIn = !disabled && (status === "absent" || status === "checked_out");
                   const canCheckOut = !disabled && status === "checked_in";
                   const canSetAbsent = canRevertAbsent && !disabled && status !== "absent";
                   const canNotes =

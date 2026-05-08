@@ -131,6 +131,16 @@ export async function loadAttendancePageData(opts: LoadOpts) {
             lessonId: { in: lessonIds },
             studentId: { in: studentIdsForAttendance },
           },
+          // Ensure deterministic "latest row wins" when re-check-in creates multiple rows per day.
+          orderBy: { id: "asc" },
+          select: {
+            id: true,
+            studentId: true,
+            lessonId: true,
+            present: true,
+            note: true,
+            actualPickupTime: true,
+          },
         })
       : [];
 

@@ -1058,7 +1058,26 @@ export async function saveDailyAttendance({
       orderBy: { id: "desc" },
     });
 
-    if (existing) {
+    // Admin-only: allow re-check-in after checkout by creating a NEW row for today.
+    // This preserves history (older checked-out record remains unchanged).
+    if (
+      existing &&
+      role === "admin" &&
+      present === true &&
+      existing.present === true &&
+      existing.actualPickupTime
+    ) {
+      await prisma.attendance.create({
+        data: {
+          studentId,
+          lessonId: lesson.id,
+          date: start,
+          present: true,
+          actualPickupTime: null,
+          note: null,
+        },
+      });
+    } else if (existing) {
       await prisma.attendance.update({
         where: { id: existing.id },
         data: { present },
@@ -1609,6 +1628,7 @@ export async function saveAttendanceDayDetail({
         lessonId: lesson.id,
         date: { gte: start, lt: end },
       },
+      orderBy: { id: "desc" },
     });
 
     if (existing) {
@@ -1704,6 +1724,7 @@ export async function markAttendancePickedUp({
         lessonId: lesson.id,
         date: { gte: start, lt: end },
       },
+      orderBy: { id: "desc" },
       select: { id: true, present: true, actualPickupTime: true },
     });
 
