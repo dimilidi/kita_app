@@ -496,7 +496,12 @@ export const createStudent = async (
     });
 
     if (classItem && classItem.capacity === classItem._count.students) {
-      return { success: false, error: true };
+      return {
+        success: false,
+        error: true,
+        message:
+          "The selected group is full. Please choose another group or increase capacity.",
+      };
     }
 
     const user = await clerkClient.users.createUser({
