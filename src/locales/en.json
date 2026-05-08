@@ -56,6 +56,7 @@
   "forms": {
     "required": "This field is required.",
     "invalidEmail": "Invalid email address.",
+    "endBeforeStart": "End time must be after start time.",
     "usernameMin": "Username must be at least 3 characters long.",
     "usernameMax": "Username must be at most 20 characters long.",
     "passwordMin": "Password must be at least 8 characters long.",

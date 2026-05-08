@@ -12,6 +12,15 @@ import { LessonInput, lessonSchema, LessonSchema } from "@/lib/formValidationSch
 import { createLesson, updateLesson } from "@/lib/actions";
 
 const DAYS = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"] as const;
+const DAY_BY_JS_DOW: Record<number, (typeof DAYS)[number] | null> = {
+  0: null,
+  1: "MONDAY",
+  2: "TUESDAY",
+  3: "WEDNESDAY",
+  4: "THURSDAY",
+  5: "FRIDAY",
+  6: null,
+};
 
 export default function LessonForm({
   type,
@@ -32,11 +41,14 @@ export default function LessonForm({
     handleSubmit,
     formState: { errors },
     setValue,
+    watch,
   } = useForm<LessonInput, any, LessonSchema>({
     resolver: zodResolver(lessonSchema),
     defaultValues: {
       name: data?.name ?? "",
-      day: data?.day,
+      // For create: day is derived from startTime (see effect below).
+      // For update: keep persisted day.
+      day: data?.day ?? "MONDAY",
       zoneId: data?.zoneId ?? "",
       classId: data?.classId,
       teacherId: data?.teacherId ?? "",
@@ -84,6 +96,20 @@ export default function LessonForm({
     if (data?.zoneId) setValue("zoneId", data.zoneId);
   }, [data?.zoneId, setValue]);
 
+  // Create flow: remove manual "Day" input by deriving it from startTime.
+  const startTimeValue = watch("startTime");
+  useEffect(() => {
+    if (type !== "create") return;
+    const st = (startTimeValue ?? null) as Date | string | null;
+    if (!st) return;
+    const d = st instanceof Date ? st : new Date(st);
+    if (Number.isNaN(d.getTime())) return;
+    const mapped = DAY_BY_JS_DOW[d.getDay()] ?? null;
+    if (mapped) {
+      setValue("day", mapped as any, { shouldValidate: true });
+    }
+  }, [type, startTimeValue, setValue]);
+
   if (!relatedData) return <p>{dict.common.loading}</p>;
 
   const toLocalInput = (value?: Date | string) => {
@@ -113,23 +139,25 @@ export default function LessonForm({
           error={errors?.name}
         />
 
-        <div className="flex flex-col gap-2 w-full md:w-1/4">
-          <label className="text-xs text-gray-500">{dict.forms.day}</label>
-          <select
-            className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
-            {...register("day")}
-            defaultValue={data?.day}
-          >
-            {DAYS.map((d) => (
-              <option value={d} key={d}>
-                {dict.forms.days?.[d] || d}
-              </option>
-            ))}
-          </select>
-          {errors.day?.message && (
-            <p className="text-xs text-red-400">{errors.day.message.toString()}</p>
-          )}
-        </div>
+        {type === "update" ? (
+          <div className="flex flex-col gap-2 w-full md:w-1/4">
+            <label className="text-xs text-gray-500">{dict.forms.day}</label>
+            <select
+              className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
+              {...register("day")}
+              defaultValue={data?.day}
+            >
+              {DAYS.map((d) => (
+                <option value={d} key={d}>
+                  {dict.forms.days?.[d] || d}
+                </option>
+              ))}
+            </select>
+            {errors.day?.message && (
+              <p className="text-xs text-red-400">{errors.day.message.toString()}</p>
+            )}
+          </div>
+        ) : null}
 
         <InputField
           label={dict.forms.startTime}

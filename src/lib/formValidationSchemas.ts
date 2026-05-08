@@ -133,6 +133,16 @@ export const lessonSchema = z.object({
   zoneId: z.string().min(1, { message: "forms.required" }),
   classId: z.preprocess(finiteNumber, z.number().min(1, { message: "forms.required" })),
   teacherId: z.string().min(1, { message: "forms.required" }),
+}).superRefine((val, ctx) => {
+  if (val.startTime instanceof Date && val.endTime instanceof Date) {
+    if (val.endTime.getTime() <= val.startTime.getTime()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "forms.endBeforeStart",
+        path: ["endTime"],
+      });
+    }
+  }
 });
 
 export type LessonInput = z.input<typeof lessonSchema>;
