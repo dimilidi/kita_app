@@ -145,6 +145,14 @@ export default function PlayBoard({
   const [openZone, setOpenZone] = useState<ZoneId | null>(null);
   const [actionsOpen, setActionsOpen] = useState(false);
   const actionsRef = useRef<HTMLDivElement | null>(null);
+  const [studentMoveConfirm, setStudentMoveConfirm] = useState<{
+    studentId: string;
+    fromZone: string;
+    toZone: string;
+    prevZones: Record<string, string[]>;
+    nextZones: Record<string, string[]>;
+    activityName?: string | null;
+  } | null>(null);
 
   useEffect(() => {
     if (!actionsOpen) return;
@@ -262,7 +270,24 @@ export default function PlayBoard({
           [from]: prev[from].filter((c) => c !== entityId),
           [toZone]: [...(prev[toZone] ?? []), entityId],
         };
-        void saveZones(next);
+        void saveZones(next).then((res) => {
+          if (res?.success) return;
+          if (res?.error === "activeActivityConflict" && res.conflict) {
+            // Revert optimistic move; ask for confirmation before overriding.
+            setZonesState(prev);
+            setStudentMoveConfirm({
+              studentId: entityId,
+              fromZone: from,
+              toZone,
+              prevZones: prev,
+              nextZones: next,
+              activityName: res.conflict.activityName ?? null,
+            });
+            return;
+          }
+          toast(dict.forms.somethingWentWrong);
+          setZonesState(prev);
+        });
         return next;
       });
     } else {
@@ -614,6 +639,76 @@ export default function PlayBoard({
           ))
         )}
       </div>
+
+      {studentMoveConfirm ? (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setStudentMoveConfirm(null)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl border border-gray-200 p-4 w-full max-w-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-sm font-semibold text-gray-900 mb-2">
+              {dict.common?.confirm ?? "Confirm"}
+            </h3>
+            <p className="text-sm text-gray-700">
+              {dict.playBoard?.confirmMoveDuringActivity ??
+                "This child currently participates in an active activity. Do you want to move them anyway?"}
+            </p>
+            {studentMoveConfirm.activityName ? (
+              <p className="mt-2 text-sm text-gray-700">
+                <span className="font-medium">
+                  {dict.playBoard?.activeActivityLabel ?? "Active activity"}
+                  {": "}
+                </span>
+                <span className="break-words">{studentMoveConfirm.activityName}</span>
+              </p>
+            ) : null}
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                type="button"
+                className="px-3 py-1.5 text-sm rounded-md border border-gray-300 bg-white hover:bg-gray-50"
+                onClick={() => setStudentMoveConfirm(null)}
+              >
+                {dict.common?.cancel ?? "Cancel"}
+              </button>
+              <button
+                type="button"
+                className="px-3 py-1.5 text-sm rounded-md bg-kitaYellow hover:opacity-90"
+                onClick={async () => {
+                  const payload = studentMoveConfirm.nextZones;
+                  const prevZones = studentMoveConfirm.prevZones;
+                  const studentId = studentMoveConfirm.studentId;
+                  setStudentMoveConfirm(null);
+                  // Optimistically apply the move again.
+                  setZonesState(payload);
+                  const res = await saveZones(payload, {
+                    forceActiveActivityOverride: true,
+                  });
+                  if (!res?.success) {
+                    setZonesState(prevZones);
+                    toast(dict.forms.somethingWentWrong);
+                    return;
+                  }
+                  // Ensure the student is visually in the target zone.
+                  setZonesState((current) => {
+                    // If another move happened in the meantime, keep current.
+                    if (!Object.values(current).some((arr) => arr.includes(studentId))) {
+                      return payload;
+                    }
+                    return current;
+                  });
+                }}
+              >
+                {dict.common?.continue ?? "Continue"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }

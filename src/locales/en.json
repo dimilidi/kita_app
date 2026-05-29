@@ -460,6 +460,8 @@
     "clearPlayBoard": "Clear Play Board",
     "clearPlayBoardConfirm": "Clear the play board? All children and educators will be moved back to the pools.",
     "clearPlayBoardSuccess": "Play board cleared.",
+    "confirmMoveDuringActivity": "This child currently participates in an active activity. Do you want to move them anyway?",
+    "activeActivityLabel": "Active activity",
     "lunchNowBadge": "Lunch now"
   },
   "zones": {

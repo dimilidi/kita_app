@@ -460,6 +460,8 @@
     "clearPlayBoard": "Spieltafel leeren",
     "clearPlayBoardConfirm": "Spieltafel leeren? Alle Kinder und Erzieher werden in die Pools zurückgelegt.",
     "clearPlayBoardSuccess": "Spieltafel wurde geleert.",
+    "confirmMoveDuringActivity": "Dieses Kind nimmt gerade an einer aktiven Aktivität teil. Trotzdem verschieben?",
+    "activeActivityLabel": "Aktive Aktivität",
     "lunchNowBadge": "Jetzt Mittagessen"
   },
   "zones": {

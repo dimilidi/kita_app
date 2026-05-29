@@ -2002,10 +2002,25 @@ export const deleteZone = async (
   }
 };
 
-export async function saveZones(zones: Record<string, string[]>) {
+export async function saveZones(
+  zones: Record<string, string[]>,
+  opts?: { forceActiveActivityOverride?: boolean }
+): Promise<
+  | { success: true }
+  | {
+      success: false;
+      error: "activeActivityConflict" | "invalid" | "server";
+      conflict?: {
+        studentId: string;
+        requiredZoneId: string;
+        attemptedZoneId: string;
+        activityName?: string | null;
+      };
+    }
+> {
   try {
     if (!zones || typeof zones !== "object") {
-      throw new Error("zones undefined or invalid");
+      return { success: false, error: "invalid" };
     }
 
     const { studentZoneByStudentId } = await getActiveActivityAssignmentsNow();
@@ -2014,10 +2029,54 @@ export async function saveZones(zones: Record<string, string[]>) {
     for (const [zoneId, students] of Object.entries(zones)) {
       for (const studentId of students) attemptedStudentToZone.set(studentId, zoneId);
     }
-    for (const [studentId, requiredZoneId] of Array.from(studentZoneByStudentId)) {
-      const attempted = attemptedStudentToZone.get(studentId);
-      if (attempted && attempted !== "pool" && attempted !== requiredZoneId) {
-        throw new Error("Cannot reassign student during active activity");
+    if (!opts?.forceActiveActivityOverride) {
+      for (const [studentId, requiredZoneId] of Array.from(studentZoneByStudentId)) {
+        const attempted = attemptedStudentToZone.get(studentId);
+        if (attempted && attempted !== "pool" && attempted !== requiredZoneId) {
+          let activityName: string | null = null;
+          try {
+            const now = new Date();
+            const todayStart = new Date(
+              now.getFullYear(),
+              now.getMonth(),
+              now.getDate(),
+              0,
+              0,
+              0,
+              0
+            );
+            const tomorrowStart = new Date(todayStart);
+            tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+
+            const student = await prisma.student.findUnique({
+              where: { id: studentId },
+              select: { classId: true },
+            });
+            if (student) {
+              const lesson = await prisma.lesson.findFirst({
+                where: {
+                  classId: student.classId,
+                  startTime: { gte: todayStart, lt: tomorrowStart },
+                  AND: [{ startTime: { lte: now } }, { endTime: { gte: now } }],
+                },
+                select: { name: true },
+              });
+              activityName = lesson?.name ?? null;
+            }
+          } catch {
+            // ignore (fallback to generic confirmation copy)
+          }
+          return {
+            success: false,
+            error: "activeActivityConflict",
+            conflict: {
+              studentId,
+              requiredZoneId,
+              attemptedZoneId: attempted,
+              activityName,
+            },
+          };
+        }
       }
     }
 
@@ -2032,7 +2091,7 @@ export async function saveZones(zones: Record<string, string[]>) {
 
     if (records.length === 0) {
       await prisma.studentZone.deleteMany();
-      return;
+      return { success: true };
     }
 
     // Log movement history: whenever a student's "current zone" changes,
@@ -2072,9 +2131,10 @@ export async function saveZones(zones: Record<string, string[]>) {
           ]
         : []),
     ]);
+    return { success: true };
   } catch (error) {
     console.error("Failed to save zones:", error);
-    throw error;
+    return { success: false, error: "server" };
   }
 }
 

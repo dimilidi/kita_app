@@ -34,9 +34,9 @@ model Student {
   classId     Int
   gradeId     Int
   birthday    DateTime
-  /// Default agreed drop-off time (HH:mm), optional
+  /// Default agreed drop-off time (HH:mm)
   bringTime   String?
-  /// Default agreed pickup time (HH:mm), optional
+  /// Default agreed pickup time (HH:mm)
   pickupTime  String?
   attendances Attendance[]
   class       Class              @relation(fields: [classId], references: [id])

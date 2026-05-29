@@ -17,9 +17,10 @@ export default clerkMiddleware(async (auth, req) => {
 
   const hasLocalePrefix = lang !== null;
 
-  // Do not run locale logic for API / Next internals
+  // Do not run locale/auth page redirects for API routes and REST handlers
   if (
     pathname.startsWith("/api") ||
+    pathname.startsWith("/play-areas") ||
     pathname.startsWith("/trpc") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon")
