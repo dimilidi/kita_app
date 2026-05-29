@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  DndContext,
-  DragEndEvent,
-  DragOverlay,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
+import { DndContext, DragEndEvent, DragOverlay } from "@dnd-kit/core";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -21,6 +14,7 @@ import { StudentWithClass } from "@/types/student";
 import { Zone } from "@prisma/client";
 import { useTranslations } from "@/i18n/TranslationsProvider";
 import { toast } from "react-toastify";
+import { useBoardDndSensors } from "@/lib/boardDndSensors";
 
 type ZoneId = string;
 
@@ -167,14 +161,7 @@ export default function PlayBoard({
     return () => window.removeEventListener("mousedown", onDown);
   }, [actionsOpen]);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        delay: 400,
-        tolerance: 5,
-      },
-    })
-  );
+  const sensors = useBoardDndSensors();
 
   const zoneMap = useMemo(
     () => Object.fromEntries(zones.map((z) => [z.id, z])),
@@ -440,6 +427,7 @@ export default function PlayBoard({
 
       <DndContext
         sensors={sensors}
+        autoScroll
         onDragStart={({ active }) => {
           const parsed = parseDragId(String(active.id));
           if (parsed?.kind === "teacher" && lockedTeacherIdSet.has(parsed.id)) {

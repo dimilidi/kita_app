@@ -5,11 +5,8 @@ import {
   DndContext,
   DragEndEvent,
   DragOverlay,
-  PointerSensor,
   useDraggable,
   useDroppable,
-  useSensor,
-  useSensors,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import {
@@ -40,6 +37,7 @@ import { useTranslations } from "@/i18n/TranslationsProvider";
 import { toast } from "react-toastify";
 import WorkingDayDatePicker from "@/components/attendance/WorkingDayDatePicker";
 import { todayDateStrLocal } from "@/lib/attendanceDate";
+import { useBoardDndSensors } from "@/lib/boardDndSensors";
 
 type GroupId = string;
 
@@ -515,14 +513,7 @@ export default function LunchBoardClient({
     });
   };
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        delay: 400,
-        tolerance: 5,
-      },
-    })
-  );
+  const sensors = useBoardDndSensors();
 
   const studentMap = useMemo(
     () => Object.fromEntries(students.map((student) => [student.id, student])),

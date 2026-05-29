@@ -37,8 +37,13 @@ export default function Child({
     useDraggable({ id: dragId ?? id, disabled: readOnly });
 
   const style = transform
-    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
-    : undefined;
+    ? {
+        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+        touchAction: "none",
+      }
+    : readOnly
+      ? undefined
+      : { touchAction: "none" as const };
 
   return (
     <div
@@ -49,7 +54,8 @@ export default function Child({
       onClick={() => !readOnly && inGroup && onSelect?.(id)}
       className={clsx(
         "flex flex-col items-center justify-center w-[80px] p-2 rounded-lg bg-white shadow-sm border text-center select-none transition",
-        readOnly ? "cursor-default" : "cursor-pointer hover:shadow-md",
+        readOnly ? "cursor-default" : "cursor-grab active:cursor-grabbing touch-none",
+        !readOnly && "hover:shadow-md",
         isDragging && "opacity-50 scale-105",
         inGroup &&
           (voted
@@ -61,7 +67,8 @@ export default function Child({
       <img
         src={img || "/noAvatar.png"}
         alt={name}
-        className="w-12 h-12 rounded-full object-cover"
+        draggable={false}
+        className="w-12 h-12 rounded-full object-cover pointer-events-none"
       />
 
       {/* Name */}

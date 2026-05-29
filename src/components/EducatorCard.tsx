@@ -24,15 +24,19 @@ export default function EducatorCard({
     useDraggable({ id: `teacher:${id}`, disabled: readOnly });
 
   const style = transform
-    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
-    : undefined;
+    ? {
+        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+        touchAction: "none",
+      }
+    : { touchAction: "none" as const };
 
   const body = (
     <>
       <img
         src={img || "/noAvatar.png"}
         alt=""
-        className="w-12 h-12 rounded-full object-cover"
+        draggable={false}
+        className="w-12 h-12 rounded-full object-cover pointer-events-none"
       />
       <span className="text-xs font-semibold leading-tight mt-1">{name}</span>
       {subtitle ? (
@@ -55,7 +59,7 @@ export default function EducatorCard({
 
   if (readOnly) {
     return (
-      <div className="flex flex-col items-center justify-center w-[80px] p-2 rounded-lg bg-white shadow-sm border border-amber-200/80 text-center">
+      <div className="flex flex-col items-center justify-center w-[80px] p-2 rounded-lg bg-white shadow-sm border border-amber-200/80 text-center select-none">
         {body}
       </div>
     );
@@ -68,7 +72,7 @@ export default function EducatorCard({
       {...listeners}
       {...attributes}
       className={clsx(
-        "flex flex-col items-center justify-center w-[80px] p-2 rounded-lg bg-white shadow-sm border text-center cursor-grab active:cursor-grabbing select-none transition",
+        "flex flex-col items-center justify-center w-[80px] p-2 rounded-lg bg-white shadow-sm border text-center cursor-grab active:cursor-grabbing touch-none select-none transition",
         "hover:shadow-md border-amber-200/80",
         isDragging && "opacity-50 scale-105"
       )}
