@@ -1,6 +1,7 @@
-import prisma from "@/lib/prisma";
 import { getAuthData } from "@/lib/utils";
 import { zoneSchema } from "@/lib/formValidationSchemas";
+import { deleteZoneById } from "@/lib/zoneDelete";
+import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
 export async function PUT(
@@ -43,21 +44,14 @@ export async function DELETE(
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  const id = params.id;
-  const [lessons, activities, studentZones, teacherZones, history] =
-    await Promise.all([
-      prisma.lesson.count({ where: { zoneId: id } }),
-      prisma.activity.count({ where: { zoneId: id } }),
-      prisma.studentZone.count({ where: { zoneId: id } }),
-      prisma.teacherZone.count({ where: { zoneId: id } }),
-      prisma.zoneHistory.count({ where: { zoneId: id } }),
-    ]);
-
-  if (lessons + activities + studentZones + teacherZones + history > 0) {
-    return NextResponse.json({ error: "in_use" }, { status: 409 });
+  const result = await deleteZoneById(params.id);
+  if (!result.ok) {
+    if (result.reason === "in_use") {
+      return NextResponse.json({ error: "in_use" }, { status: 409 });
+    }
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
-  await prisma.zone.delete({ where: { id } });
   return NextResponse.json({ ok: true }, { status: 200 });
 }
 

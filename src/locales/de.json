@@ -301,7 +301,7 @@
     "openBoard": "Spieltafel öffnen",
     "createPlayArea": "Spielbereich erstellen",
     "descriptionPlaceholder": "Kurze Notiz für das Team (optional)",
-    "deleteInUse": "Dieser Spielbereich wird noch genutzt (Aktivitäten, Zuordnungen oder Verlauf) und kann nicht gelöscht werden.",
+    "deleteInUse": "Dieser Spielbereich kann nicht gelöscht werden, solange Kinder oder Erzieher darin platziert sind oder geplante Aktivitäten verknüpft sind. Bitte zuerst die Spieltafel leeren oder Stunden umplanen.",
     "columns": {
       "name": "Name",
       "capacity": "Kapazität",

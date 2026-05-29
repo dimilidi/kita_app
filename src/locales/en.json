@@ -301,7 +301,7 @@
     "openBoard": "Open play board",
     "createPlayArea": "Create Play Area",
     "descriptionPlaceholder": "Short note for staff (optional)",
-    "deleteInUse": "This play area is still used by activities, placements, or history and cannot be deleted.",
+    "deleteInUse": "This play area cannot be deleted while children or educators are placed on it, or while it is linked to scheduled activities. Clear the play board or reassign lessons first.",
     "columns": {
       "name": "Name",
       "capacity": "Capacity",

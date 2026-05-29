@@ -23,10 +23,21 @@ import { getUnreadAnnouncementCount } from "./announcementUnread";
 import { getUnreadStaffChatCount } from "./staffChatUnread";
 import { loadAttendancePageData } from "./attendancePageData";
 import { getActiveActivityAssignmentsNow } from "./activeActivityNow";
+import { deleteZoneById } from "./zoneDelete";
 import prisma from "./prisma";
 import { Prisma } from "@prisma/client";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { getAuthData } from "./utils";
+import {
+  denyFormUnlessAdminOrSelf,
+  denyFormUnlessRole,
+  forbiddenError,
+  requireAdmin,
+  requireAuth,
+  requireParent,
+  requireRole,
+  requireStaff,
+} from "./actionAuth";
 import { randomUUID } from "crypto";
 import type { AttendanceRow } from "@/app/(dashboard)/list/attendance/types";
 import nodemailer from "nodemailer";
@@ -166,6 +177,8 @@ export const createClass = async (
   currentState: CurrentState,
   data: ClassSchema
 ) => {
+  const denied = denyFormUnlessRole(["admin"]);
+  if (denied) return denied;
   try {
     await prisma.class.create({
       data,
@@ -183,6 +196,8 @@ export const updateClass = async (
   currentState: CurrentState,
   data: ClassSchema
 ) => {
+  const denied = denyFormUnlessRole(["admin"]);
+  if (denied) return denied;
   try {
     await prisma.class.update({
       where: {
@@ -203,6 +218,8 @@ export const deleteClass = async (
   currentState: CurrentState,
   data: FormData
 ) => {
+  const denied = denyFormUnlessRole(["admin"]);
+  if (denied) return denied;
   const id = data.get("id") as string;
   try {
     await prisma.class.delete({
@@ -223,6 +240,8 @@ export const createTeacher = async (
   currentState: CurrentState,
   data: TeacherSchema
 ) => {
+  const denied = denyFormUnlessRole(["admin"]);
+  if (denied) return denied;
   try {
     const user = await clerkClient.users.createUser({
       username: data.username,
@@ -282,12 +301,14 @@ export const updateTeacher = async (
   if (!data.id) {
     return { success: false, error: true, message: "Missing teacher id" };
   }
+  const denied = denyFormUnlessAdminOrSelf(data.id);
+  if (denied) return denied;
   try {
-    const { userId, role } = getAuthData();
-
-    if (role !== "admin" && userId !== data.id) {
-      throw new Error("Forbidden");
+    const session = requireAuth();
+    if (!session) {
+      return { success: false, error: true, message: "Forbidden" };
     }
+    const { role } = session;
 
     if (role !== "admin") {
       // Self profile edit: only allow personal fields.
@@ -367,6 +388,8 @@ export const deleteTeacher = async (
   currentState: CurrentState,
   data: FormData
 ) => {
+  const denied = denyFormUnlessRole(["admin"]);
+  if (denied) return denied;
   const idRaw = data.get("id");
   const id = normalizeFormDataId(data);
   const action = "deleteTeacher";
@@ -482,7 +505,8 @@ export const createStudent = async (
   currentState: CurrentState,
   data: StudentSchema
 ) => {
-  console.log(data);
+  const denied = denyFormUnlessRole(["admin"]);
+  if (denied) return denied;
   try {
     const parent = await prisma.parent.findUnique({
       where: { id: data.parentId },
@@ -556,12 +580,14 @@ export const updateStudent = async (
   if (!data.id) {
     return { success: false, error: true, message: "Missing student id" };
   }
+  const denied = denyFormUnlessAdminOrSelf(data.id);
+  if (denied) return denied;
   try {
-    const { userId, role } = getAuthData();
-
-    if (role !== "admin" && userId !== data.id) {
-      throw new Error("Forbidden");
+    const session = requireAuth();
+    if (!session) {
+      return { success: false, error: true, message: "Forbidden" };
     }
+    const { role } = session;
 
     if (role !== "admin") {
       // Self profile edit: only allow personal fields.
@@ -641,6 +667,8 @@ export const deleteStudent = async (
   currentState: CurrentState,
   data: FormData
 ) => {
+  const denied = denyFormUnlessRole(["admin"]);
+  if (denied) return denied;
   const idRaw = data.get("id");
   const id = normalizeFormDataId(data);
   const action = "deleteStudent";
@@ -746,6 +774,8 @@ export const createParent = async (
   currentState: CurrentState,
   data: ParentSchema
 ) => {
+  const denied = denyFormUnlessRole(["admin"]);
+  if (denied) return denied;
   try {
     const user = await clerkClient.users.createUser({
       username: data.username,
@@ -779,6 +809,8 @@ export const updateParent = async (
   data: ParentSchema
 ) => {
   if (!data.id) return { success: false, error: true };
+  const denied = denyFormUnlessRole(["admin"]);
+  if (denied) return denied;
   try {
     await clerkClient.users.updateUser(data.id, {
       username: data.username,
@@ -811,6 +843,8 @@ export const deleteParent = async (
   currentState: CurrentState,
   data: FormData
 ) => {
+  const denied = denyFormUnlessRole(["admin"]);
+  if (denied) return denied;
   const id = data.get("id") as string;
   try {
     await clerkClient.users.deleteUser(id);
@@ -826,6 +860,8 @@ export const createLesson = async (
   currentState: CurrentState,
   data: LessonSchema
 ) => {
+  const denied = denyFormUnlessRole(["admin"]);
+  if (denied) return denied;
   try {
     const classId = finiteNumberFromForm(data.classId);
     const teacherId = data.teacherId?.trim() || null;
@@ -861,6 +897,8 @@ export const updateLesson = async (
   currentState: CurrentState,
   data: LessonSchema
 ) => {
+  const denied = denyFormUnlessRole(["admin"]);
+  if (denied) return denied;
   try {
     if (data.id == null) {
       return { success: false, error: true };
@@ -898,6 +936,8 @@ export const deleteLesson = async (
   currentState: CurrentState,
   data: FormData
 ) => {
+  const denied = denyFormUnlessRole(["admin"]);
+  if (denied) return denied;
   const id = data.get("id") as string;
   try {
     await prisma.lesson.delete({ where: { id: parseInt(id) } });
@@ -913,6 +953,8 @@ export const createAttendance = async (
   currentState: CurrentState,
   data: AttendanceSchema
 ) => {
+  const denied = denyFormUnlessRole(["admin", "teacher"]);
+  if (denied) return denied;
   try {
     const dow = data.date.getUTCDay();
     if (dow === 0 || dow === 6) {
@@ -937,6 +979,8 @@ export const updateAttendance = async (
   currentState: CurrentState,
   data: AttendanceSchema
 ) => {
+  const denied = denyFormUnlessRole(["admin", "teacher"]);
+  if (denied) return denied;
   try {
     const dow = data.date.getUTCDay();
     if (dow === 0 || dow === 6) {
@@ -962,10 +1006,8 @@ export const deleteAttendance = async (
   currentState: CurrentState,
   data: FormData
 ) => {
-  const { role } = getAuthData();
-  if (role === "teacher") {
-    return { success: false, error: true };
-  }
+  const denied = denyFormUnlessRole(["admin"]);
+  if (denied) return denied;
   const id = data.get("id") as string;
   try {
     await prisma.attendance.delete({ where: { id: parseInt(id) } });
@@ -986,10 +1028,11 @@ export async function saveDailyAttendance({
   present: boolean;
 }): Promise<{ success: boolean; error?: string }> {
   try {
-    const { userId, role } = getAuthData();
-    if (role !== "admin" && role !== "teacher") {
+    const session = requireStaff();
+    if (!session) {
       return { success: false, error: "forbidden" };
     }
+    const { userId, role } = session;
 
     const range = parseDateStrToUtcRange(dateStr);
     if (!range) {
@@ -1114,10 +1157,11 @@ export async function reportChildAbsenceByParent({
   dateStr: string;
 }): Promise<{ success: boolean; error?: string }> {
   try {
-    const { userId, role } = getAuthData();
-    if (!userId || role !== "parent") {
+    const session = requireParent();
+    if (!session) {
       return { success: false, error: "forbidden" };
     }
+    const { userId } = session;
     const range = parseDateStrToUtcRange(dateStr);
     if (!range) return { success: false, error: "invalidDate" };
     if (isWeekendDateStrUTC(dateStr)) return { success: false, error: "invalidDate" };
@@ -1193,10 +1237,11 @@ export async function sendParentMessageToKindergartenEmail(payload: {
   message: string;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
-    const { userId, role } = getAuthData();
-    if (!userId || role !== "parent") {
+    const session = requireParent();
+    if (!session) {
       return { ok: false, error: "forbidden" };
     }
+    const { userId } = session;
 
     const student = await prisma.student.findUnique({
       where: { id: payload.studentId },
@@ -1271,10 +1316,11 @@ export async function sendPeerEducatorEmail(payload: {
   message: string;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
-    const { userId, role } = getAuthData();
-    if (!userId || role !== "teacher") {
+    const session = requireRole(["teacher"]);
+    if (!session) {
       return { ok: false, error: "forbidden" };
     }
+    const { userId } = session;
     if (userId === payload.recipientTeacherId) {
       return { ok: false, error: "self" };
     }
@@ -1357,10 +1403,11 @@ export async function saveDailyAttendanceForLessonMany({
   present: boolean;
 }): Promise<{ success: boolean; error?: string }> {
   try {
-    const { userId, role } = getAuthData();
-    if (role !== "admin" && role !== "teacher") {
+    const session = requireStaff();
+    if (!session) {
       return { success: false, error: "forbidden" };
     }
+    const { userId, role } = session;
 
     const range = parseDateStrToUtcRange(dateStr);
     if (!range) {
@@ -1468,8 +1515,7 @@ export async function saveDailyAttendanceForAttendancePageFilterAll({
   present: boolean;
 }): Promise<{ success: boolean; error?: string; updated?: number }> {
   try {
-    const { role } = getAuthData();
-    if (role !== "admin") {
+    if (!requireAdmin()) {
       return { success: false, error: "forbidden" };
     }
 
@@ -1579,10 +1625,11 @@ export async function saveAttendanceDayDetail({
   actualPickupTime?: string | null;
 }): Promise<{ success: boolean; error?: string }> {
   try {
-    const { userId, role } = getAuthData();
-    if (role !== "admin" && role !== "teacher") {
+    const session = requireStaff();
+    if (!session) {
       return { success: false, error: "forbidden" };
     }
+    const { userId, role } = session;
 
     const range = parseDateStrToUtcRange(dateStr);
     if (!range) {
@@ -1677,10 +1724,11 @@ export async function markAttendancePickedUp({
   pickedUpAt: string;
 }): Promise<{ success: boolean; error?: string }> {
   try {
-    const { userId, role } = getAuthData();
-    if (role !== "admin" && role !== "teacher") {
+    const session = requireStaff();
+    if (!session) {
       return { success: false, error: "forbidden" };
     }
+    const { userId, role } = session;
 
     const range = parseDateStrToUtcRange(dateStr);
     if (!range) {
@@ -1761,6 +1809,9 @@ export async function getAttendanceRowsForPdfExport(
   dateStr: string,
   classIdParam: string
 ): Promise<AttendanceRow[]> {
+  if (!requireStaff()) {
+    return [];
+  }
   const { rows } = await loadAttendancePageData({
     dateStr,
     classIdParam,
@@ -1772,10 +1823,11 @@ export async function getAttendanceRowsForPdfExport(
 
 /** Marks every announcement visible to the current user as read (e.g. after opening the list). */
 export async function markVisibleAnnouncementsAsRead(): Promise<void> {
-  const { userId, role } = getAuthData();
-  if (!userId) {
+  const session = requireAuth();
+  if (!session) {
     return;
   }
+  const { userId, role } = session;
   const access = announcementAccessWhere(role, userId);
   const unread = await prisma.announcement.findMany({
     where: {
@@ -1815,6 +1867,8 @@ export const createEvent = async (
   currentState: CurrentState,
   data: EventSchema
 ) => {
+  const denied = denyFormUnlessRole(["admin"]);
+  if (denied) return denied;
   try {
     await prisma.event.create({
       data: {
@@ -1836,6 +1890,8 @@ export const updateEvent = async (
   currentState: CurrentState,
   data: EventSchema
 ) => {
+  const denied = denyFormUnlessRole(["admin"]);
+  if (denied) return denied;
   try {
     await prisma.event.update({
       where: { id: data.id },
@@ -1858,6 +1914,8 @@ export const deleteEvent = async (
   currentState: CurrentState,
   data: FormData
 ) => {
+  const denied = denyFormUnlessRole(["admin"]);
+  if (denied) return denied;
   const id = data.get("id") as string;
   try {
     await prisma.event.delete({ where: { id: parseInt(id) } });
@@ -1872,6 +1930,8 @@ export const createAnnouncement = async (
   currentState: CurrentState,
   data: AnnouncementSchema
 ) => {
+  const denied = denyFormUnlessRole(["admin"]);
+  if (denied) return denied;
   try {
     await prisma.announcement.create({
       data: {
@@ -1892,6 +1952,8 @@ export const updateAnnouncement = async (
   currentState: CurrentState,
   data: AnnouncementSchema
 ) => {
+  const denied = denyFormUnlessRole(["admin"]);
+  if (denied) return denied;
   try {
     await prisma.announcement.update({
       where: { id: data.id },
@@ -1913,6 +1975,8 @@ export const deleteAnnouncement = async (
   currentState: CurrentState,
   data: FormData
 ) => {
+  const denied = denyFormUnlessRole(["admin"]);
+  if (denied) return denied;
   const id = data.get("id") as string;
   try {
     await prisma.announcement.delete({ where: { id: parseInt(id) } });
@@ -1927,11 +1991,9 @@ export const createZone = async (
   currentState: CurrentState,
   data: ZoneSchema
 ) => {
+  const denied = denyFormUnlessRole(["admin"]);
+  if (denied) return denied;
   try {
-    const { role } = getAuthData();
-    if (role !== "admin") {
-      return { success: false, error: true };
-    }
     await prisma.zone.create({
       data: {
         name: data.name.trim(),
@@ -1950,11 +2012,12 @@ export const updateZone = async (
   currentState: CurrentState,
   data: ZoneSchema
 ) => {
+  const denied = denyFormUnlessRole(["admin"]);
+  if (denied) return denied;
+  if (!data.id) {
+    return { success: false, error: true };
+  }
   try {
-    const { role } = getAuthData();
-    if (role !== "admin" || !data.id) {
-      return { success: false, error: true };
-    }
     await prisma.zone.update({
       where: { id: data.id },
       data: {
@@ -1974,27 +2037,17 @@ export const deleteZone = async (
   currentState: CurrentState,
   data: FormData
 ) => {
+  const denied = denyFormUnlessRole(["admin"]);
+  if (denied) return denied;
   const id = data.get("id") as string;
   try {
-    const { role } = getAuthData();
-    if (role !== "admin") {
+    const result = await deleteZoneById(id);
+    if (!result.ok) {
+      if (result.reason === "in_use") {
+        return { success: false, error: true, inUse: true };
+      }
       return { success: false, error: true };
     }
-    const [lessons, activities, studentZones, teacherZones, history] =
-      await Promise.all([
-        prisma.lesson.count({ where: { zoneId: id } }),
-        prisma.activity.count({ where: { zoneId: id } }),
-        prisma.studentZone.count({ where: { zoneId: id } }),
-        prisma.teacherZone.count({ where: { zoneId: id } }),
-        prisma.zoneHistory.count({ where: { zoneId: id } }),
-      ]);
-    if (
-      lessons + activities + studentZones + teacherZones + history >
-      0
-    ) {
-      return { success: false, error: true, inUse: true };
-    }
-    await prisma.zone.delete({ where: { id } });
     return { success: true, error: false };
   } catch (err) {
     console.log(err);
@@ -2019,6 +2072,9 @@ export async function saveZones(
     }
 > {
   try {
+    if (!requireStaff()) {
+      return { success: false, error: "server" };
+    }
     if (!zones || typeof zones !== "object") {
       return { success: false, error: "invalid" };
     }
@@ -2141,6 +2197,9 @@ export async function saveZones(
 /** Persists educator placement: one zone per teacher (pool = no TeacherZone rows). Uses existing TeacherZone table. */
 export async function saveTeacherZones(zones: Record<string, string[]>) {
   try {
+    if (!requireStaff()) {
+      throw forbiddenError();
+    }
     if (!zones || typeof zones !== "object") {
       throw new Error("teacher zones undefined or invalid");
     }
@@ -2187,6 +2246,9 @@ export async function saveTeacherZones(zones: Record<string, string[]>) {
 /** Persists educator placement on lunch board (pool = no TeacherLunchGroup rows). */
 export async function saveTeacherLunchGroups(groups: Record<string, string[]>) {
   try {
+    if (!requireStaff()) {
+      throw forbiddenError();
+    }
     if (!groups || typeof groups !== "object") {
       throw new Error("teacher lunch groups undefined or invalid");
     }
@@ -2230,6 +2292,9 @@ export async function saveTeacherLunchGroups(groups: Record<string, string[]>) {
 
 export async function saveLunchGroups(groups: Record<string, string[]>) {
   try {
+    if (!requireStaff()) {
+      throw forbiddenError();
+    }
     if (!groups || typeof groups !== "object") {
       throw new Error("groups undefined or invalid");
     }
@@ -2270,6 +2335,9 @@ export async function saveLunchGroups(groups: Record<string, string[]>) {
 /** Removes all lunch assignments and Tischspruch votes (fresh start). */
 export async function clearLunchBoard() {
   try {
+    if (!requireStaff()) {
+      throw forbiddenError();
+    }
     await prisma.$transaction([
       prisma.studentLunchGroup.deleteMany(),
       prisma.teacherLunchGroup.deleteMany(),
@@ -2285,6 +2353,9 @@ export async function clearLunchBoard() {
 /** Removes all play-area placements (children + educators back to pools). */
 export async function clearPlayBoard() {
   try {
+    if (!requireStaff()) {
+      throw forbiddenError();
+    }
     await prisma.$transaction([
       prisma.studentZone.deleteMany(),
       prisma.teacherZone.deleteMany(),
@@ -2304,6 +2375,9 @@ export async function saveLunchVote(params: {
   const { studentId, groupId, tischspruchId } = params;
 
   try {
+    if (!requireStaff()) {
+      throw forbiddenError();
+    }
     await prisma.studentLunchVote.upsert({
       where: { studentId },
       update: { groupId, tischspruchId } as any,
@@ -2321,6 +2395,9 @@ export async function createLunchGroup(data: {
   capacity?: number;
 }) {
   try {
+    if (!requireStaff()) {
+      return { success: false, error: true };
+    }
     const name = data.name.trim();
     if (!name) throw new Error("Lunch group name is required");
 
@@ -2345,6 +2422,9 @@ export async function updateLunchGroup(
   data: { name: string; color?: string; capacity?: number }
 ) {
   try {
+    if (!requireStaff()) {
+      return { success: false, error: true };
+    }
     const name = data.name.trim();
     if (!name) throw new Error("Lunch group name is required");
 
@@ -2367,6 +2447,9 @@ export async function updateLunchGroup(
 
 export async function deleteLunchGroup(id: string) {
   try {
+    if (!requireStaff()) {
+      return { success: false, error: true };
+    }
     await prisma.$transaction([
       prisma.studentLunchVote.deleteMany({ where: { groupId: id } as any }),
       prisma.studentLunchGroup.deleteMany({ where: { groupId: id } as any }),
@@ -2383,6 +2466,9 @@ export async function deleteLunchGroup(id: string) {
 
 export async function createTischspruch(data: { title: string; text: string }) {
   try {
+    if (!requireStaff()) {
+      return { success: false, error: true };
+    }
     const normalizedTitle = data.title.trim();
     const normalizedText = data.text.trim();
     if (!normalizedTitle) throw new Error("Tischspruch title is required");
@@ -2405,6 +2491,9 @@ export async function updateTischspruch(
   data: { title: string; text: string }
 ) {
   try {
+    if (!requireStaff()) {
+      return { success: false, error: true };
+    }
     const normalizedTitle = data.title.trim();
     const normalizedText = data.text.trim();
     if (!normalizedTitle) throw new Error("Tischspruch title is required");
@@ -2425,6 +2514,9 @@ export async function updateTischspruch(
 
 export async function deleteTischspruch(id: number) {
   try {
+    if (!requireStaff()) {
+      return { success: false, error: true };
+    }
     await prisma.tischspruch.delete({
       where: { id },
     });
@@ -2447,12 +2539,13 @@ export async function upsertTeacherAttendance({
   present: boolean;
 }): Promise<{ success: boolean; error?: string }> {
   try {
-    const { userId, role } = getAuthData();
-    if (role !== "admin" && role !== "teacher") {
+    const session = requireStaff();
+    if (!session) {
       return { success: false, error: "forbidden" };
     }
+    const { userId, role } = session;
     if (role === "teacher") {
-      if (!userId || teacherId !== userId) {
+      if (teacherId !== userId) {
         return { success: false, error: "forbidden" };
       }
     }
@@ -2529,12 +2622,13 @@ export async function markTeacherAttendanceCheckedOut({
   pickedUpAt: string;
 }): Promise<{ success: boolean; error?: string }> {
   try {
-    const { userId, role } = getAuthData();
-    if (role !== "admin" && role !== "teacher") {
+    const session = requireStaff();
+    if (!session) {
       return { success: false, error: "forbidden" };
     }
+    const { userId, role } = session;
     if (role === "teacher") {
-      if (!userId || teacherId !== userId) {
+      if (teacherId !== userId) {
         return { success: false, error: "forbidden" };
       }
     }

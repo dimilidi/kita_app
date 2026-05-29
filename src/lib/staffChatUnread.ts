@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
-import { canAccessStaffChat } from "@/lib/chatPermissions";
+import { requireStaff } from "@/lib/actionAuth";
 import { getAuthData } from "@/lib/utils";
+import { canAccessStaffChat } from "@/lib/chatPermissions";
 
 export async function getUnreadStaffChatCount(): Promise<number> {
   const { userId, role } = getAuthData();
@@ -22,8 +23,9 @@ export async function getUnreadStaffChatCount(): Promise<number> {
 }
 
 export async function markStaffChatAsRead(): Promise<void> {
-  const { userId, role } = getAuthData();
-  if (!userId || !canAccessStaffChat(role)) return;
+  const session = requireStaff();
+  if (!session) return;
+  const { userId } = session;
 
   await prisma.staffChatRead.upsert({
     where: { userId },

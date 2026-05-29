@@ -8,8 +8,7 @@ import {
   CHAT_REACTION_EMOJIS,
   isAllowedChatMime,
 } from "@/lib/chatConstants";
-import { canAccessStaffChat } from "@/lib/chatPermissions";
-import { getAuthData } from "@/lib/utils";
+import { requireStaff } from "@/lib/actionAuth";
 
 export type ChatAttachmentInput = {
   url: string;
@@ -22,10 +21,11 @@ export async function sendGroupMessage(payload: {
   content: string;
   attachments: ChatAttachmentInput[];
 }): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { userId, role } = getAuthData();
-  if (!userId || !canAccessStaffChat(role)) {
+  const session = requireStaff();
+  if (!session) {
     return { ok: false, error: "forbidden" };
   }
+  const { userId, role } = session;
 
   const trimmed = payload.content.trim();
   const attachments = payload.attachments ?? [];
@@ -129,10 +129,11 @@ export async function toggleMessageReaction(
   messageId: string,
   emoji: string
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { userId, role } = getAuthData();
-  if (!userId || !canAccessStaffChat(role)) {
+  const session = requireStaff();
+  if (!session) {
     return { ok: false, error: "forbidden" };
   }
+  const { userId } = session;
 
   if (
     !CHAT_REACTION_EMOJIS.includes(emoji as (typeof CHAT_REACTION_EMOJIS)[number])
@@ -173,10 +174,11 @@ export async function editGroupMessage(payload: {
   messageId: string;
   content: string;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { userId, role } = getAuthData();
-  if (!userId || !canAccessStaffChat(role)) {
+  const session = requireStaff();
+  if (!session) {
     return { ok: false, error: "forbidden" };
   }
+  const { userId } = session;
 
   const messageId = payload.messageId;
   const trimmed = payload.content.trim();
@@ -205,10 +207,11 @@ export async function editGroupMessage(payload: {
 export async function deleteGroupMessage(payload: {
   messageId: string;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { userId, role } = getAuthData();
-  if (!userId || !canAccessStaffChat(role)) {
+  const session = requireStaff();
+  if (!session) {
     return { ok: false, error: "forbidden" };
   }
+  const { userId } = session;
 
   const messageId = payload.messageId;
   if (!messageId || typeof messageId !== "string") {
