@@ -172,11 +172,17 @@ cp .env_example .env
 | `POSTGRES_USER`                     | Docker only | Postgres username (`docker-compose.yml`) |
 | `POSTGRES_PASSWORD`                 | Docker only | Postgres password                        |
 | `POSTGRES_DB`                       | Docker only | Postgres database name                   |
+| `NODE_ENV`                          | No          | `development` locally, `production` on deploy |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Yes         | Clerk publishable key                    |
 | `CLERK_SECRET_KEY`                  | Yes         | Clerk secret key                         |
 | `NEXT_PUBLIC_CLERK_SIGN_IN_URL`     | Yes         | Sign-in path (e.g. `/sign-in`)           |
-| `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | No          | Cloudinary cloud name                    |
+| `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | No          | Cloudinary cloud name (photo uploads)    |
 | `NEXT_PUBLIC_CLOUDINARY_API_KEY`    | No          | Cloudinary API key                       |
+| `SMTP_HOST`                         | No          | SMTP server for parent ↔ Kita messaging   |
+| `SMTP_PORT`                         | No          | SMTP port (often `587`)                  |
+| `SMTP_USER`                         | No          | SMTP username                            |
+| `SMTP_PASS`                         | No          | SMTP password                            |
+| `SMTP_FROM`                         | No          | Sender address (defaults to `SMTP_USER`) |
 
 
 ---

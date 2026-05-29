@@ -1,6 +1,0 @@
-Feature	Идея
-Tagesplan	дневен план
-Abholen	кой взима детето
-Notizen
-
-weekly lunch menu
