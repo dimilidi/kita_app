@@ -5,7 +5,7 @@ import {
 } from "@/lib/attendanceDate";
 import { teacherMayEditStudentAttendance } from "@/lib/teacherAttendanceScope";
 import { ITEM_PER_PAGE } from "@/lib/settings";
-import { isAppRole } from "@/lib/actionAuth";
+import { isAppRole } from "@/lib/roles";
 import { getAuthData } from "@/lib/utils";
 import { Prisma } from "@prisma/client";
 import type { AttendanceRow } from "@/app/(dashboard)/list/attendance/types";

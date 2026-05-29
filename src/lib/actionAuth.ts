@@ -1,23 +1,13 @@
+import "server-only";
+
 import { getAuthData } from "@/lib/utils";
+import {
+  APP_ROLES,
+  isAppRole,
+  type AppRole,
+} from "@/lib/roles";
 
-/** Roles synced with Clerk `publicMetadata.role` and middleware RBAC. */
-export type AppRole = "admin" | "teacher" | "student" | "parent";
-
-export const APP_ROLES: readonly AppRole[] = [
-  "admin",
-  "teacher",
-  "student",
-  "parent",
-] as const;
-
-export function isAppRole(role: string | null | undefined): role is AppRole {
-  return (
-    role === "admin" ||
-    role === "teacher" ||
-    role === "student" ||
-    role === "parent"
-  );
-}
+export { APP_ROLES, isAppRole, type AppRole };
 
 export type AuthSession = {
   userId: string;

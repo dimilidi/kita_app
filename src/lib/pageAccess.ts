@@ -1,5 +1,7 @@
+import "server-only";
+
 import { clerkClient } from "@clerk/nextjs/server";
-import { isAppRole, type AppRole } from "@/lib/actionAuth";
+import { isAppRole, type AppRole } from "@/lib/roles";
 import prisma from "@/lib/prisma";
 import { teacherMayEditStudentAttendance } from "@/lib/teacherAttendanceScope";
 import { getAuthData } from "@/lib/utils";
@@ -102,6 +104,8 @@ export function canViewTeacherProfile(
   return false;
 }
 
-export function canViewStaffOnlyRoute(role: string | null | undefined): role is AppRole {
+export function canViewStaffOnlyRoute(
+  role: string | null | undefined
+): role is AppRole {
   return role === "admin" || role === "teacher";
 }
