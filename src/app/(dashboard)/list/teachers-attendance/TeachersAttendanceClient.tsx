@@ -266,9 +266,11 @@ export default function TeachersAttendanceClient({
           <p className="text-sm text-gray-500 mt-1">
             {viewerIsAdmin ? ta.subtitle : ta.subtitleEducator}
           </p>
-          <p className="text-xs text-gray-500 mt-2 max-w-xl">
-            {viewerIsAdmin ? ta.boardHint : ta.boardHintEducator}
-          </p>
+          {!viewerIsAdmin ? (
+            <p className="text-xs text-gray-500 mt-2 max-w-xl">
+              {ta.boardHintEducator}
+            </p>
+          ) : null}
         </div>
         <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
           <SearchInput />

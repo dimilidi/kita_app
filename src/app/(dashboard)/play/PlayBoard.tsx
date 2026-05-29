@@ -334,11 +334,6 @@ export default function PlayBoard({
           <h1 className="hidden md:block text-lg font-semibold">
             {dict.playBoard.boardTitle}
           </h1>
-          {teacherAttendanceFilterActive ? (
-            <p className="mt-1 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-2 py-1 inline-block">
-              {dict.lunch.teacherAttendanceBoardNote}
-            </p>
-          ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-3 flex-wrap justify-end">
           <Link

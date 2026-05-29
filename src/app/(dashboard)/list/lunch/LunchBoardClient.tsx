@@ -753,23 +753,6 @@ export default function LunchBoardClient({
           <h1 className="hidden md:block text-lg font-semibold">
             {dict.lunch.boardTitle}
           </h1>
-          <p className="mt-1 text-xs text-gray-600">
-            <Link
-              href={`/${locale}/list/attendance?date=${encodeURIComponent(attendanceDateStr)}`}
-              className="font-medium text-gray-800 underline-offset-2 hover:underline"
-            >
-              {dict.lunch.attendanceDayLabel}: {attendanceDateStr}
-            </Link>
-            {" — "}
-            {attendanceFilterActive
-              ? dict.lunch.presentChildrenOnly
-              : dict.lunch.noAttendanceForDayShowingAll}
-          </p>
-          {teacherAttendanceFilterActive ? (
-            <p className="mt-1 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-2 py-1 inline-block">
-              {dict.lunch.teacherAttendanceBoardNote}
-            </p>
-          ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-3 flex-wrap justify-end">
           {!canEditDate ? (

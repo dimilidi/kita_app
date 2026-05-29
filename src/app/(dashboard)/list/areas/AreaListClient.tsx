@@ -230,22 +230,15 @@ export default function AreaListClient({
         </h1>
         <div className="print:hidden">
           <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs text-gray-600 mt-2 max-w-3xl leading-relaxed xl:mt-0">
-                  {dict.areasList.intro}
-                </p>
-              </div>
-              <div className="flex w-full xl:w-auto xl:shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-                <Link
-                  href={boardHref}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-kitaSky text-sm font-medium text-gray-800 hover:opacity-90 whitespace-nowrap shrink-0"
-                >
-                  <Image src="/area.png" alt="" width={18} height={18} />
-                  {dict.areasList.openBoard}
-                </Link>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
+              <Link
+                href={boardHref}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-kitaSky text-sm font-medium text-gray-800 hover:opacity-90 whitespace-nowrap shrink-0"
+              >
+                <Image src="/area.png" alt="" width={18} height={18} />
+                {dict.areasList.openBoard}
+              </Link>
                 <SearchInput className="w-full sm:w-auto flex items-center gap-2 text-xs rounded-full ring-[1.5px] ring-gray-300 px-2 min-w-0 sm:max-w-[min(100%,280px)]" />
-              </div>
             </div>
 
             <div className="flex flex-wrap items-center justify-end gap-3">
