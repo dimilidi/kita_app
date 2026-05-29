@@ -260,9 +260,11 @@ npx prisma db seed             # demo data
 
 ## Docker workflow
 
-`docker-compose.yml` includes `postgres` and an `app` service.
+Docker is **optional**. The app runs fine with Node.js on the host; Docker is mainly a convenient way to run PostgreSQL locally, or to test a production-like build in a container.
 
-For day-to-day development, running only Postgres in Docker is usually easiest:
+> **Railway does not use the Dockerfile.** Production deploys on Railway with the native Node.js process: `npm install` → `npm run build` → `npm run start` (see [Deployment (Railway)](#deployment-railway)).
+
+### Option A — Postgres in Docker, app on the host (recommended for daily dev)
 
 ```bash
 docker compose up -d postgres
@@ -270,11 +272,38 @@ npm install && npx prisma migrate deploy && npx prisma db seed
 npm run dev
 ```
 
-The `app` service expects a root `Dockerfile`. If you do not have one, run Next.js on the host as above or deploy to Railway.
+Open [http://localhost:3000](http://localhost:3000). Your `.env` `DATABASE_URL` should point at `localhost:5432`.
+
+### Option B — Full stack in Docker (local testing only)
+
+Builds the root `Dockerfile` and runs Next.js together with PostgreSQL. Useful to verify the production build without affecting Railway.
+
+```bash
+cp .env_example .env   # fill in Clerk keys and other secrets
+docker compose --profile fullstack up -d --build
+```
+
+Open [http://localhost:3005](http://localhost:3005).
+
+The app container overrides `DATABASE_URL` to reach Postgres on the Docker network (`postgres:5432`). Clerk keys and other variables still come from `.env` via `env_file`.
+
+First-time demo data (optional):
+
+```bash
+docker compose --profile fullstack exec app npx prisma db seed
+```
+
+Stop everything:
+
+```bash
+docker compose --profile fullstack down
+```
 
 ---
 
 ## Deployment (Railway)
+
+Railway uses **native Node.js deployment** — not Docker. The `Dockerfile` in this repo is for local testing only.
 
 1. Connect the repo to [Railway](https://railway.app/) and add a **PostgreSQL** plugin.
 2. Set environment variables: `DATABASE_URL`, Clerk keys, `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in`, `NODE_ENV=production`.
@@ -282,6 +311,8 @@ The `app` service expects a root `Dockerfile`. If you do not have one, run Next.
 4. **Start command:** `npx prisma migrate deploy && npm run start`
 5. In Clerk, add your Railway URL to allowed origins and redirect URLs.
 6. Assign roles via Clerk `publicMetadata.role` — do **not** run `prisma db seed` on a live deployment unless you want demo data.
+
+Live demo: [https://kitaapp-production.up.railway.app](https://kitaapp-production.up.railway.app)
 
 ---
 
@@ -311,7 +342,7 @@ This is a thesis project, not a commercial product. Some rough edges:
 
 - **Clerk and the database are separate** — you create users in Clerk and records in Postgres manually (or via seed); nothing syncs them automatically.
 - **Seed data is fake** — useful for demos, not for real personal data.
-- **Docker is partial** — Postgres in Compose works well; full app containerization may need a `Dockerfile` you add yourself.
+- **Docker is optional** — Postgres in Compose covers most local dev; the `Dockerfile` is for optional full-stack local testing, not Railway production.
 - `**npm start` in `package.json`** — currently runs migrate + seed + Next.js; adjust the Railway start command if you do not want seed on every boot.
 - **Translations** — DE/EN are supported, but some UI strings may still be hardcoded.
 - **Mobile** — boards work on tablets after touch fixes, but the UI is still mostly designed for desktop.

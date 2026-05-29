@@ -1,25 +1,44 @@
-version: '3.8'
+# Docker Compose for local development.
+#
+# Database only (default workflow):
+#   docker compose up -d postgres
+#   npm run dev
+#
+# Full stack (optional — builds Dockerfile, not used by Railway):
+#   docker compose --profile fullstack up -d --build
+#   open http://localhost:3005
 
 services:
   postgres:
     image: postgres:14.21
-    container_name: postgres_db
-    env_file:
-      - .env
+    container_name: kita_postgres
+
     ports:
-      - '5432:5432'
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kita} -d ${POSTGRES_DB:-kita}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   app:
-    build: .
-    container_name: nextjs_app
+    profiles: ["fullstack"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kita_app
     env_file:
       - .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-kita}:${POSTGRES_PASSWORD:-kita}@postgres:5432/${POSTGRES_DB:-kita}
     ports:
-      - '3005:3000'
+      - "3005:3000"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres_data:

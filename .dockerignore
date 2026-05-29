@@ -1,0 +1,25 @@
+node_modules
+.next
+out
+build
+
+.env
+.env.*
+!.env_example
+
+.git
+.gitignore
+.vscode
+.cursor
+
+docs
+*.md
+!README.md
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+.DS_Store
+
+# Prisma schema and migrations are required for Docker builds — do not exclude prisma/
