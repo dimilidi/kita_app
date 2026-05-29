@@ -5,6 +5,7 @@ import {
 } from "@/lib/attendanceDate";
 import { teacherMayEditStudentAttendance } from "@/lib/teacherAttendanceScope";
 import { ITEM_PER_PAGE } from "@/lib/settings";
+import { isAppRole } from "@/lib/actionAuth";
 import { getAuthData } from "@/lib/utils";
 import { Prisma } from "@prisma/client";
 import type { AttendanceRow } from "@/app/(dashboard)/list/attendance/types";
@@ -59,7 +60,13 @@ export async function loadAttendancePageData(opts: LoadOpts) {
       scopeParts.push({ parentId: userId! });
       break;
     default:
+      // Fail closed: unknown or missing role sees no students.
+      scopeParts.push({ id: { in: [] } });
       break;
+  }
+
+  if (!isAppRole(role) || !userId) {
+    scopeParts.push({ id: { in: [] } });
   }
 
   if (classIdParam && classIdParam !== "all") {

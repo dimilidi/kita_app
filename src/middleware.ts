@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 
 const LOCALES = ["de", "en"] as const;
 const DEFAULT_LOCALE = "de";
+const APP_ROLES = ["admin", "teacher", "student", "parent"] as const;
 
 export default clerkMiddleware(async (auth, req) => {
   const { sessionClaims, userId } = await auth();
@@ -60,12 +61,17 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   const role = (sessionClaims?.metadata as { role?: string })?.role;
+  const hasKnownRole =
+    typeof role === "string" &&
+    (APP_ROLES as readonly string[]).includes(role);
 
   for (const [routePattern, allowedRoles] of Object.entries(routeAccessMap)) {
-    // routePattern is already a regex-ish path string like "/admin(.*)"
     const regex = new RegExp(`^${routePattern}`);
-    if (regex.test(pathWithoutLocale) && role && !allowedRoles.includes(role)) {
-      const url = new URL(`/${lang}/${role}`, req.url);
+    if (!regex.test(pathWithoutLocale)) continue;
+
+    if (!hasKnownRole || !allowedRoles.includes(role!)) {
+      const fallbackRole = hasKnownRole ? role! : "admin";
+      const url = new URL(`/${lang}/${fallbackRole}`, req.url);
       const res = NextResponse.redirect(url);
       res.cookies.set("NEXT_LANG", lang!, { path: "/", maxAge: 60 * 60 * 24 * 365 });
       return res;

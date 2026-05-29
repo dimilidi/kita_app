@@ -7,8 +7,11 @@ import StudentAttendanceCard from "@/components/StudentAttendanceCard";
 import TeacherPlannedAreaCard from "@/components/TeacherPlannedAreaCard";
 import { getEffectivePlacementNow } from "@/lib/effectivePlacementNow";
 import prisma from "@/lib/prisma";
-import { getAuthData } from "@/lib/utils";
-import { clerkClient } from "@clerk/nextjs/server";
+import {
+  canViewStudentParentContact,
+  canViewStudentProfile,
+  getViewerContext,
+} from "@/lib/pageAccess";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -22,7 +25,8 @@ const SingleStudentPage = async ({
 }: {
   params: { id: string };
 }) => {
-  const { role, userId } = getAuthData();
+  const viewer = getViewerContext();
+  const { role, userId } = viewer;
   const cookieLang = cookies().get("NEXT_LANG")?.value as Locale | undefined;
   const lang = cookieLang ?? DEFAULT_LOCALE;
   const dict = getDictionary(lang) as any;
@@ -58,25 +62,11 @@ const SingleStudentPage = async ({
     return notFound();
   }
 
-  if (role === "student" && userId) {
-    const sameClerkId = userId === student.id;
-    let sameByUsername = false;
-    if (!sameClerkId) {
-      try {
-        const cu = await clerkClient.users.getUser(userId);
-        const uname =
-          typeof cu.username === "string" && cu.username.length > 0
-            ? cu.username
-            : null;
-        sameByUsername = uname != null && uname === student.username;
-      } catch {
-        sameByUsername = false;
-      }
-    }
-    if (!sameClerkId && !sameByUsername) {
-      return notFound();
-    }
+  if (!(await canViewStudentProfile(viewer, student.id))) {
+    return notFound();
   }
+
+  const showParentContact = canViewStudentParentContact(viewer, student.parentId);
 
   const siblings = await prisma.student.findMany({
     where: {
@@ -203,7 +193,7 @@ const SingleStudentPage = async ({
                 <h1 className="text-xl font-semibold break-words">
                   {student.name + " " + student.surname}
                 </h1>
-                {(role === "admin" || (role === "student" && userId === student.id)) && (
+                {(role === "admin" || role === "student") && (
                   <FormContainer
                     table="student"
                     type="update"
@@ -241,15 +231,23 @@ const SingleStudentPage = async ({
                   )}
                 </div>
 
-                <div className="w-full flex items-center gap-2">
-                  <Image src="/mail.png" alt="" width={14} height={14} />
-                  <span className="break-words">{student.parent.email || "—"}</span>
-                </div>
+                {showParentContact ? (
+                  <>
+                    <div className="w-full flex items-center gap-2">
+                      <Image src="/mail.png" alt="" width={14} height={14} />
+                      <span className="break-words">
+                        {student.parent.email || "—"}
+                      </span>
+                    </div>
 
-                <div className="w-full flex items-center gap-2">
-                  <Image src="/phone.png" alt="" width={14} height={14} />
-                  <span className="break-words">{student.parent.phone || "—"}</span>
-                </div>
+                    <div className="w-full flex items-center gap-2">
+                      <Image src="/phone.png" alt="" width={14} height={14} />
+                      <span className="break-words">
+                        {student.parent.phone || "—"}
+                      </span>
+                    </div>
+                  </>
+                ) : null}
               </div>
             </div>
           </div>

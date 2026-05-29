@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import { getAuthData } from "@/lib/utils";
+import { canViewParentProfile, getViewerContext } from "@/lib/pageAccess";
 import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 import { DEFAULT_LOCALE, Locale } from "@/i18n/lang";
@@ -12,10 +12,16 @@ export default async function SingleParentPage({
 }: {
   params: { id: string };
 }) {
-  const { role } = getAuthData();
+  const viewer = getViewerContext();
+  const { role } = viewer;
   const cookieLang = cookies().get("NEXT_LANG")?.value as Locale | undefined;
   const lang = cookieLang ?? DEFAULT_LOCALE;
   const dict = getDictionary(lang) as any;
+
+  if (!(await canViewParentProfile(viewer, id))) {
+    return notFound();
+  }
+
   const parent = await prisma.parent.findUnique({
     where: { id },
     include: {

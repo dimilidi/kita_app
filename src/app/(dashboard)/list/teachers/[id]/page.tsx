@@ -7,7 +7,7 @@ import prisma from "@/lib/prisma";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { getAuthData } from "@/lib/utils";
+import { canViewTeacherProfile, getViewerContext } from "@/lib/pageAccess";
 import { cookies } from "next/headers";
 import { DEFAULT_LOCALE, Locale } from "@/i18n/lang";
 import { getDictionary } from "@/i18n/getDictionary";
@@ -17,10 +17,14 @@ const SingleTeacherPage = async ({
 }: {
   params: { id: string };
 }) => {
-  const { role, userId } = getAuthData();
-  /** Teachers may only open their own profile; others list routes redirect to roster. */
-  if (role === "teacher" && (!userId || id !== userId)) {
-    redirect("/list/teachers");
+  const viewer = getViewerContext();
+  const { role, userId } = viewer;
+
+  if (!canViewTeacherProfile(viewer, id)) {
+    if (role === "teacher") {
+      redirect("/list/teachers");
+    }
+    return notFound();
   }
 
   const cookieLang = cookies().get("NEXT_LANG")?.value as Locale | undefined;

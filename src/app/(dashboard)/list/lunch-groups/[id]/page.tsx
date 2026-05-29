@@ -1,4 +1,6 @@
+import { canViewStaffOnlyRoute } from "@/lib/pageAccess";
 import prisma from "@/lib/prisma";
+import { getAuthData } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import LunchGroupDetailClient, {
   type LunchGroupDetailData,
@@ -9,6 +11,11 @@ export default async function LunchGroupDetailPage({
 }: {
   params: { id: string };
 }) {
+  const { role } = getAuthData();
+  if (!canViewStaffOnlyRoute(role)) {
+    notFound();
+  }
+
   const group = await prisma.lunchGroupEntity.findUnique({
     where: { id: params.id },
     include: {

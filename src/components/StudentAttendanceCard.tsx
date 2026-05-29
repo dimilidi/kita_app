@@ -1,9 +1,15 @@
+import { canViewStudentProfile, getViewerContext } from "@/lib/pageAccess";
 import prisma from "@/lib/prisma";
 import { cookies } from "next/headers";
 import { DEFAULT_LOCALE, Locale } from "@/i18n/lang";
 import { getDictionary } from "@/i18n/getDictionary";
 
 const StudentAttendanceCard = async ({ id }: { id: string }) => {
+  const viewer = getViewerContext();
+  if (!(await canViewStudentProfile(viewer, id))) {
+    return null;
+  }
+
   const cookieLang = cookies().get("NEXT_LANG")?.value as Locale | undefined;
   const lang = cookieLang ?? DEFAULT_LOCALE;
   const dict = getDictionary(lang) as any;
