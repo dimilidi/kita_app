@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { CldUploadWidget } from "next-cloudinary";
+import { cloudinaryConfig } from "@/lib/cloudinary";
 import {
   useCallback,
   useEffect,
@@ -783,7 +784,7 @@ export default function GroupChatClient({
           <CldUploadWidget
            config={{
               cloud: {
-                cloudName: "dv3g1lcnc",
+                cloudName: cloudinaryConfig.cloudName,
               },
             }}
             uploadPreset="kita_app"
