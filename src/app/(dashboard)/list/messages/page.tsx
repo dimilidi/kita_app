@@ -8,6 +8,7 @@ import { getDictionary } from "@/i18n/getDictionary";
 import { DEFAULT_LOCALE, type Locale } from "@/i18n/lang";
 import { getAuthData } from "@/lib/utils";
 
+
 function getLocale(): Locale {
   const v = cookies().get("NEXT_LANG")?.value;
   return v === "en" || v === "de" ? v : DEFAULT_LOCALE;
@@ -36,6 +37,9 @@ export default async function MessagesPage() {
   };
   const chat = dict.staffChat;
 
+  const cloudName =
+  process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ?? "";
+
   const initial = await fetchStaffChatMessagesPayload(userId);
   await markStaffChatAsRead();
 
@@ -48,6 +52,7 @@ export default async function MessagesPage() {
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <GroupChatClient
+          cloudName={cloudName}
           initialMessages={initial.messages}
           currentUserId={userId}
         />

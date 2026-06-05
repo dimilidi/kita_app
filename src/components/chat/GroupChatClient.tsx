@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { CldUploadWidget } from "next-cloudinary";
-import { cloudinaryConfig } from "@/lib/cloudinary";
 import {
   useCallback,
   useEffect,
@@ -170,9 +169,11 @@ function guessMimeFromCloudinaryInfo(info: {
 export default function GroupChatClient({
   initialMessages,
   currentUserId,
+  cloudName
 }: {
   initialMessages: ChatMessagePayload[];
   currentUserId: string;
+  cloudName: string;
 }) {
   const dict = useTranslations();
   const chat = dict.staffChat as Record<string, string>;
@@ -784,7 +785,7 @@ export default function GroupChatClient({
           <CldUploadWidget
            config={{
               cloud: {
-                cloudName: cloudinaryConfig.cloudName,
+                cloudName
               },
             }}
             uploadPreset="kita_app"
