@@ -21,11 +21,7 @@ export default function RootLayout({
 }>) {
   const cookieLang = cookies().get("NEXT_LANG")?.value as Locale | undefined;
   const lang = cookieLang ?? DEFAULT_LOCALE;
-  console.log(
-    "Cloudinary:",
-    process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
-  );
-  
+
   return (
     <html lang={lang}>
       <body className={inter.className}>

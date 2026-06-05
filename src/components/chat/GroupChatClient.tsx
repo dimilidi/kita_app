@@ -781,6 +781,11 @@ export default function GroupChatClient({
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
           <CldUploadWidget
+           config={{
+              cloud: {
+                cloudName: "dv3g1lcnc",
+              },
+            }}
             uploadPreset="kita_app"
             options={{
               sources: ["local"],
