@@ -36,6 +36,13 @@ function groupEntriesForTeacher(item: {
     .map(([id, name]) => ({ id, name }));
 }
 
+/** Fixed width for badge-heavy columns; address column stays flexible (min-w-0). */
+const COL_ACTIVITIES = "hidden md:table-cell w-[10.5rem] max-w-[10.5rem]";
+const COL_AREAS = "hidden md:table-cell w-[8.5rem] max-w-[8.5rem]";
+const COL_PHONE = "hidden lg:table-cell w-[7rem] pr-8";
+const COL_ADDRESS = "hidden lg:table-cell min-w-0 pl-6";
+const BADGE_WRAP = "flex flex-wrap gap-1 min-w-0 max-w-full";
+
 export default function TeacherListClient({
   data,
   count,
@@ -66,43 +73,43 @@ export default function TeacherListClient({
         {
           header: dict.teachers.columns.teacherId,
           accessor: "teacherId",
-          className: "hidden md:table-cell",
+          className: "hidden md:table-cell w-[7rem]",
         },
         {
           header: dict.teachers.columns.activities,
           accessor: "activities",
-          className: "hidden md:table-cell",
+          className: COL_ACTIVITIES,
         },
         {
           header: dict.teachers.columns.areas,
           accessor: "areas",
-          className: "hidden md:table-cell",
+          className: COL_AREAS,
         },
         {
           header: dict.teachers.columns.phone,
           accessor: "phone",
-          className: "hidden lg:table-cell",
+          className: COL_PHONE,
         },
         {
           header: dict.teachers.columns.address,
           accessor: "address",
-          className: "hidden lg:table-cell",
+          className: COL_ADDRESS,
         },
-        { header: dict.common.actions, accessor: "action" },
+        { header: dict.common.actions, accessor: "action", className: "w-[5.5rem]" },
       ]
     : [
         { header: dict.teachers.columns.info, accessor: "info" },
         {
           header: dict.teachers.columns.activities,
           accessor: "activities",
-          className: "hidden md:table-cell",
+          className: COL_ACTIVITIES,
         },
         {
           header: dict.teachers.columns.groups,
           accessor: "groups",
-          className: "hidden md:table-cell min-w-[8rem] max-w-[14rem]",
+          className: "hidden md:table-cell w-[10.5rem] max-w-[10.5rem]",
         },
-        { header: dict.common.actions, accessor: "action" },
+        { header: dict.common.actions, accessor: "action", className: "w-[5.5rem]" },
       ];
 
   const renderRow = (item: any) => {
@@ -114,7 +121,8 @@ export default function TeacherListClient({
           key={item.id}
           className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-kitaPurpleLight"
         >
-          <td className="flex items-center gap-4 p-4">
+          <td className="align-top p-4 min-w-0">
+            <div className="flex items-center gap-4 min-w-0">
             <Image
               src={item.img || "/noAvatar.png"}
               alt=""
@@ -128,10 +136,11 @@ export default function TeacherListClient({
               </h3>
               <p className="text-xs text-gray-500 break-all">{item?.email}</p>
             </div>
+            </div>
           </td>
-          <td className="hidden md:table-cell align-top p-4">{item.username}</td>
-          <td className="hidden md:table-cell align-top p-4">
-            <div className="flex flex-wrap gap-1">
+          <td className="hidden md:table-cell align-top p-4 w-[7rem]">{item.username}</td>
+          <td className={`${COL_ACTIVITIES} align-top p-4`}>
+            <div className={BADGE_WRAP}>
               {(item.lessons || []).map((lesson: any) => (
                 <span
                   key={lesson.id}
@@ -142,14 +151,14 @@ export default function TeacherListClient({
               ))}
             </div>
           </td>
-          <td className="hidden md:table-cell align-top p-4">
+          <td className={`${COL_AREAS} align-top p-4 whitespace-normal break-words`}>
             {(item.zones || [])
               .map((z: { zone?: { name: string } | null }) => z.zone?.name)
               .filter(Boolean)
               .join(", ") || "—"}
           </td>
-          <td className="hidden lg:table-cell align-top p-4">{item.phone ?? "—"}</td>
-          <td className="hidden lg:table-cell align-top p-4 max-w-[14rem] whitespace-normal break-words">
+          <td className={`${COL_PHONE} align-top py-4 pl-4`}>{item.phone ?? "—"}</td>
+          <td className={`${COL_ADDRESS} align-top py-4 pr-4 whitespace-normal break-words`}>
             {item.address ?? "—"}
           </td>
           <td className="p-4 align-middle">
@@ -192,8 +201,8 @@ export default function TeacherListClient({
               </div>
             </div>
           </td>
-          <td className="hidden md:table-cell">
-            <div className="flex flex-wrap gap-1">
+          <td className={`${COL_ACTIVITIES} p-4`}>
+            <div className={BADGE_WRAP}>
               {(item.lessons || []).map((lesson: any) => (
                 <span
                   key={lesson.id}
@@ -204,9 +213,9 @@ export default function TeacherListClient({
               ))}
             </div>
           </td>
-          <td className="hidden md:table-cell">
+          <td className="hidden md:table-cell w-[10.5rem] max-w-[10.5rem] p-4">
             {groupEntries.length > 0 ? (
-              <div className="flex flex-wrap gap-1">
+              <div className={BADGE_WRAP}>
                 {groupEntries.map((g) => (
                   <span
                     key={g.id}
@@ -346,7 +355,12 @@ export default function TeacherListClient({
       {data.length === 0 ? (
         <div className="mt-6 text-sm text-gray-500">{dict.common.noResults}</div>
       ) : null}
-      <Table columns={columns} renderRow={renderRow} data={data} />
+      <Table
+        columns={columns}
+        renderRow={renderRow}
+        data={data}
+        tableClassName="w-full mt-4 table-fixed border-collapse"
+      />
       <Pagination page={page} count={count} />
 
       {isTeacher && contactId ? (
