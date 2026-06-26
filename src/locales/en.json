@@ -217,6 +217,7 @@
     "contactSelf": "You cannot message yourself.",
     "contactEmpty": "Please enter a message.",
     "messageIconTitle": "Send Message",
+    "activitiesMore": "+{count} more",
     "columns": {
       "info": "Info",
       "teacherId": "Educator ID",

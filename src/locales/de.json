@@ -217,6 +217,7 @@
     "contactSelf": "Sie können sich nicht selbst eine Nachricht senden.",
     "contactEmpty": "Bitte geben Sie eine Nachricht ein.",
     "messageIconTitle": "Nachricht senden",
+    "activitiesMore": "+{count} weitere",
     "columns": {
       "info": "Info",
       "teacherId": "Erzieher-ID",

@@ -36,12 +36,56 @@ function groupEntriesForTeacher(item: {
     .map(([id, name]) => ({ id, name }));
 }
 
-/** Fixed width for badge-heavy columns; address column stays flexible (min-w-0). */
-const COL_ACTIVITIES = "hidden md:table-cell w-[10.5rem] max-w-[10.5rem]";
+/** Wide enough for 4 activity badges + “+N more” within two rows (Lesson1-style names). */
+const COL_ACTIVITIES = "hidden md:table-cell w-[16rem] max-w-[16rem]";
 const COL_AREAS = "hidden md:table-cell w-[8.5rem] max-w-[8.5rem]";
 const COL_PHONE = "hidden lg:table-cell w-[7rem] pr-8";
 const COL_ADDRESS = "hidden lg:table-cell min-w-0 pl-6";
-const BADGE_WRAP = "flex flex-wrap gap-1 min-w-0 max-w-full";
+const BADGE_WRAP = "flex flex-wrap gap-1 min-w-0 max-w-full max-h-[3.25rem] overflow-hidden";
+const ACTIVITY_WRAP =
+  "flex flex-wrap gap-1 min-w-0 max-w-full max-h-[3.25rem] overflow-hidden content-start items-center";
+const ACTIVITY_BADGE =
+  "inline-flex items-center h-6 px-2 text-xs rounded-md bg-blue-100 text-blue-700 shrink-0";
+const ACTION_BTN =
+  "w-10 h-10 shrink-0 flex items-center justify-center rounded-full";
+const COL_ACTIONS = "w-[7rem]";
+
+const MAX_VISIBLE_ACTIVITIES = 4;
+
+function ActivityBadges({
+  lessons,
+  moreTemplate,
+}: {
+  lessons: { id: string | number; name: string }[];
+  moreTemplate: string;
+}) {
+  const hasOverflow = lessons.length > MAX_VISIBLE_ACTIVITIES;
+  const visible = lessons.slice(0, MAX_VISIBLE_ACTIVITIES);
+  const hidden = lessons.slice(MAX_VISIBLE_ACTIVITIES);
+  const hiddenTooltip = hidden.map((l) => l.name).join(", ");
+
+  if (lessons.length === 0) {
+    return <span className="text-gray-400">—</span>;
+  }
+
+  return (
+    <div className={ACTIVITY_WRAP}>
+      {visible.map((lesson) => (
+        <span key={lesson.id} className={ACTIVITY_BADGE}>
+          {lesson.name}
+        </span>
+      ))}
+      {hasOverflow ? (
+        <span
+          className={`${ACTIVITY_BADGE} bg-blue-50 text-blue-600`}
+          title={hiddenTooltip}
+        >
+          {moreTemplate.replace("{count}", String(hidden.length))}
+        </span>
+      ) : null}
+    </div>
+  );
+}
 
 export default function TeacherListClient({
   data,
@@ -95,7 +139,7 @@ export default function TeacherListClient({
           accessor: "address",
           className: COL_ADDRESS,
         },
-        { header: dict.common.actions, accessor: "action", className: "w-[5.5rem]" },
+        { header: dict.common.actions, accessor: "action", className: COL_ACTIONS },
       ]
     : [
         { header: dict.teachers.columns.info, accessor: "info" },
@@ -109,8 +153,11 @@ export default function TeacherListClient({
           accessor: "groups",
           className: "hidden md:table-cell w-[10.5rem] max-w-[10.5rem]",
         },
-        { header: dict.common.actions, accessor: "action", className: "w-[5.5rem]" },
+        { header: dict.common.actions, accessor: "action", className: COL_ACTIONS },
       ];
+
+  const activitiesMoreLabel =
+    tc.activitiesMore ?? "+{count} more";
 
   const renderRow = (item: any) => {
     const groupEntries = groupEntriesForTeacher(item);
@@ -140,16 +187,10 @@ export default function TeacherListClient({
           </td>
           <td className="hidden md:table-cell align-top p-4 w-[7rem]">{item.username}</td>
           <td className={`${COL_ACTIVITIES} align-top p-4`}>
-            <div className={BADGE_WRAP}>
-              {(item.lessons || []).map((lesson: any) => (
-                <span
-                  key={lesson.id}
-                  className="px-2 py-1 text-xs rounded-md bg-blue-100 text-blue-700"
-                >
-                  {lesson.name}
-                </span>
-              ))}
-            </div>
+            <ActivityBadges
+              lessons={item.lessons ?? []}
+              moreTemplate={activitiesMoreLabel}
+            />
           </td>
           <td className={`${COL_AREAS} align-top p-4 whitespace-normal break-words`}>
             {(item.zones || [])
@@ -161,18 +202,20 @@ export default function TeacherListClient({
           <td className={`${COL_ADDRESS} align-top py-4 pr-4 whitespace-normal break-words`}>
             {item.address ?? "—"}
           </td>
-          <td className="p-4 align-middle">
+          <td className={`${COL_ACTIONS} p-4 align-middle`}>
             <div className="flex items-center gap-2">
-              <Link href={`/list/teachers/${item.id}`}>
+              <Link href={`/list/teachers/${item.id}`} className="shrink-0">
                 <button
                   type="button"
-                  className="w-7 h-7 flex items-center justify-center rounded-full bg-kitaSky"
+                  className={`${ACTION_BTN} bg-kitaSky`}
                   aria-label="View details"
                 >
                   <Image src="/view.png" alt="" width={16} height={16} />
                 </button>
               </Link>
-              <FormModal table="teacher" type="delete" id={item.id} />
+              <div className="shrink-0 [&>button]:w-10 [&>button]:h-10 [&>button]:shrink-0 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:rounded-full">
+                <FormModal table="teacher" type="delete" id={item.id} />
+              </div>
             </div>
           </td>
         </tr>
@@ -202,16 +245,10 @@ export default function TeacherListClient({
             </div>
           </td>
           <td className={`${COL_ACTIVITIES} p-4`}>
-            <div className={BADGE_WRAP}>
-              {(item.lessons || []).map((lesson: any) => (
-                <span
-                  key={lesson.id}
-                  className="px-2 py-1 text-xs rounded-md bg-blue-100 text-blue-700"
-                >
-                  {lesson.name}
-                </span>
-              ))}
-            </div>
+            <ActivityBadges
+              lessons={item.lessons ?? []}
+              moreTemplate={activitiesMoreLabel}
+            />
           </td>
           <td className="hidden md:table-cell w-[10.5rem] max-w-[10.5rem] p-4">
             {groupEntries.length > 0 ? (
