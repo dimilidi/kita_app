@@ -1,3 +1,5 @@
+import { THESIS_DEMO_WEEKENDS_ENABLED } from "./thesisDemoConfig";
+
 /** Calendar day in YYYY-MM-DD → UTC midnight range for DB queries. */
 export function parseDateStrToUtcRange(dateStr: string) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
@@ -19,6 +21,10 @@ export function normalizeAttendanceDateStr(value: string | undefined): string {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return todayDateStrLocal();
   }
+  // THESIS DEMO: keep weekend dates when demo mode is on (no redirect to Fri/Mon).
+  if (THESIS_DEMO_WEEKENDS_ENABLED) {
+    return value;
+  }
   // Clamp weekends to a working day so routes never "land" on Sat/Sun.
   // - Saturday → Friday
   // - Sunday → Monday
@@ -32,6 +38,8 @@ export function normalizeAttendanceDateStr(value: string | undefined): string {
 }
 
 export function isWeekendDateStrUTC(dateStr: string): boolean {
+  // THESIS DEMO: treat weekends as working days for attendance and boards.
+  if (THESIS_DEMO_WEEKENDS_ENABLED) return false;
   const range = parseDateStrToUtcRange(dateStr);
   if (!range) return false;
   const dow = range.start.getUTCDay(); // 0=Sun ... 6=Sat

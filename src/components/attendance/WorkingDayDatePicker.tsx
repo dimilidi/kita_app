@@ -1,5 +1,6 @@
 "use client";
 
+import { THESIS_DEMO_WEEKENDS_ENABLED } from "@/lib/thesisDemoConfig";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -18,6 +19,8 @@ function localDateToDateStr(d: Date): string {
 }
 
 function isWeekendLocal(d: Date) {
+  // THESIS DEMO: allow Saturday/Sunday selection in date pickers.
+  if (THESIS_DEMO_WEEKENDS_ENABLED) return false;
   const dow = d.getDay(); // local day of week
   return dow === 0 || dow === 6;
 }
